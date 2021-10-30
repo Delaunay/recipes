@@ -1,7 +1,11 @@
 .. include:: ../README.rst
 
 .. toctree::
-   :caption: API
+   :caption: Recipes
    :maxdepth: 1
 
-   api
+   salads/index
+   soups/index
+   mains/index
+   deserts/index
+

@@ -1,7 +1,2 @@
-recipes
-=============================
-
-
-```
-pip install recipes
-```
+Recipes
+=======
