@@ -5,7 +5,8 @@ Thin crust with yeast
 ~~~~~~~~~~~~~~~~~~~~~
 
 
-Ingredients:
+Ingredients
+-----------
 
 * 2 1/2 flour
 * 1/4 teaspoon salt
@@ -14,9 +15,10 @@ Ingredients:
 * 1/4 ounce of active dry yeast
 * 1 tablespoon of sugar
 
-Instructions:
+Instructions
+------------
 
-.. code-block:: 
+.. code-block:: python
 
 
     active_yeast = (water + dry yeast + sugar)
@@ -28,14 +30,13 @@ Instructions:
     for 6 minutes:
         knead(dough)
 
-    cut in half
+    pizzas = dough.split(2)
 
-    rest for 20 minutes
+    for 20 minutes:
+        rest
 
-
-
-    cook 425F for 10 minutes
-
+    for 10 minutes:
+        cook 425F 
 
 
 Thin crust with baking powder

@@ -8,4 +8,5 @@
    soups/index
    mains/index
    deserts/index
+   sauces/index
 
