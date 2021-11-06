@@ -4,7 +4,6 @@ Pizza
 Thin crust with yeast
 ~~~~~~~~~~~~~~~~~~~~~
 
-
 Ingredients
 -----------
 
@@ -12,7 +11,7 @@ Ingredients
 * 1/4 teaspoon salt
 * 1 tablespoon olive oil
 * 1 cup of warm water
-* 1/4 ounce of active dry yeast
+* 2.25 teaspoon of active dry yeast (7gr)
 * 1 tablespoon of sugar
 
 Instructions
@@ -20,10 +19,12 @@ Instructions
 
 .. code-block:: python
 
-
     active_yeast = (water + dry yeast + sugar)
-    while active_yeast != foamy:
+
+    for 10 minutes:
         wait
+
+    assert active_yeast is foamy, "yeast is not foamy, yeast expired"
 
     dough = active_yeast + olive oil + salt  + flour
 
@@ -37,6 +38,9 @@ Instructions
 
     for 10 minutes:
         cook 425F 
+
+
+
 
 
 Thin crust with baking powder

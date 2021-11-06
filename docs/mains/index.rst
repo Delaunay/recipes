@@ -5,3 +5,4 @@ Main Course
    :maxdepth: 1
 
    pizza
+   steak

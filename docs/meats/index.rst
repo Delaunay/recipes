@@ -1,8 +1,12 @@
-Salad
+Meats
 =====
+
+
+
+
 
 .. toctree::
    :maxdepth: 1
 
-   beet
-
+   beef
+   poultry

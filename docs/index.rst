@@ -10,3 +10,10 @@
    deserts/index
    sauces/index
 
+
+.. toctree::
+   :caption: Others
+   :maxdepth: 1
+
+   meats/index
+   definitions/index
