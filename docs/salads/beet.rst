@@ -1,7 +1,6 @@
 Beet Salad
 ==========
 
-
 Ingredients
 ~~~~~~~~~~~
 

@@ -37,9 +37,7 @@ Instructions
         rest
 
     for 10 minutes:
-        cook 425F 
-
-
+        cook(220°C | 425°F) 
 
 
 
@@ -54,3 +52,16 @@ Thin crust with baking powder
 * 1/2 cup of water
 
 
+Toppings
+~~~~~~~~
+
+* Tuna
+* Bacon
+* Ham
+* Chorizo
+* Pepperoni
+* Olives
+* Basil
+* Jalapeno Peppers 
+* Bell Pepper
+* Oregano
