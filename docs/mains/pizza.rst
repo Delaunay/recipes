@@ -1,59 +1,60 @@
 Pizza
 =====
 
-Thin crust with yeast
-~~~~~~~~~~~~~~~~~~~~~
+Napolitan Pizza
+~~~~~~~~~~~~~~~
 
-Ingredients
------------
+Poolish
+^^^^^^^
 
-* 2 1/2 flour
-* 1/4 teaspoon salt
-* 1 tablespoon olive oil
-* 1 cup of warm water
-* 2.25 teaspoon of active dry yeast (7gr)
-* 1 tablespoon of sugar
+Prefermented dough
 
-Instructions
-------------
+* 200 gr Water
+* 5 gr honey
+* 5 gr of yeast
+* 200 gr of Flour (00)
 
-.. code-block:: python
+#. Sit 15 minutes
+#. Seal for 1h at room temperature
+#. put in the fridge for 16-24h (no more or it will start to get acidic)
 
-    active_yeast = (water + dry yeast + sugar)
+Dough
+^^^^^
 
-    for 10 minutes:
-        wait
+* 300gr High Gluten flour
+* 200 gr of 00 flour
 
-    assert active_yeast is foamy, "yeast is not foamy, yeast expired"
-
-    dough = active_yeast + olive oil + salt  + flour
-
-    for 6 minutes:
-        knead(dough)
-
-    pizzas = dough.split(2)
-
-    for 20 minutes:
-        rest
-
-    for 10 minutes:
-        cook(220°C | 425°F) 
+* 300 gr of water
+* 20 gr or salt
 
 
+#. Incorporate the flour to the Poolishadd water little by little
+#. make ball
+#. cover the ball with a thin layer of olive oil rest of 15 minutes
+#. Detach the dough 
+#. Fold it into a ball
+#. put a little layer of olive oil
+#. let the dough rest for 1h under a towel
+#. cut the dough in 4 (250-280 gr) each
+#. fold each pieces in balls
 
-Thin crust with baking powder
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* 1 1/3 flour
-* 2 tsp baking powder
-* 3/4 tsp salt
-* 3/4 tsp sugar
-* 2 tsp olive oil
-* 1/2 cup of water
+.. note::
+    
+   To prevent sticking use olive oil not flour.
+   Adding flour will change hydration!
 
 
 Toppings
 ~~~~~~~~
+
+* Parmesan
+* Mozzarella (Dry Fresh)
+* Crushed tomatoes
+* Basil leaves
+* Olive oil
+
+
 
 * Tuna
 * Bacon
