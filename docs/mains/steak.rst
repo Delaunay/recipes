@@ -18,7 +18,7 @@ Ingredients
 Instructions
 ^^^^^^^^^^^^
 
-.. code-block: python
+.. code-block:: python
 
    steak += salt + pepper
 
