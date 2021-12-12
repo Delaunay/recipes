@@ -1,104 +1,60 @@
 Pizza
 =====
 
-Thin crust with yeast
-~~~~~~~~~~~~~~~~~~~~~
-
-Ingredients
------------
-
-* 2 1/2 flour
-* 1/4 teaspoon salt
-* 1 tablespoon olive oil
-* 1 cup of warm water
-* 2.25 teaspoon of active dry yeast (7gr)
-* 1 tablespoon of sugar
-
-
-
-Instructions
-------------
-
-.. code-block:: python
-
-    active_yeast = (water + dry yeast + sugar)
-
-    for 10 minutes:
-        wait
-
-    assert active_yeast is foamy, "yeast is not foamy, yeast expired"
-
-    dough = active_yeast + olive oil + salt  + flour
-
-    for 6 minutes:
-        knead(dough)
-
-    pizzas = dough.split(2)
-
-    for 20 minutes:
-        rest
-
-    for 10 minutes:
-        cook(220°C | 425°F) 
-
-
 Napolitan Pizza
 ~~~~~~~~~~~~~~~
 
 Poolish
 ^^^^^^^
 
-* 200 gr water
+Prefermented dough
+
+* 200 gr Water
 * 5 gr honey
-* 5 gr yeast
-* 200 fr floor (00)
+* 5 gr of yeast
+* 200 gr of Flour (00)
 
-.. code-block:: python
-
-   poolish = mix(mix(water + honey + yeast) + floor)
-   
-   for 15 minutes:
-       wait()
-
-   close_lid()
-
-   for 1h:
-       wait()
-
-   put_in_fridge()
-
-   for 16h-24h:
-        wait()
-
-
-.. note::
-
-   Do not used past 24h, the dough will become acidic 
-
+#. Sit 15 minutes
+#. Seal for 1h at room temperature
+#. put in the fridge for 16-24h (no more or it will start to get acidic)
 
 Dough
 ^^^^^
 
-* 300 gr of manitoba flour
+* 300gr High Gluten flour
+* 200 gr of 00 flour
+
 * 300 gr of water
-* 20 gr of salt
-* 200 gr flour (00)
+* 20 gr or salt
+
+
+#. Incorporate the flour to the Poolishadd water little by little
+#. make ball
+#. cover the ball with a thin layer of olive oil rest of 15 minutes
+#. Detach the dough 
+#. Fold it into a ball
+#. put a little layer of olive oil
+#. let the dough rest for 1h under a towel
+#. cut the dough in 4 (250-280 gr) each
+#. fold each pieces in balls
+
 
 .. note::
-
-   It takes time for the water to get absorbed.
-   the dought will look elastic, it will become smoother after some resting time
-
-
-.. note::
-
-   Use olive oil to prevent the dough from sticking.
-   Do not add flour, it will change the hydration level!
-
+    
+   To prevent sticking use olive oil not flour.
+   Adding flour will change hydration!
 
 
 Toppings
 ~~~~~~~~
+
+* Parmesan
+* Mozzarella (Dry Fresh)
+* Crushed tomatoes
+* Basil leaves
+* Olive oil
+
+
 
 * Tuna
 * Bacon
