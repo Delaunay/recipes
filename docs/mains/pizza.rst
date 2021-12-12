@@ -14,6 +14,8 @@ Ingredients
 * 2.25 teaspoon of active dry yeast (7gr)
 * 1 tablespoon of sugar
 
+
+
 Instructions
 ------------
 
@@ -40,16 +42,59 @@ Instructions
         cook(220°C | 425°F) 
 
 
+Napolitan Pizza
+~~~~~~~~~~~~~~~
 
-Thin crust with baking powder
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Poolish
+^^^^^^^
 
-* 1 1/3 flour
-* 2 tsp baking powder
-* 3/4 tsp salt
-* 3/4 tsp sugar
-* 2 tsp olive oil
-* 1/2 cup of water
+* 200 gr water
+* 5 gr honey
+* 5 gr yeast
+* 200 fr floor (00)
+
+.. code-block:: python
+
+   poolish = mix(mix(water + honey + yeast) + floor)
+   
+   for 15 minutes:
+       wait()
+
+   close_lid()
+
+   for 1h:
+       wait()
+
+   put_in_fridge()
+
+   for 16h-24h:
+        wait()
+
+
+.. note::
+
+   Do not used past 24h, the dough will become acidic 
+
+
+Dough
+^^^^^
+
+* 300 gr of manitoba flour
+* 300 gr of water
+* 20 gr of salt
+* 200 gr flour (00)
+
+.. note::
+
+   It takes time for the water to get absorbed.
+   the dought will look elastic, it will become smoother after some resting time
+
+
+.. note::
+
+   Use olive oil to prevent the dough from sticking.
+   Do not add flour, it will change the hydration level!
+
 
 
 Toppings
