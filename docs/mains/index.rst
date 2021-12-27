@@ -10,3 +10,4 @@ Main Course
    ginger_salmon
    sole
    stirfry
+   soufflé
