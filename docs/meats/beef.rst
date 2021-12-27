@@ -6,7 +6,7 @@ Criterions
 
 * Animal's age
 * Meat marbling; fat inside the meat (not surrounding the meat)
-melts during cooking enhancing the flavour and tenderness.
+  melts during cooking enhancing the flavour and tenderness.
 
 
 Grades
@@ -19,7 +19,7 @@ less than 30 months old cattle
 * AA: 45% of cattle
 * A: 3% of cattle
 
-.. notes::
+.. note::
 
    do not try to find the grade on your local supermarket meat, those are usually ungraded.
    and used for stew rather than steaks

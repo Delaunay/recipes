@@ -15,7 +15,7 @@ Ingredients
 Instructions
 ~~~~~~~~~~~~
 
-.. code-block:: python
+.. code-block:: none
 
    batter = sugar / 2 + flour + butter
 

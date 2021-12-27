@@ -6,3 +6,7 @@ Main Course
 
    pizza
    steak
+   adobo
+   ginger_salmon
+   sole
+   stirfry

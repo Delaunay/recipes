@@ -4,7 +4,7 @@ Butternut Squash
 Roasted
 ~~~~~~~
 
-.. code-block::
+.. code-block:: none
 
    d = dice(butternutsquash)
 

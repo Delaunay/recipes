@@ -18,7 +18,7 @@ Ingredients
 Instructions
 ^^^^^^^^^^^^
 
-.. code-block:: python
+.. code-block:: none
 
    steak += salt + pepper
 
@@ -44,7 +44,6 @@ Instructions
 .. list-table:: Internal Temperature
 
    * - Doneness
-     - Internal Temperature
      - °C
      - °F
    * - Rare
@@ -52,7 +51,7 @@ Instructions
      - 117
    * - Medium Rare
      - 52 
-    - 126
+     - 126
    * - Medium 
      - 57 
      - 135
