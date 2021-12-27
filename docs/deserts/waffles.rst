@@ -1,6 +1,9 @@
 Waffles
 =======
 
+Ingredients
+~~~~~~~~~~~
+
 * 1 ½ cup farine
 * ½ cup maizena (mettre plus de maïzena pour augmenter le croustillant)
 * 2 cuillère à soupe de semoule de maïs

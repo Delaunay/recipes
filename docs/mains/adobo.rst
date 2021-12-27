@@ -1,7 +1,7 @@
 Adobo chicken
 =============
 
-Indegredients
+Ingredients
 ~~~~~~~~~~~~~
 
 * 6 pieces of Chicken Thigh 
