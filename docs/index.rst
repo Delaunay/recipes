@@ -9,6 +9,7 @@
    mains/index
    deserts/index
    sauces/index
+   sides/index
 
 
 .. toctree::

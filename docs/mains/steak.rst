@@ -18,7 +18,7 @@ Ingredients
 Instructions
 ^^^^^^^^^^^^
 
-.. code-block: python
+.. code-block:: none
 
    steak += salt + pepper
 
@@ -31,12 +31,12 @@ Instructions
        heat(pan)
 
    for each side:
-       for 3 minutes:
+       for 2-3 minutes:
            steak += butter + rosemary + thyme
            cook(steak)
            baste(steak)
    
-   oven(steak, 175°C / 350°F, 6 minutes)
+   oven(steak, 175°C / 350°F, 4-6 minutes)
 
    rest(steak, 5-10 minutes)
 
@@ -44,7 +44,6 @@ Instructions
 .. list-table:: Internal Temperature
 
    * - Doneness
-     - Internal Temperature
      - °C
      - °F
    * - Rare
@@ -52,7 +51,7 @@ Instructions
      - 117
    * - Medium Rare
      - 52 
-    - 126
+     - 126
    * - Medium 
      - 57 
      - 135

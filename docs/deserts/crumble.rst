@@ -15,7 +15,7 @@ Ingredients
 Instructions
 ~~~~~~~~~~~~
 
-.. code-block:: python
+.. code-block:: none
 
    batter = sugar / 2 + flour + butter
 
@@ -27,6 +27,7 @@ Instructions
    crumble = apples + batter
 
    cook(crumble, 180°C / 356°F, 45 minutes) 
+
 
 Sides
 ~~~~~
