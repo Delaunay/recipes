@@ -10,8 +10,8 @@ Poolish
 Prefermented dough
 
 * 200 gr Water
-* 5 gr honey
-* 5 gr of yeast
+* 5 gr Honey
+* 5 gr of Yeast
 * 200 gr of Flour (00)
 
 #. Sit 15 minutes
@@ -21,11 +21,10 @@ Prefermented dough
 Dough
 ^^^^^
 
-* 300gr High Gluten flour
-* 200 gr of 00 flour
-
-* 300 gr of water
-* 20 gr or salt
+* 300 gr High Gluten flour (Manitoba flour)
+* 200 gr of flour (00)
+* 300 gr of Water
+* 20 gr or Salt
 
 
 #. Incorporate the flour to the Poolishadd water little by little
@@ -34,7 +33,7 @@ Dough
 #. Detach the dough 
 #. Fold it into a ball
 #. put a little layer of olive oil
-#. let the dough rest for 1h under a towel
+#. let the dough rest for 1h under a humid towel
 #. cut the dough in 4 (250-280 gr) each
 #. fold each pieces in balls
 

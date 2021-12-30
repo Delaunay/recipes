@@ -64,6 +64,12 @@ Instructions
      - 149
 
 
+.. warning::
+
+   For safe consummption, it is recommended to cook fresh beef up to 145 F / 62 C.
+   which makes Medium Well done and up the safest to consume at home.
+   
+
 Sides
 ~~~~~
 

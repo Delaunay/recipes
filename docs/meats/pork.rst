@@ -1,11 +1,7 @@
-Poultry
-=======
+Pork
+====
 
-
-Chicken
-~~~~~~~
-
-* Internal temperature 165 F / 74 C
+* Internal temperature 160-145 F (70-62 C)
 
 
 Sources
