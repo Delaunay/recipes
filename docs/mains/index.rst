@@ -12,3 +12,4 @@ Main Course
    stirfry
    soufflé
    dumpling
+   avocado_toast

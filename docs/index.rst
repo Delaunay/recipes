@@ -6,6 +6,7 @@
 
    salads/index
    soups/index
+   appetizers/index
    mains/index
    deserts/index
    sauces/index

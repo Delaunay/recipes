@@ -1,6 +1,27 @@
 Stir Fry
 ========
 
+Beef Broccoli
+-------------
+
+Ingredients
+~~~~~~~~~~~
+
+#. 1/3 c.chicken stock
+#. 1/4 c. soy sauce
+#. 1 tbsp. plus 1 teaspoon pure honey
+#. 1 tsp. toasted sesame oil 
+#. 1 tbsp. plus 1 teaspoon cornstarch
+#. 12 oz. flank steak, thinly sliced
+#. Kosher salt and freshly ground black pepper
+#. 2 tbsp. canola oil
+#. 12 oz. broccoli florets, halved if large
+#. 1 one-inch pieces fresh ginger, peeled and minced
+#. 3 cloves garlic, minced 
+
+Chicken
+-------
+
 Ingredients
 ~~~~~~~~~~~
 
