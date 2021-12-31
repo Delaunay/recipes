@@ -6,6 +6,7 @@ Sauces
    :maxdepth: 1
 
    bechamel
-   dipping
+   chili_oil
+
 
 

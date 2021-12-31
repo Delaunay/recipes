@@ -11,3 +11,4 @@ Main Course
    sole
    stirfry
    soufflé
+   dumpling
