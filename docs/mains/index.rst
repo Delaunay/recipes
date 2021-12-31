@@ -13,3 +13,4 @@ Main Course
    soufflé
    dumpling
    avocado_toast
+   stuffed_pepper
