@@ -41,6 +41,7 @@ Instructions
    rest(steak, 5-10 minutes)
 
 
+
 .. list-table:: Internal Temperature
 
    * - Doneness
@@ -68,6 +69,9 @@ Instructions
    For safe consummption, it is recommended to cook fresh beef up to 145 F / 62 C.
    which makes Medium Well done and up the safest to consume at home.
    
+
+* Fillet Steak: 3 minutes each side, 8 minutes in oven
+
 
 Sides
 ~~~~~
