@@ -4,7 +4,7 @@ Crêpes
 Ingredients
 ~~~~~~~~~~~
 
-* 350 gr de Farine (2 tasses)
+* 300 gr de Farine (2 tasses)
 * 3 Oeufs
 * 500 cl de lait (2 tasses)
 * 5 gr de sel
