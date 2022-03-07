@@ -18,3 +18,4 @@ Desert
    tiramisu
    waffles
    pâte_brisée
+   apple_clafoutis
