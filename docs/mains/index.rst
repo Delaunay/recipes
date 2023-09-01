@@ -14,3 +14,6 @@ Main Course
    dumpling
    avocado_toast
    stuffed_pepper
+   bourguignon
+   ratatouille
+   galette

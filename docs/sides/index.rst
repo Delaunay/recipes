@@ -7,4 +7,6 @@ Sides
    brussel
    butternutsquash
    eggs
-
+   farce
+   pate
+   mashed
