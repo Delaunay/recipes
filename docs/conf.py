@@ -58,7 +58,6 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.autosummary',
     'numpydoc',
-    'sphinxcontrib.bibtex'
 ]
 
 autodoc_inherit_docstrings = True
