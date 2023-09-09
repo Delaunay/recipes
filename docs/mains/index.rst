@@ -17,3 +17,4 @@ Main Course
    bourguignon
    ratatouille
    galette
+   stuffed_tomatoes
