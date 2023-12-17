@@ -16,3 +16,20 @@ Viande "bourguignon"
 5. 1/2 cuillere rase de farine
 6. Ajouter 500 ml de vin rouge
 7. Laisser mijoter 2h30
+
+
+
+
+
+
+----
+
+* Boeuf
+* Oil
+* Echallote, ail, gros sel
+* Mijotter 30min
+* Carotte Rondelle
+* Une soup spoon farine
+* 3/4 litre Bouillon de legume
+* 1/4 litre vin rouge
+* 2h30
