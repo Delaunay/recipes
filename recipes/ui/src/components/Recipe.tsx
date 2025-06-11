@@ -10,6 +10,7 @@ import {
   Spacer,
   SimpleGrid,
 } from '@chakra-ui/react';
+import { RecipeData } from '../services/api';
 
 // Simple icon components
 const DeleteIcon = () => (
@@ -57,20 +58,6 @@ interface Category {
   id?: number;
   name: string;
   description?: string;
-}
-
-interface RecipeData {
-  id?: number;
-  title: string;
-  description?: string;
-  images?: string[];
-  instructions: Instruction[];
-  prep_time?: number;
-  cook_time?: number;
-  servings?: number;
-  ingredients?: Ingredient[];
-  categories?: Category[];
-  author_id?: number;
 }
 
 interface RecipeProps {
@@ -174,7 +161,24 @@ const Recipe: React.FC<RecipeProps> = ({
 
   const handleSave = () => {
     if (onSave) {
-      onSave(recipe);
+      // Ensure we have the proper data structure for the API
+      const recipeToSave: RecipeData = {
+        ...recipe,
+        // Ensure instructions is an array
+        instructions: recipe.instructions || [],
+        // Ensure ingredients exist and have proper structure
+        ingredients: recipe.ingredients?.map(ing => ({
+          ...ing,
+          name: ing.name,
+          quantity: ing.quantity || 1,
+          unit: ing.unit || 'unit'
+        })) || [],
+        // Ensure categories exist
+        categories: recipe.categories || [],
+        // Ensure images exist  
+        images: recipe.images || []
+      };
+      onSave(recipeToSave);
     }
     setIsEditable(false);
   };
@@ -440,6 +444,27 @@ const Recipe: React.FC<RecipeProps> = ({
           </VStack>
         </Box>
 
+        {/* Categories Display */}
+        {recipe.categories && recipe.categories.length > 0 && (
+          <Box>
+            <Text fontSize="lg" fontWeight="semibold" mb={2}>Categories</Text>
+            <HStack gap={2} wrap="wrap">
+              {recipe.categories.map((category, index) => (
+                <Badge key={index} colorScheme="green" variant="subtle">
+                  {category.name}
+                </Badge>
+              ))}
+            </HStack>
+          </Box>
+        )}
+
+        {/* Recipe ID Display (for debugging) */}
+        {recipe.id && (
+          <Box>
+            <Text fontSize="xs" color="gray.500">Recipe ID: {recipe.id}</Text>
+          </Box>
+        )}
+
         {/* Usage Instructions */}
         {isEditable && (
           <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
@@ -448,6 +473,7 @@ const Recipe: React.FC<RecipeProps> = ({
               <Text>• Click on any text to edit it inline</Text>
               <Text>• Use Shift+Enter for line breaks in multi-line fields</Text>
               <Text>• Press Enter or click outside to finish editing a field</Text>
+              <Text>• Changes are saved to the server when you click Save</Text>
             </VStack>
           </Box>
         )}

@@ -9,8 +9,8 @@ Base = declarative_base()
 recipe_ingredients = Table(
     'recipe_ingredients',
     Base.metadata,
-    Column('recipe_id', Integer, ForeignKey('recipes.id')),
-    Column('ingredient_id', Integer, ForeignKey('ingredients.id')),
+    Column('recipe_id', Integer, ForeignKey('recipes._id')),
+    Column('ingredient_id', Integer, ForeignKey('ingredients._id')),
     Column('quantity', Float),
     Column('unit', String(50))
 )
@@ -18,14 +18,14 @@ recipe_ingredients = Table(
 recipe_categories = Table(
     'recipe_categories',
     Base.metadata,
-    Column('recipe_id', Integer, ForeignKey('recipes.id')),
-    Column('category_id', Integer, ForeignKey('categories.id'))
+    Column('recipe_id', Integer, ForeignKey('recipes._id')),
+    Column('category_id', Integer, ForeignKey('categories._id'))
 )
 
 class User(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True)
+    _id = Column(Integer, primary_key=True)
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(128), nullable=False)
@@ -64,7 +64,7 @@ class Recipe(Base):
     servings = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    author_id = Column(Integer, ForeignKey('users.id'))
+    author_id = Column(Integer, ForeignKey('users._id'))
 
     extension = Column(JSON)
 
@@ -107,7 +107,8 @@ class Ingredient(Base):
     extension = Column(JSON)    # Additional info as JSON
 
     # Relationships
-    recipes = relationship('Recipe', secondary=recipe_ingredients, back_populates='ingredients')
+    recipes = relationship('Recipe', 
+                           secondary=recipe_ingredients, back_populates='ingredients')
 
     def __repr__(self):
         return f'<Ingredient {self.name}>'
@@ -156,7 +157,7 @@ class UnitConversion(Base):
     to_unit = Column(String(50), nullable=False)
     conversion_factor = Column(Float, nullable=False)
     category = Column(String(50), nullable=False)
-    ingredient_id = Column(Integer, ForeignKey('ingredients.id'), nullable=True)
+    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=True)
 
     extension = Column(JSON)
 

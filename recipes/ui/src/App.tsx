@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChakraProvider, 
   Box, 
@@ -7,99 +7,147 @@ import {
   Button,
   HStack,
   createSystem,
-  defaultConfig
+  defaultConfig,
+  Spinner
 } from '@chakra-ui/react';
 import Layout from './layout/Layout';
 import Recipe from './components/Recipe';
+import { recipeAPI, RecipeData } from './services/api';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
 const system = createSystem(defaultConfig);
 
-// Sample recipe data matching the backend model structure
-const sampleRecipe = {
-  id: 1,
-  title: 'Homemade Pizza',
-  description: 'Delicious homemade pizza with fresh ingredients and crispy crust. Perfect for family dinner or weekend cooking.',
-  prep_time: 30,
-  cook_time: 15,
-  servings: 4,
-  ingredients: [
-    { id: 1, name: 'Pizza dough', quantity: 1, unit: 'ball' },
-    { id: 2, name: 'Tomato sauce', quantity: 0.5, unit: 'cup' },
-    { id: 3, name: 'Mozzarella cheese', quantity: 200, unit: 'grams' },
-    { id: 4, name: 'Fresh basil', quantity: 10, unit: 'leaves' },
-    { id: 5, name: 'Olive oil', quantity: 2, unit: 'tbsp' }
-  ],
-  instructions: [
-    {
-      step: '1',
-      description: 'Preheat your oven to 475°F (245°C). If you have a pizza stone, place it in the oven while preheating.',
-      duration: '15 minutes'
-    },
-    {
-      step: '2',
-      description: 'Roll out the pizza dough on a floured surface to your desired thickness. Transfer to a pizza pan or parchment paper.',
-      duration: '5 minutes'
-    },
-    {
-      step: '3',
-      description: 'Spread the tomato sauce evenly over the dough, leaving a border for the crust. Sprinkle the mozzarella cheese on top.',
-      duration: '3 minutes'
-    },
-    {
-      step: '4',
-      description: 'Drizzle with olive oil and add any additional toppings. Bake for 12-15 minutes until the crust is golden and cheese is bubbly.',
-      duration: '15 minutes'
-    },
-    {
-      step: '5',
-      description: 'Remove from oven, add fresh basil leaves, slice, and serve immediately.',
-      duration: '2 minutes'
-    }
-  ],
-  categories: [
-    { id: 1, name: 'Italian', description: 'Italian cuisine' },
-    { id: 2, name: 'Main Course', description: 'Main dishes' }
-  ],
-  images: [
-    'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-  ],
-  author_id: 1
-};
-
 type ViewMode = 'view' | 'create' | 'list';
 
 function App() {
-  const [recipes, setRecipes] = useState([sampleRecipe]);
+  const [recipes, setRecipes] = useState<RecipeData[]>([]);
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeData | null>(null);
   const [isAuthorized, setIsAuthorized] = useState(true); // Simulating authorization
-  const [activeView, setActiveView] = useState<ViewMode>('view');
+  const [activeView, setActiveView] = useState<ViewMode>('list');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSaveRecipe = (recipe: any) => {
-    console.log('Saving recipe:', recipe);
-    
-    if (recipe.id) {
-      // Update existing recipe
-      setRecipes(prev => prev.map(r => r.id === recipe.id ? recipe : r));
-    } else {
-      // Add new recipe
-      const newRecipe = { ...recipe, id: Date.now() };
-      setRecipes(prev => [...prev, newRecipe]);
+  // Fetch recipes on component mount
+  useEffect(() => {
+    fetchRecipes();
+  }, []);
+
+  const fetchRecipes = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const fetchedRecipes = await recipeAPI.getRecipes();
+      setRecipes(fetchedRecipes);
+      
+      // If we have recipes and no selected recipe, select the first one
+      if (fetchedRecipes.length > 0 && !selectedRecipe) {
+        setSelectedRecipe(fetchedRecipes[0]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch recipes');
+      console.error('Failed to fetch recipes:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteRecipe = (recipeId: number) => {
-    if (window.confirm('Are you sure you want to delete this recipe?')) {
-      setRecipes(prev => prev.filter(r => r.id !== recipeId));
+  const handleSaveRecipe = async (recipe: RecipeData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      let savedRecipe: RecipeData;
+      
+      if (recipe.id) {
+        // Update existing recipe
+        savedRecipe = await recipeAPI.updateRecipe(recipe.id, recipe);
+        setRecipes(prev => prev.map(r => r.id === recipe.id ? savedRecipe : r));
+        
+        // Update selected recipe if it's the one being edited
+        if (selectedRecipe?.id === recipe.id) {
+          setSelectedRecipe(savedRecipe);
+        }
+      } else {
+        // Create new recipe
+        savedRecipe = await recipeAPI.createRecipe(recipe);
+        setRecipes(prev => [...prev, savedRecipe]);
+        setSelectedRecipe(savedRecipe);
+        
+        // Switch to view mode to show the newly created recipe
+        setActiveView('view');
+      }
+      
+      console.log('Recipe saved successfully:', savedRecipe);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save recipe');
+      console.error('Failed to save recipe:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleDeleteRecipe = async (recipeId: number) => {
+    if (!window.confirm('Are you sure you want to delete this recipe?')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await recipeAPI.deleteRecipe(recipeId);
+      setRecipes(prev => prev.filter(r => r.id !== recipeId));
+      
+      // If we deleted the selected recipe, select another one or clear selection
+      if (selectedRecipe?.id === recipeId) {
+        const remainingRecipes = recipes.filter(r => r.id !== recipeId);
+        setSelectedRecipe(remainingRecipes.length > 0 ? remainingRecipes[0] : null);
+        
+        // If no recipes left, switch to create mode
+        if (remainingRecipes.length === 0) {
+          setActiveView('create');
+        }
+      }
+      
+      console.log('Recipe deleted successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete recipe');
+      console.error('Failed to delete recipe:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewRecipe = (recipe: RecipeData) => {
+    setSelectedRecipe(recipe);
+    setActiveView('view');
   };
 
   const renderContent = () => {
+    if (loading && recipes.length === 0) {
+      return (
+        <Box textAlign="center" py={10}>
+          <Spinner size="xl" />
+          <Text mt={4}>Loading recipes...</Text>
+        </Box>
+      );
+    }
+
     switch (activeView) {
       case 'view':
+        if (!selectedRecipe) {
+          return (
+            <Box textAlign="center" py={10}>
+              <Text fontSize="lg" color="gray.600">
+                No recipe selected. Choose one from the list or create a new one.
+              </Text>
+            </Box>
+          );
+        }
         return (
           <Recipe
-            recipe={sampleRecipe}
+            recipe={selectedRecipe}
             isAuthorized={isAuthorized}
             onSave={handleSaveRecipe}
             onDelete={handleDeleteRecipe}
@@ -113,16 +161,40 @@ function App() {
           />
         );
       case 'list':
+        if (recipes.length === 0) {
+          return (
+            <Box textAlign="center" py={10}>
+              <Text fontSize="lg" color="gray.600" mb={4}>
+                No recipes found. Create your first recipe!
+              </Text>
+              <Button colorScheme="blue" onClick={() => setActiveView('create')}>
+                Create Recipe
+              </Button>
+            </Box>
+          );
+        }
         return (
           <VStack gap={6} align="stretch">
             {recipes.map((recipe) => (
-              <Recipe
-                key={recipe.id}
-                recipe={recipe}
-                isAuthorized={isAuthorized}
-                onSave={handleSaveRecipe}
-                onDelete={handleDeleteRecipe}
-              />
+              <Box key={recipe.id} position="relative">
+                <Recipe
+                  recipe={recipe}
+                  isAuthorized={isAuthorized}
+                  onSave={handleSaveRecipe}
+                  onDelete={handleDeleteRecipe}
+                />
+                <Button
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  size="sm"
+                  onClick={() => handleViewRecipe(recipe)}
+                  colorScheme="blue"
+                  variant="outline"
+                >
+                  View Details
+                </Button>
+              </Box>
             ))}
           </VStack>
         );
@@ -145,14 +217,23 @@ function App() {
               </Text>
             </Box>
 
+            {/* Error Display */}
+            {error && (
+              <Box p={4} bg="red.50" borderRadius="md" borderLeft="4px solid" borderColor="red.400">
+                <Text fontWeight="medium" color="red.800" mb={1}>Error</Text>
+                <Text fontSize="sm" color="red.700">{error}</Text>
+              </Box>
+            )}
+
             {/* Navigation Buttons */}
             <HStack gap={4} justify="center">
               <Button
                 variant={activeView === 'view' ? 'solid' : 'outline'}
                 colorScheme="blue"
                 onClick={() => setActiveView('view')}
+                disabled={!selectedRecipe}
               >
-                View Recipe
+                View Recipe ({selectedRecipe?.title || 'None Selected'})
               </Button>
               <Button
                 variant={activeView === 'create' ? 'solid' : 'outline'}
@@ -166,7 +247,14 @@ function App() {
                 colorScheme="blue"
                 onClick={() => setActiveView('list')}
               >
-                Recipe List
+                Recipe List ({recipes.length})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={fetchRecipes}
+                loading={loading}
+              >
+                {loading ? 'Refreshing...' : 'Refresh'}
               </Button>
             </HStack>
 
@@ -187,6 +275,7 @@ function App() {
                 <Text>• <strong>Inline Editing:</strong> Click on any text field to edit directly</Text>
                 <Text>• <strong>Add/Remove:</strong> Use the + and - buttons to manage ingredients and steps</Text>
                 <Text>• <strong>Save/Cancel:</strong> Use the action buttons to save changes or cancel edits</Text>
+                <Text>• <strong>Refresh:</strong> Click refresh to sync with the server</Text>
               </VStack>
             </Box>
           </VStack>
