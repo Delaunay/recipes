@@ -1,3 +1,4 @@
+
 install:
 	pip install -e .[all]
 	pip install -r requirements.txt
@@ -37,3 +38,13 @@ tests-codecov: tests-combine
 tests-all: tests-doc tests-unit tests-integration tests-end-to-end
 
 tests: tests-all tests-codecov
+
+
+CONDA_ACTIVATE=. $$(conda info --base)/etc/profile.d/conda.sh ; conda activate
+
+front:
+	cd recipes/ui && npm run dev
+
+back:
+	($(CONDA_ACTIVATE) py310; python -m recipes.server.run)
+
