@@ -9,6 +9,11 @@
 *.pkl
 *.lock
 
+
+node_modules/
+uploads/
+
+
 # StarUML documentation
 *.mdj
 

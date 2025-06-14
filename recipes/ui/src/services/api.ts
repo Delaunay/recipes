@@ -6,31 +6,22 @@ interface RecipeData {
   title: string;
   description?: string;
   images?: string[];
-  instructions: Array<{
-    step: string;
-    description: string;
-    duration?: string;
-    image?: string;
-  }>;
+  instructions: Array<Instruction>;
   prep_time?: number;
   cook_time?: number;
   servings?: number;
-  ingredients?: Array<{
-    id?: number;
-    name: string;
-    description?: string;
-    calories?: number;
-    density?: number;
-    quantity?: number;
-    unit?: string;
-  }>;
-  categories?: Array<{
-    id?: number;
-    name: string;
-    description?: string;
-  }>;
+  ingredients?: Array<Ingredient>;
+  categories?: Array<Category>;
   author_id?: number;
 }
+
+interface Instruction {
+  step: string;
+  description: string;
+  duration?: string;
+  image?: string;
+}
+
 
 interface Ingredient {
   id?: number;
@@ -38,6 +29,8 @@ interface Ingredient {
   description?: string;
   calories?: number;
   density?: number;
+  quantity?: number;
+  unit?: string;
 }
 
 interface Category {
@@ -79,6 +72,12 @@ class RecipeAPI {
 
   async getRecipe(id: number): Promise<RecipeData> {
     return this.request<RecipeData>(`/recipes/${id}`);
+  }
+
+  async getRecipeByName(name: string): Promise<RecipeData> {
+    // Convert name to URL-friendly format (replace spaces with hyphens)
+    const urlName = name.toLowerCase().replace(/\s+/g, '-');
+    return this.request<RecipeData>(`/recipes/${urlName}`);
   }
 
   async createRecipe(recipe: Omit<RecipeData, 'id'>): Promise<RecipeData> {
@@ -129,8 +128,35 @@ class RecipeAPI {
   async healthCheck(): Promise<{ status: string }> {
     return this.request<{ status: string }>('/health');
   }
+
+  // Image upload
+  async uploadImage(file: File): Promise<{ url: string; filename: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${API_BASE_URL}/upload`;
+    const config: RequestInit = {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type header, let browser set it with boundary for multipart/form-data
+    };
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      throw error;
+    }
+  }
 }
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
-export type { RecipeData, Ingredient, Category }; 
+export type { RecipeData, Ingredient, Category, Instruction }; 

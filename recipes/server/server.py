@@ -1,7 +1,9 @@
 from typing import Dict, Any
+import os
+import uuid
+from werkzeug.utils import secure_filename
 
-
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from sqlalchemy.orm import sessionmaker, scoped_session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -15,6 +17,16 @@ class RecipeApp:
         self.app = Flask(__name__)
         self.app.config['JSON_SORT_KEYS'] = False
         self.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///project.db"
+        
+        # Configure file uploads
+        self.app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+        # No file size limit
+        
+        # Create uploads directory if it doesn't exist
+        os.makedirs(self.app.config['UPLOAD_FOLDER'], exist_ok=True)
+        
+        # Allowed file extensions
+        self.ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
         # Enable CORS for React frontend
         CORS(self.app)
@@ -31,36 +43,10 @@ class RecipeApp:
 
         with self.app.app_context():
             self.db.create_all()
-            self._seed_data()
+            # self._seed_data()
 
         # users = db.session.execute(db.select(User).order_by(User.username)).scalars()
         self.setup_routes()
-    
-    def _seed_data(self):
-        """Add some initial data if the database is empty"""
-        if self.db.session.query(Category).count() == 0:
-            categories = [
-                Category(name="Italian", description="Italian cuisine"),
-                Category(name="Main Course", description="Main dishes"),
-                Category(name="Dessert", description="Sweet treats"),
-                Category(name="Vegetarian", description="Vegetarian dishes"),
-                Category(name="Quick & Easy", description="Fast recipes"),
-            ]
-            for category in categories:
-                self.db.session.add(category)
-
-        if self.db.session.query(Ingredient).count() == 0:
-            ingredients = [
-                Ingredient(name="Pizza dough", description="Fresh pizza dough", calories=266, density=0.8),
-                Ingredient(name="Tomato sauce", description="Fresh tomato sauce", calories=35, density=1.0),
-                Ingredient(name="Mozzarella cheese", description="Fresh mozzarella", calories=280, density=0.9),
-                Ingredient(name="Fresh basil", description="Fresh basil leaves", calories=22, density=0.6),
-                Ingredient(name="Olive oil", description="Extra virgin olive oil", calories=884, density=0.92),
-            ]
-            for ingredient in ingredients:
-                self.db.session.add(ingredient)
-
-        self.db.session.commit()
     
     def setup_routes(self):
         @self.app.route('/')
@@ -108,6 +94,28 @@ class RecipeApp:
                         
                         recipe.ingredients.append(ingredient)
                 
+                # Handle categories if provided
+                if 'categories' in data:
+                    for cat_data in data['categories']:
+                        # Skip categories with negative IDs (temporary frontend IDs)
+                        if cat_data.get('id', 0) < 0:
+                            # Find or create category by name
+                            category = self.db.session.query(Category).filter_by(name=cat_data['name']).first()
+                            if not category:
+                                category = Category(
+                                    name=cat_data['name'], 
+                                    description=cat_data.get('description', '')
+                                )
+                                self.db.session.add(category)
+                                self.db.session.flush()
+                            
+                            recipe.categories.append(category)
+                        else:
+                            # Existing category with real ID
+                            category = self.db.session.get(Category, cat_data['id'])
+                            if category:
+                                recipe.categories.append(category)
+                
                 self.db.session.commit()
                 return jsonify(recipe.to_json()), 201
                 
@@ -118,6 +126,15 @@ class RecipeApp:
         @self.app.route('/recipes/<int:recipe_id>', methods=['GET'])
         def get_recipe(recipe_id: int) -> Dict[str, Any]:
             recipe = self.db.session.get(Recipe, recipe_id)
+            if not recipe:
+                return jsonify({"error": "Recipe not found"}), 404
+            return jsonify(recipe.to_json())
+        
+        @self.app.route('/recipes/<string:recipe_name>', methods=['GET'])
+        def get_recipe_by_name(recipe_name: str) -> Dict[str, Any]:
+            # Replace hyphens with spaces for URL-friendly names
+            formatted_name = recipe_name.replace('-', ' ')
+            recipe = self.db.session.query(Recipe).filter(Recipe.title.ilike(f"%{formatted_name}%")).first()
             if not recipe:
                 return jsonify({"error": "Recipe not found"}), 404
             return jsonify(recipe.to_json())
@@ -151,6 +168,29 @@ class RecipeApp:
                             self.db.session.flush()
                         
                         recipe.ingredients.append(ingredient)
+                
+                # Handle categories update
+                if 'categories' in data:
+                    recipe.categories.clear()
+                    for cat_data in data['categories']:
+                        # Skip categories with negative IDs (temporary frontend IDs)
+                        if cat_data.get('id', 0) < 0:
+                            # Find or create category by name
+                            category = self.db.session.query(Category).filter_by(name=cat_data['name']).first()
+                            if not category:
+                                category = Category(
+                                    name=cat_data['name'], 
+                                    description=cat_data.get('description', '')
+                                )
+                                self.db.session.add(category)
+                                self.db.session.flush()
+                            
+                            recipe.categories.append(category)
+                        else:
+                            # Existing category with real ID
+                            category = self.db.session.get(Category, cat_data['id'])
+                            if category:
+                                recipe.categories.append(category)
                 
                 self.db.session.commit()
                 return jsonify(recipe.to_json())
@@ -212,6 +252,50 @@ class RecipeApp:
         def get_unit_conversions() -> Dict[str, Any]:
             conversions = self.db.session.query(UnitConversion).all()
             return jsonify([conversion.to_json() for conversion in conversions])
+
+        @self.app.route('/upload', methods=['POST'])
+        def upload_file() -> Dict[str, Any]:
+            """Upload a single image file"""
+            try:
+                if 'file' not in request.files:
+                    return jsonify({"error": "No file provided"}), 400
+                
+                file = request.files['file']
+                if file.filename == '':
+                    return jsonify({"error": "No file selected"}), 400
+                
+                if not self.allowed_file(file.filename):
+                    return jsonify({"error": "File type not allowed. Please use: png, jpg, jpeg, gif, webp"}), 400
+                
+                # Generate unique filename
+                file_extension = file.filename.rsplit('.', 1)[1].lower()
+                unique_filename = f"{uuid.uuid4()}.{file_extension}"
+                
+                # Save file
+                file_path = os.path.join(self.app.config['UPLOAD_FOLDER'], unique_filename)
+                file.save(file_path)
+                
+                print(file)
+                
+                # Return the file URL
+                file_url = f"/uploads/{unique_filename}"
+                return jsonify({
+                    "url": file_url,
+                    "filename": unique_filename
+                }), 201
+                
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/uploads/<filename>')
+        def uploaded_file(filename):
+            """Serve uploaded files"""
+            return send_from_directory(self.app.config['UPLOAD_FOLDER'], filename)
+
+    def allowed_file(self, filename):
+        """Check if the file extension is allowed"""
+        return '.' in filename and \
+               filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS
 
     def run(self, host: str = '0.0.0.0', port: int = 5000, debug: bool = True) -> None:
         self.app.run(host=host, port=port, debug=debug)

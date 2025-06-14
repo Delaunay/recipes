@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import './Layout.css';
 
 interface LayoutProps {
@@ -14,17 +15,27 @@ const sidebarItems = [
 ];
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const location = useLocation();
+  
   return (
     <div className="layout">
       <div className="sidebar">
         <div className="sidebar-header">
-          <h2 className="sidebar-title">RecipeBook</h2>
+          <h2 className="sidebar-title">
+            <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+              RecipeBook
+            </Link>
+          </h2>
         </div>
         <nav className="sidebar-nav">
           {sidebarItems.map((item) => (
-            <a key={item.name} href={item.href} className="nav-item">
+            <Link 
+              key={item.name} 
+              to={item.href} 
+              className={`nav-item ${location.pathname === item.href ? 'active' : ''}`}
+            >
               {item.name}
-            </a>
+            </Link>
           ))}
         </nav>
       </div>
