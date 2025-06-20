@@ -107,6 +107,333 @@ const ContentEditable: React.FC<{
   );
 };
 
+// RecipeImages Component
+interface RecipeImagesProps {
+  images: string[];
+  isEditable: boolean;
+  onImageAdd: (imageUrl: string) => void;
+  onImageRemove: (imageUrl: string) => void;
+}
+
+const RecipeImages: React.FC<RecipeImagesProps> = ({
+  images,
+  isEditable,
+  onImageAdd,
+  onImageRemove,
+}) => {
+  return (
+    <Box>
+      <Text fontSize="lg" fontWeight="semibold" mb={2}>Recipe Images</Text>
+      {isEditable ? (
+        <ImageUpload
+          onImageUpload={onImageAdd}
+          onImageRemove={onImageRemove}
+          existingImages={images}
+          multiple={true}
+          maxImages={5}
+          disabled={false}
+        />
+      ) : (
+        images && images.length > 0 ? (
+          <HStack wrap="wrap" gap={2}>
+            {images.map((imageUrl, index) => (
+              <Image
+                key={index}
+                src={imageUrl.startsWith('http') ? imageUrl : `http://localhost:5000${imageUrl}`}
+                alt={`Recipe image ${index + 1}`}
+                width="150px"
+                height="150px"
+                objectFit="cover"
+                borderRadius="md"
+                border="1px solid"
+                borderColor="gray.200"
+              />
+            ))}
+          </HStack>
+        ) : (
+          <Text color="gray.500" fontSize="sm">No images added</Text>
+        )
+      )}
+    </Box>
+  );
+};
+
+// RecipeIngredients Component
+interface RecipeIngredientsProps {
+  ingredients: Ingredient[];
+  isEditable: boolean;
+  onAddIngredient: () => void;
+  onRemoveIngredient: (index: number) => void;
+  onUpdateIngredient: (index: number, field: keyof Ingredient, value: any) => void;
+  handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+}
+
+const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
+  ingredients,
+  isEditable,
+  onAddIngredient,
+  onRemoveIngredient,
+  onUpdateIngredient,
+  handleKeyDown,
+}) => {
+  return (
+    <Box>
+      <Flex align="center" mb={4}>
+        <Text fontSize="lg" fontWeight="semibold">Ingredients</Text>
+        <Spacer />
+        {isEditable && (
+          <Button
+            size="sm"
+            onClick={onAddIngredient}
+            colorScheme="blue"
+            variant="outline"
+          >
+            <AddIcon />
+            Add Ingredient
+          </Button>
+        )}
+      </Flex>
+
+      <VStack gap={3} align="stretch">
+        {ingredients.map((ingredient, index) => (
+          <HStack key={index} gap={4} align="center">
+            <Box minW="80px">
+              <ContentEditable
+                content={ingredient.quantity?.toString() || '1'}
+                onContentChange={(e) => onUpdateIngredient(index, 'quantity', parseFloat(e.currentTarget.textContent || '1') || 1)}
+                isEditable={isEditable}
+                onKeyDown={handleKeyDown}
+              />
+            </Box>
+            <Box minW="60px">
+              <ContentEditable
+                content={ingredient.unit || 'cup'}
+                onContentChange={(e) => onUpdateIngredient(index, 'unit', e.currentTarget.textContent || '')}
+                isEditable={isEditable}
+                onKeyDown={handleKeyDown}
+              />
+            </Box>
+            <Box flex="1">
+              <ContentEditable
+                content={ingredient.name}
+                onContentChange={(e) => onUpdateIngredient(index, 'name', e.currentTarget.textContent || '')}
+                isEditable={isEditable}
+                onKeyDown={handleKeyDown}
+              />
+            </Box>
+            {isEditable && (
+              <Button
+                size="sm"
+                colorScheme="red"
+                variant="ghost"
+                onClick={() => onRemoveIngredient(index)}
+              >
+                <DeleteIcon />
+              </Button>
+            )}
+          </HStack>
+        ))}
+      </VStack>
+    </Box>
+  );
+};
+
+// RecipeInstructions Component
+interface RecipeInstructionsProps {
+  instructions: Instruction[];
+  isEditable: boolean;
+  onAddInstruction: () => void;
+  onRemoveInstruction: (index: number) => void;
+  onUpdateInstruction: (index: number, field: keyof Instruction, value: string) => void;
+  onAddInstructionImage: (index: number, imageUrl: string) => void;
+  onRemoveInstructionImage: (index: number) => void;
+  handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+}
+
+const RecipeInstructions: React.FC<RecipeInstructionsProps> = ({
+  instructions,
+  isEditable,
+  onAddInstruction,
+  onRemoveInstruction,
+  onUpdateInstruction,
+  onAddInstructionImage,
+  onRemoveInstructionImage,
+  handleKeyDown,
+}) => {
+  return (
+    <Box>
+      <Flex align="center" mb={4}>
+        <Text fontSize="lg" fontWeight="semibold">Instructions</Text>
+        <Spacer />
+        {isEditable && (
+          <Button
+            size="sm"
+            onClick={onAddInstruction}
+            colorScheme="blue"
+            variant="outline"
+          >
+            <AddIcon />
+            Add Step
+          </Button>
+        )}
+      </Flex>
+
+      <VStack gap={4} align="stretch">
+        {instructions.map((instruction, index) => (
+          <VStack key={index} align="stretch" gap={3} p={4} borderRadius="md" bg="gray.50">
+            <HStack align="flex-start" gap={4}>
+              <Badge colorScheme="blue" fontSize="sm" px={3} py={1}>
+                Step {instruction.step}
+              </Badge>
+              <VStack flex="1" align="stretch" gap={2}>
+                <ContentEditable
+                  content={instruction.description}
+                  onContentChange={(e) => onUpdateInstruction(index, 'description', e.currentTarget.textContent || '')}
+                  multiline={true}
+                  placeholder="Enter instruction..."
+                  isEditable={isEditable}
+                  onKeyDown={handleKeyDown}
+                />
+                {isEditable && (
+                  <Box>
+                    <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
+                    <ContentEditable
+                      content={instruction.duration || ''}
+                      onContentChange={(e) => onUpdateInstruction(index, 'duration', e.currentTarget.textContent || '')}
+                      placeholder="e.g., 5 minutes"
+                      isEditable={isEditable}
+                      onKeyDown={handleKeyDown}
+                    />
+                  </Box>
+                )}
+              </VStack>
+              {isEditable && (
+                <Button
+                  size="sm"
+                  colorScheme="red"
+                  variant="ghost"
+                  onClick={() => onRemoveInstruction(index)}
+                >
+                  <DeleteIcon />
+                </Button>
+              )}
+            </HStack>
+            
+            {/* Step Image */}
+            <Box>
+              <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
+                Step Image (optional)
+              </Text>
+              {isEditable ? (
+                <ImageUpload
+                  onImageUpload={(imageUrl) => onAddInstructionImage(index, imageUrl)}
+                  onImageRemove={() => onRemoveInstructionImage(index)}
+                  existingImages={instruction.image ? [instruction.image] : []}
+                  multiple={false}
+                  maxImages={1}
+                  disabled={false}
+                />
+              ) : (
+                instruction.image ? (
+                  <Image
+                    src={instruction.image.startsWith('http') ? instruction.image : `http://localhost:5000${instruction.image}`}
+                    alt={`Step ${instruction.step} image`}
+                    width="200px"
+                    height="150px"
+                    objectFit="cover"
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor="gray.200"
+                  />
+                ) : (
+                  <Text color="gray.500" fontSize="sm">No image for this step</Text>
+                )
+              )}
+            </Box>
+          </VStack>
+        ))}
+      </VStack>
+    </Box>
+  );
+};
+
+// RecipeCategories Component
+interface RecipeCategoriesProps {
+  categories: any[];
+  isEditable: boolean;
+  onAddCategory: () => void;
+  onRemoveCategory: (categoryId: number) => void;
+  onUpdateCategory: (categoryId: number, field: string, value: string) => void;
+  handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+}
+
+const RecipeCategories: React.FC<RecipeCategoriesProps> = ({
+  categories,
+  isEditable,
+  onAddCategory,
+  onRemoveCategory,
+  onUpdateCategory,
+  handleKeyDown,
+}) => {
+  return (
+    <Box>
+      <Flex align="center" mb={4}>
+        <Text fontSize="lg" fontWeight="semibold">Categories</Text>
+        <Spacer />
+        {isEditable && (
+          <Button
+            size="sm"
+            onClick={onAddCategory}
+            colorScheme="blue"
+            variant="outline"
+          >
+            <AddIcon />
+            Add Category
+          </Button>
+        )}
+      </Flex>
+
+      {categories && categories.length > 0 ? (
+        <VStack gap={3} align="stretch">
+          {categories.map((category) => (
+            <HStack key={category.id} gap={4} align="center">
+              {isEditable ? (
+                <>
+                  <Box flex="1">
+                    <ContentEditable
+                      content={category.name}
+                      onContentChange={(e) => onUpdateCategory(category.id!, 'name', e.currentTarget.textContent || '')}
+                      placeholder="Category name"
+                      isEditable={isEditable}
+                      onKeyDown={handleKeyDown}
+                    />
+                  </Box>
+                  <Button
+                    size="sm"
+                    colorScheme="red"
+                    variant="ghost"
+                    onClick={() => onRemoveCategory(category.id!)}
+                  >
+                    <DeleteIcon />
+                  </Button>
+                </>
+              ) : (
+                <Badge colorScheme="green" variant="subtle" fontSize="sm" px={3} py={1}>
+                  {category.name}
+                </Badge>
+              )}
+            </HStack>
+          ))}
+        </VStack>
+      ) : (
+        !isEditable && (
+          <Text color="gray.500" fontSize="sm">No categories assigned</Text>
+        )
+      )}
+    </Box>
+  );
+};
+
 interface RecipeProps {
   recipe?: RecipeData;
   isAuthorized?: boolean;
@@ -426,256 +753,49 @@ const Recipe: React.FC<RecipeProps> = ({
           />
         </Box>
 
-        {/* Recipe Images */}
-        <Box>
-          <Text fontSize="lg" fontWeight="semibold" mb={2}>Recipe Images</Text>
-          {isEditable ? (
-            <ImageUpload
-              onImageUpload={addRecipeImage}
-              onImageRemove={removeRecipeImage}
-              existingImages={recipe.images || []}
-              multiple={true}
-              maxImages={5}
-              disabled={false}
-            />
-          ) : (
-            recipe.images && recipe.images.length > 0 ? (
-              <HStack wrap="wrap" gap={2}>
-                {recipe.images.map((imageUrl, index) => (
-                  <Image
-                    key={index}
-                    src={imageUrl.startsWith('http') ? imageUrl : `http://localhost:5000${imageUrl}`}
-                    alt={`Recipe image ${index + 1}`}
-                    width="150px"
-                    height="150px"
-                    objectFit="cover"
-                    borderRadius="md"
-                    border="1px solid"
-                    borderColor="gray.200"
-                  />
-                ))}
-              </HStack>
-            ) : (
-              <Text color="gray.500" fontSize="sm">No images added</Text>
-            )
-          )}
-        </Box>
+        {/* Recipe Images Component */}
+        <RecipeImages
+          images={recipe.images || []}
+          isEditable={isEditable}
+          onImageAdd={addRecipeImage}
+          onImageRemove={removeRecipeImage}
+        />
 
         <Box height="1px" bg="gray.200" />
 
-        {/* Ingredients */}
-        <Box>
-          <Flex align="center" mb={4}>
-            <Text fontSize="lg" fontWeight="semibold">Ingredients</Text>
-            <Spacer />
-            {isEditable && (
-              <Button
-                size="sm"
-                onClick={addIngredient}
-                colorScheme="blue"
-                variant="outline"
-              >
-                <AddIcon />
-                Add Ingredient
-              </Button>
-            )}
-          </Flex>
-
-          <VStack gap={3} align="stretch">
-            {recipe.ingredients?.map((ingredient, index) => (
-              <HStack key={index} gap={4} align="center">
-                <Box minW="80px">
-                  <ContentEditable
-                    content={ingredient.quantity?.toString() || '1'}
-                    onContentChange={(e) => updateIngredientStable(index, 'quantity', parseFloat(e.currentTarget.textContent || '1') || 1)}
-                    isEditable={isEditable}
-                    onKeyDown={handleKeyDown}
-                  />
-                </Box>
-                <Box minW="60px">
-                  <ContentEditable
-                    content={ingredient.unit || 'cup'}
-                    onContentChange={(e) => updateIngredientStable(index, 'unit', e.currentTarget.textContent || '')}
-                    isEditable={isEditable}
-                    onKeyDown={handleKeyDown}
-                  />
-                </Box>
-                <Box flex="1">
-                  <ContentEditable
-                    content={ingredient.name}
-                    onContentChange={(e) => updateIngredientStable(index, 'name', e.currentTarget.textContent || '')}
-                    isEditable={isEditable}
-                    onKeyDown={handleKeyDown}
-                  />
-                </Box>
-                {isEditable && (
-                  <Button
-                    size="sm"
-                    colorScheme="red"
-                    variant="ghost"
-                    onClick={() => removeIngredient(index)}
-                  >
-                    <DeleteIcon />
-                  </Button>
-                )}
-              </HStack>
-            ))}
-          </VStack>
-        </Box>
+        {/* Ingredients Component */}
+        <RecipeIngredients
+          ingredients={recipe.ingredients || []}
+          isEditable={isEditable}
+          onAddIngredient={addIngredient}
+          onRemoveIngredient={removeIngredient}
+          onUpdateIngredient={updateIngredientStable}
+          handleKeyDown={handleKeyDown}
+        />
 
         <Box height="1px" bg="gray.200" />
 
-        {/* Instructions */}
-        <Box>
-          <Flex align="center" mb={4}>
-            <Text fontSize="lg" fontWeight="semibold">Instructions</Text>
-            <Spacer />
-            {isEditable && (
-              <Button
-                size="sm"
-                onClick={addInstruction}
-                colorScheme="blue"
-                variant="outline"
-              >
-                <AddIcon />
-                Add Step
-              </Button>
-            )}
-          </Flex>
+        {/* Instructions Component */}
+        <RecipeInstructions
+          instructions={recipe.instructions || []}
+          isEditable={isEditable}
+          onAddInstruction={addInstruction}
+          onRemoveInstruction={removeInstruction}
+          onUpdateInstruction={updateInstructionStable}
+          onAddInstructionImage={addInstructionImage}
+          onRemoveInstructionImage={removeInstructionImage}
+          handleKeyDown={handleKeyDown}
+        />
 
-          <VStack gap={4} align="stretch">
-            {recipe.instructions?.map((instruction, index) => (
-              <VStack key={index} align="stretch" gap={3} p={4} borderRadius="md" bg="gray.50">
-                <HStack align="flex-start" gap={4}>
-                  <Badge colorScheme="blue" fontSize="sm" px={3} py={1}>
-                    Step {instruction.step}
-                  </Badge>
-                  <VStack flex="1" align="stretch" gap={2}>
-                    <ContentEditable
-                      content={instruction.description}
-                      onContentChange={(e) => updateInstructionStable(index, 'description', e.currentTarget.textContent || '')}
-                      multiline={true}
-                      placeholder="Enter instruction..."
-                      isEditable={isEditable}
-                      onKeyDown={handleKeyDown}
-                    />
-                    {isEditable && (
-                      <Box>
-                        <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
-                        <ContentEditable
-                          content={instruction.duration || ''}
-                          onContentChange={(e) => updateInstructionStable(index, 'duration', e.currentTarget.textContent || '')}
-                          placeholder="e.g., 5 minutes"
-                          isEditable={isEditable}
-                          onKeyDown={handleKeyDown}
-                        />
-                      </Box>
-                    )}
-                  </VStack>
-                  {isEditable && (
-                    <Button
-                      size="sm"
-                      colorScheme="red"
-                      variant="ghost"
-                      onClick={() => removeInstruction(index)}
-                    >
-                      <DeleteIcon />
-                    </Button>
-                  )}
-                </HStack>
-                
-                {/* Step Image */}
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
-                    Step Image (optional)
-                  </Text>
-                  {isEditable ? (
-                    <ImageUpload
-                      onImageUpload={(imageUrl) => addInstructionImage(index, imageUrl)}
-                      onImageRemove={() => removeInstructionImage(index)}
-                      existingImages={instruction.image ? [instruction.image] : []}
-                      multiple={false}
-                      maxImages={1}
-                      disabled={false}
-                    />
-                  ) : (
-                    instruction.image ? (
-                      <Image
-                        src={instruction.image.startsWith('http') ? instruction.image : `http://localhost:5000${instruction.image}`}
-                        alt={`Step ${instruction.step} image`}
-                        width="200px"
-                        height="150px"
-                        objectFit="cover"
-                        borderRadius="md"
-                        border="1px solid"
-                        borderColor="gray.200"
-                      />
-                    ) : (
-                      <Text color="gray.500" fontSize="sm">No image for this step</Text>
-                    )
-                  )}
-                </Box>
-              </VStack>
-            ))}
-          </VStack>
-        </Box>
-
-        {/* Categories */}
-        <Box>
-          <Flex align="center" mb={4}>
-            <Text fontSize="lg" fontWeight="semibold">Categories</Text>
-            <Spacer />
-            {isEditable && (
-              <Button
-                size="sm"
-                onClick={addCategory}
-                colorScheme="blue"
-                variant="outline"
-              >
-                <AddIcon />
-                Add Category
-              </Button>
-            )}
-          </Flex>
-
-          {recipe.categories && recipe.categories.length > 0 ? (
-            <VStack gap={3} align="stretch">
-              {recipe.categories.map((category) => (
-                <HStack key={category.id} gap={4} align="center">
-                  {isEditable ? (
-                    <>
-                      <Box flex="1">
-                        <ContentEditable
-                          content={category.name}
-                          onContentChange={(e) => updateCategoryStable(category.id!, 'name', e.currentTarget.textContent || '')}
-                          placeholder="Category name"
-                          isEditable={isEditable}
-                          onKeyDown={handleKeyDown}
-                        />
-                      </Box>
-                      <Button
-                        size="sm"
-                        colorScheme="red"
-                        variant="ghost"
-                        onClick={() => removeCategory(category.id!)}
-                      >
-                        <DeleteIcon />
-                      </Button>
-                    </>
-                  ) : (
-                    <Badge colorScheme="green" variant="subtle" fontSize="sm" px={3} py={1}>
-                      {category.name}
-                    </Badge>
-                  )}
-                </HStack>
-              ))}
-            </VStack>
-          ) : (
-            !isEditable && (
-              <Text color="gray.500" fontSize="sm">No categories assigned</Text>
-            )
-          )}
-        </Box>
+        {/* Categories Component */}
+        <RecipeCategories
+          categories={recipe.categories || []}
+          isEditable={isEditable}
+          onAddCategory={addCategory}
+          onRemoveCategory={removeCategory}
+          onUpdateCategory={updateCategoryStable}
+          handleKeyDown={handleKeyDown}
+        />
 
         {/* Recipe ID Display (for debugging) */}
         {recipe.id && (

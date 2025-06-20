@@ -11,7 +11,6 @@ from flask_cors import CORS
 from .models import Base, Recipe, Ingredient, Category, UnitConversion
 
 
-
 class RecipeApp:
     def __init__(self):
         self.app = Flask(__name__)

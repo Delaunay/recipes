@@ -52,17 +52,6 @@ const Home: React.FC = () => {
           </VStack>
         </Box>
 
-        <Box mt={8} p={4} bg="blue.50" borderRadius="md" maxW="3xl" w="full">
-          <Text fontSize="lg" fontWeight="semibold" mb={2} textAlign="center">
-            Quick Start Guide
-          </Text>
-          <VStack align="start" gap={2}>
-            <Text>1. Click "Browse All Recipes" to see existing recipes</Text>
-            <Text>2. Click "Create New Recipe" to add your own recipe</Text>
-            <Text>3. Use the sidebar navigation to explore different sections</Text>
-            <Text>4. Click on any recipe to view it by ID, or use the name-based URL</Text>
-          </VStack>
-        </Box>
       </VStack>
     </Box>
   );
