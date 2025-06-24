@@ -411,24 +411,66 @@ def insert_common_ingredients(session):
 
 
 def insert_common_conversions(session):
+    session.query(UnitConversion).delete()
+    session.commit()
+    
     for unit, conversions in common_conversions().items():
         for to_unit, conversion_factor in conversions.items():
-            # conv = UnitConversion(
-            #     ingredient_id=None,
-            #     from_unit=unit,
-            #     to_unit=to_unit,
-            #     conversion_factor=conversion_factor,
-            #     category="1",
-            # )
             conv = UnitConversion(
                 ingredient_id=None,
-                from_unit=to_unit,
-                to_unit=unit,
+                from_unit=unit,
+                to_unit=to_unit,
                 conversion_factor=1/conversion_factor,
                 category="1",
             )
             session.add(conv)
-            print(conv)
+            # print(conv)
+            conv = UnitConversion(
+                ingredient_id=None,
+                from_unit=to_unit,
+                to_unit=unit,
+                conversion_factor=conversion_factor,
+                category="1",
+            )
+            session.add(conv)
+            # print(conv)
+    
+    mass = common_conversions()["g"]
+    volume = common_conversions()["ml"]
+    
+    for ingredient in session.query(Ingredient).all():
+        for vol_unit, vol_factor in volume.items():
+            for mass_unit, mass_factor in mass.items():
+                
+                # ml/vol_unit: conversions
+                # g/mass_unit: conversions
+                # density = g/ml
+                
+                # vol_unit -> mass_unit = (ml/vol) (g/ml) / (g/mass)
+                # vol_unit -> mass_unit = (g/vol) * (mass/g)
+                # vol_unit -> mass_unit = mass/vol
+                conversion = vol_factor * ingredient.density / mass_factor
+                
+                conv = UnitConversion(
+                    ingredient_id=ingredient._id,
+                    from_unit=vol_unit,
+                    to_unit=mass_unit,
+                    conversion_factor=conversion,
+                    category="1",
+                )
+                session.add(conv)
+                # print(conv)
+                
+                conv = UnitConversion(
+                    ingredient_id=ingredient._id,
+                    from_unit=mass_unit,
+                    to_unit=vol_unit,
+                    conversion_factor=1/conversion,
+                    category="1",
+                )
+
+                session.add(conv)
+                # print(conv)
     
     session.commit()
             # conv.save()
@@ -440,12 +482,37 @@ def available_units(ingredient_id: int, from_unit: str):
     return select(UnitConversion.to_unit).where(
         UnitConversion.from_unit == from_unit, 
         or_(
-            UnitConversion.ingredient_id ==ingredient_id,
+            UnitConversion.ingredient_id == ingredient_id,
             UnitConversion.ingredient_id.is_(None)
         )
     )
 
 
+#
+# conversion logic should be done in the front end
+#
+
+def is_volume(unit: str):
+    return unit in [
+        "ml", "cl", "l", "cm3", "fl oz", "tbsp", 
+        "tsp", "cup", "pint", "quart", "gallon"
+    ]
+
+
+def make_unit_from_input(sesh, recipe_ingredient: RecipeIngredient):
+    
+    if is_volume(recipe_ingredient.unit):
+        qty = convert_mass(sesh, recipe_ingredient, "g")
+        
+    else:
+        qty = convert(sesh, recipe_ingredient, "g")
+
+    return RecipeIngredient(
+        recipe_id=recipe_ingredient.recipe_id,
+        ingredient_id=recipe_ingredient.ingredient_id,
+        quantity=qty,
+        unit="g"
+    )
 
 def convert_volume(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
     from sqlalchemy import select, or_
@@ -469,6 +536,32 @@ def convert_volume(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
     
     volume = recipe_ingredient.quantity / ingredient.density 
     return volume / vals[0][0].conversion_factor
+
+
+def convert_mass(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
+    from sqlalchemy import select, or_
+    
+    ingredient = sesh.query(Ingredient).get(recipe_ingredient.ingredient_id)
+    
+    # 1. Convert volume to ml
+    vals = select(UnitConversion).where(
+        UnitConversion.from_unit == recipe_ingredient.unit, 
+        UnitConversion.to_unit == "ml",
+        or_(
+            UnitConversion.ingredient_id == recipe_ingredient.ingredient_id,
+            UnitConversion.ingredient_id.is_(None)
+        )
+    )
+
+    # 2. Convert ml to mass
+    vals = sesh.execute(vals)
+    vals = vals.all()
+    
+    if len(vals) == 0:
+        return None
+    
+    volume_ml = recipe_ingredient.quantity / vals[0][0].conversion_factor
+    return volume_ml * ingredient.density
         
 
 def convert(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
@@ -489,9 +582,7 @@ def convert(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
     if len(vals) == 0:
         return None
     
-    # print(vals[0])
-    
-    return recipe_ingredient.quantity / vals[0][0].conversion_factor
+    return recipe_ingredient.quantity * vals[0][0].conversion_factor
     
     
 def main():
@@ -501,10 +592,8 @@ def main():
     engine = create_engine('sqlite:///instance/project.db')
     Session = sessionmaker(bind=engine)
     
-    
-    
-    # with Session() as session:
-    #     insert_common_conversions(session)
+    with Session() as session:
+        insert_common_conversions(session)
     
     # with Session() as session:
     #     result = session.query(UnitConversion).all()
@@ -516,7 +605,11 @@ def main():
     with Session() as session:
         # insert_common_ingredients(session)
         
-        stmt = available_units(None, "g")
+        smt = select(Ingredient).where(Ingredient.name == "Flour")
+        ingredient_id = session.execute(smt).scalar()._id
+        
+        
+        stmt = available_units(ingredient_id, "g")
         result = session.execute(stmt)
         
         data = []
@@ -526,29 +619,45 @@ def main():
             
         print(data)
     
-        for u in data:
-            print(convert(
-                session,
-                RecipeIngredient(
-                    recipe_id=None,
-                    ingredient_id=None,
-                    quantity=1,
-                    unit="g",
-                ),
-                u
-            ), u)
+        # for u in data:
+            # print(convert(
+            #     session,
+            #     RecipeIngredient(
+            #         recipe_id=None,
+            #         ingredient_id=None,
+            #         quantity=1,
+            #         unit="g",
+            #     ),
+            #     u
+            # ), u)
             
-            print("Volume")
-            print(convert_volume(
-                session,
-                RecipeIngredient(
-                    recipe_id=None,
-                    ingredient_id=1,
-                    quantity=1,
-                    unit="g",
-                ),
-                "ml"
-            ), "ml")
+            # print("Volume")
+            # print(convert_volume(
+            #     session,
+            #     RecipeIngredient(
+            #         recipe_id=None,
+            #         ingredient_id=1,
+            #         quantity=1,
+            #         unit="g",
+            #     ),
+            #     "ml"
+            # ), "ml")
+            
+        
+        ingredient = RecipeIngredient(
+            recipe_id=None,
+            ingredient_id=ingredient_id,
+            quantity=120,
+            unit="g",
+        )
+        
+        for u in data:
+            print(convert(session, ingredient, u), u)
+        print(convert(session, ingredient, "ml"), "ml")
+        print(convert(session, ingredient, "g"), "g")
+        print(convert(session, ingredient, "cup"), "cup")
+        # print(convert(session, ingredient, "ml"), "ml")
+        
     
 if __name__ == '__main__':
     main()
