@@ -10,9 +10,11 @@ import {
   Spacer,
   SimpleGrid,
   Image,
+  Spinner,
 } from '@chakra-ui/react';
 import { RecipeData, Ingredient, Instruction } from '../services/api';
 import ImageUpload from './ImageUpload';
+import { recipeAPI } from '../services/api';
 
 // Simple icon components
 const DeleteIcon = () => (
@@ -139,7 +141,7 @@ const RecipeImages: React.FC<RecipeImagesProps> = ({
             {images.map((imageUrl, index) => (
               <Image
                 key={index}
-                src={imageUrl.startsWith('http') ? imageUrl : `http://localhost:5000${imageUrl}`}
+                src={imageUrl.startsWith('http') ? imageUrl : `/api${imageUrl}`}
                 alt={`Recipe image ${index + 1}`}
                 width="150px"
                 height="150px"
@@ -168,6 +170,13 @@ interface RecipeIngredientsProps {
   handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
 }
 
+interface ConvertedIngredient {
+  quantity: number;
+  unit: string;
+  originalQuantity: number;
+  originalUnit: string;
+}
+
 const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
   ingredients,
   isEditable,
@@ -176,6 +185,118 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
   onUpdateIngredient,
   handleKeyDown,
 }) => {
+  // State for converted ingredient values (only used in view mode)
+  const [convertedIngredients, setConvertedIngredients] = useState<Record<number, ConvertedIngredient>>({});
+  // State for available units for each ingredient
+  const [availableUnits, setAvailableUnits] = useState<Record<number, string[]>>({});
+  // Loading state for unit conversions
+  const [loadingUnits, setLoadingUnits] = useState<Record<number, boolean>>({});
+
+  // Load available units for each ingredient when not in edit mode
+  useEffect(() => {
+    if (!isEditable && ingredients.length > 0) {
+      const loadAvailableUnits = async () => {
+        const newAvailableUnits: Record<number, string[]> = {};
+        const newConvertedIngredients: Record<number, ConvertedIngredient> = {};
+
+        for (let i = 0; i < ingredients.length; i++) {
+          const ingredient = ingredients[i];
+          if (ingredient.id && ingredient.unit) {
+            try {
+              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.id, ingredient.unit);
+              
+              // Always include the current unit first, then add other available units
+              const currentUnit = ingredient.unit;
+              const availableUnits = [currentUnit];
+              
+              // Add other units that aren't already in the list
+              availableUnitsFromAPI.forEach((unit: string) => {
+                if (unit !== currentUnit && !availableUnits.includes(unit)) {
+                  availableUnits.push(unit);
+                }
+              });
+              
+              newAvailableUnits[i] = availableUnits;
+              
+              // Initialize converted ingredients with original values
+              newConvertedIngredients[i] = {
+                quantity: ingredient.quantity || 1,
+                unit: ingredient.unit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: ingredient.unit,
+              };
+            } catch (error) {
+              console.error('Error loading available units:', error);
+              const fallbackUnit = ingredient.unit || 'cup';
+              newAvailableUnits[i] = [fallbackUnit]; // Fallback to original unit
+              newConvertedIngredients[i] = {
+                quantity: ingredient.quantity || 1,
+                unit: fallbackUnit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: fallbackUnit,
+              };
+            }
+          } else {
+            // For ingredients without ID (new recipes), just show the original unit
+            const fallbackUnit = ingredient.unit || 'cup';
+            newAvailableUnits[i] = [fallbackUnit];
+            newConvertedIngredients[i] = {
+              quantity: ingredient.quantity || 1,
+              unit: fallbackUnit,
+              originalQuantity: ingredient.quantity || 1,
+              originalUnit: fallbackUnit,
+            };
+          }
+        }
+
+        setAvailableUnits(newAvailableUnits);
+        setConvertedIngredients(newConvertedIngredients);
+      };
+
+      loadAvailableUnits();
+    }
+  }, [isEditable, ingredients]);
+
+  // Handle unit conversion
+  const handleUnitChange = async (ingredientIndex: number, newUnit: string) => {
+    const ingredient = ingredients[ingredientIndex];
+    if (!ingredient.id || !ingredient.unit) return;
+
+    const converted = convertedIngredients[ingredientIndex];
+    const currentQuantity = converted?.quantity || ingredient.quantity || 1;
+    const currentUnit = converted?.unit || ingredient.unit;
+
+    // If selecting the same unit, no conversion needed
+    if (currentUnit === newUnit) {
+      return;
+    }
+
+    setLoadingUnits(prev => ({ ...prev, [ingredientIndex]: true }));
+
+    try {
+      const response = await recipeAPI.convertUnit(
+        ingredient.id,
+        currentQuantity,
+        currentUnit,
+        newUnit
+      );
+
+      setConvertedIngredients(prev => ({
+        ...prev,
+        [ingredientIndex]: {
+          quantity: response.quantity,
+          unit: response.unit,
+          originalQuantity: converted?.originalQuantity || ingredient.quantity || 1,
+          originalUnit: converted?.originalUnit || ingredient.unit || 'cup',
+        }
+      }));
+    } catch (error) {
+      console.error('Error converting unit:', error);
+    } finally {
+      setLoadingUnits(prev => ({ ...prev, [ingredientIndex]: false }));
+    }
+  };
+
   return (
     <Box>
       <Flex align="center" mb={4}>
@@ -195,44 +316,82 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
       </Flex>
 
       <VStack gap={3} align="stretch">
-        {ingredients.map((ingredient, index) => (
-          <HStack key={index} gap={4} align="center">
-            <Box minW="80px">
-              <ContentEditable
-                content={ingredient.quantity?.toString() || '1'}
-                onContentChange={(e) => onUpdateIngredient(index, 'quantity', parseFloat(e.currentTarget.textContent || '1') || 1)}
-                isEditable={isEditable}
-                onKeyDown={handleKeyDown}
-              />
-            </Box>
-            <Box minW="60px">
-              <ContentEditable
-                content={ingredient.unit || 'cup'}
-                onContentChange={(e) => onUpdateIngredient(index, 'unit', e.currentTarget.textContent || '')}
-                isEditable={isEditable}
-                onKeyDown={handleKeyDown}
-              />
-            </Box>
-            <Box flex="1">
-              <ContentEditable
-                content={ingredient.name}
-                onContentChange={(e) => onUpdateIngredient(index, 'name', e.currentTarget.textContent || '')}
-                isEditable={isEditable}
-                onKeyDown={handleKeyDown}
-              />
-            </Box>
-            {isEditable && (
-              <Button
-                size="sm"
-                colorScheme="red"
-                variant="ghost"
-                onClick={() => onRemoveIngredient(index)}
-              >
-                <DeleteIcon />
-              </Button>
-            )}
-          </HStack>
-        ))}
+        {ingredients.map((ingredient, index) => {
+          const converted = convertedIngredients[index];
+          const displayQuantity = converted?.quantity || ingredient.quantity || 1;
+          const displayUnit = converted?.unit || ingredient.unit || 'cup';
+          const units = availableUnits[index] || [];
+          const isLoading = loadingUnits[index];
+
+          return (
+            <HStack key={index} gap={4} align="center">
+              <Box minW="80px">
+                {isEditable ? (
+                  <ContentEditable
+                    content={ingredient.quantity?.toString() || '1'}
+                    onContentChange={(e) => onUpdateIngredient(index, 'quantity', parseFloat(e.currentTarget.textContent || '1') || 1)}
+                    isEditable={isEditable}
+                    onKeyDown={handleKeyDown}
+                  />
+                ) : (
+                  <Flex align="center" gap={1}>
+                    <Text>{displayQuantity.toFixed(2).replace(/\.?0+$/, '')}</Text>
+                    {isLoading && <Spinner size="xs" />}
+                  </Flex>
+                )}
+              </Box>
+              <Box minW="80px">
+                {isEditable ? (
+                  <ContentEditable
+                    content={ingredient.unit || 'cup'}
+                    onContentChange={(e) => onUpdateIngredient(index, 'unit', e.currentTarget.textContent || '')}
+                    isEditable={isEditable}
+                    onKeyDown={handleKeyDown}
+                  />
+                ) : (
+                  <Box>
+                    <select
+                      value={displayUnit}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleUnitChange(index, e.target.value)}
+                      disabled={isLoading || units.length === 0}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '14px',
+                        minWidth: '80px'
+                      }}
+                    >
+                      {units.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </select>
+                  </Box>
+                )}
+              </Box>
+              <Box flex="1">
+                <ContentEditable
+                  content={ingredient.name}
+                  onContentChange={(e) => onUpdateIngredient(index, 'name', e.currentTarget.textContent || '')}
+                  isEditable={isEditable}
+                  onKeyDown={handleKeyDown}
+                />
+              </Box>
+              {isEditable && (
+                <Button
+                  size="sm"
+                  colorScheme="red"
+                  variant="ghost"
+                  onClick={() => onRemoveIngredient(index)}
+                >
+                  <DeleteIcon />
+                </Button>
+              )}
+            </HStack>
+          );
+        })}
       </VStack>
     </Box>
   );
@@ -336,7 +495,7 @@ const RecipeInstructions: React.FC<RecipeInstructionsProps> = ({
               ) : (
                 instruction.image ? (
                   <Image
-                    src={instruction.image.startsWith('http') ? instruction.image : `http://localhost:5000${instruction.image}`}
+                    src={instruction.image.startsWith('http') ? instruction.image : `/api${instruction.image}`}
                     alt={`Step ${instruction.step} image`}
                     width="200px"
                     height="150px"

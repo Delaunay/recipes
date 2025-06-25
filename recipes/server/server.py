@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 
-from .models import Base, Recipe, Ingredient, Category, UnitConversion
+from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient
 
 
 class RecipeApp:
@@ -91,7 +91,14 @@ class RecipeApp:
                             self.db.session.add(ingredient)
                             self.db.session.flush()
                         
-                        recipe.ingredients.append(ingredient)
+                        # Create RecipeIngredient with quantity and unit
+                        recipe_ingredient = RecipeIngredient(
+                            recipe_id=recipe._id,
+                            ingredient_id=ingredient._id,
+                            quantity=ing_data.get('quantity', 1.0),
+                            unit=ing_data.get('unit', 'piece')
+                        )
+                        self.db.session.add(recipe_ingredient)
                 
                 # Handle categories if provided
                 if 'categories' in data:
@@ -158,15 +165,26 @@ class RecipeApp:
                 
                 # Handle ingredients update
                 if 'ingredients' in data:
-                    recipe.ingredients.clear()
+                    # Clear existing recipe ingredients
+                    for recipe_ingredient in recipe.recipe_ingredients:
+                        self.db.session.delete(recipe_ingredient)
+                    
                     for ing_data in data['ingredients']:
+                        # Find or create ingredient
                         ingredient = self.db.session.query(Ingredient).filter_by(name=ing_data['name']).first()
                         if not ingredient:
                             ingredient = Ingredient(name=ing_data['name'])
                             self.db.session.add(ingredient)
                             self.db.session.flush()
                         
-                        recipe.ingredients.append(ingredient)
+                        # Create new RecipeIngredient with quantity and unit
+                        recipe_ingredient = RecipeIngredient(
+                            recipe_id=recipe._id,
+                            ingredient_id=ingredient._id,
+                            quantity=ing_data.get('quantity', 1.0),
+                            unit=ing_data.get('unit', 'piece')
+                        )
+                        self.db.session.add(recipe_ingredient)
                 
                 # Handle categories update
                 if 'categories' in data:
@@ -247,10 +265,40 @@ class RecipeApp:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
 
-        @self.app.route('/unit-conversions', methods=['GET'])
+        @self.app.route('/unit/conversions', methods=['GET'])
         def get_unit_conversions() -> Dict[str, Any]:
             conversions = self.db.session.query(UnitConversion).all()
             return jsonify([conversion.to_json() for conversion in conversions])
+
+        @self.app.route('/units/available/<int:ingredient_id>/<string:from_unit>', methods=['GET'])
+        def available_units(ingredient_id: int, from_unit: str) -> Dict[str, Any]:
+            conversions = self.db.session.query(UnitConversion).filter(
+                UnitConversion.ingredient_id == ingredient_id, 
+                UnitConversion.from_unit == from_unit
+            ).all()
+            return jsonify([conversion.to_unit for conversion in conversions])
+
+        @self.app.route('/unit/conversions/<int:ingredient_id>/<string:from_unit>/<string:to_unit>')
+        def convert_unit(ingredient_id: int, from_unit: str, to_unit: str) -> Dict[str, Any]:
+            # Get quantity from query parameters, default to 1.0
+            quantity = float(request.args.get('quantity', 1.0))
+            
+            conversion = convert(
+                self.db.session, 
+                RecipeIngredient(
+                    ingredient_id=ingredient_id,
+                    quantity=quantity,
+                    unit=from_unit
+                ),
+                to_unit
+            )
+            return jsonify({
+                "quantity": conversion, 
+                "unit": to_unit, 
+                "ingredient_id": ingredient_id,
+                "original_quantity": quantity,
+                "original_unit": from_unit
+            })
 
         @self.app.route('/upload', methods=['POST'])
         def upload_file() -> Dict[str, Any]:

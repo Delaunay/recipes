@@ -48,3 +48,13 @@ front:
 back:
 	($(CONDA_ACTIVATE) py310; python -m recipes.server.run)
 
+
+alembic_gen:
+	cd recipes/alembic && alembic revision -m "create account table"
+
+alembic-autogen:
+	cd recipes/alembic && alembic revision --autogenerate -m "init"
+
+alembic-update:
+	cd recipes/alembic && alembic upgrade head
+

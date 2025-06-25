@@ -1,5 +1,6 @@
 // API service for recipe management
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Use /api prefix to leverage Vite proxy and avoid CORS issues
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface RecipeData {
   id?: number;
@@ -127,6 +128,28 @@ class RecipeAPI {
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     return this.request<{ status: string }>('/health');
+  }
+
+  // Unit conversion methods
+  async getAvailableUnits(ingredientId: number, fromUnit: string): Promise<string[]> {
+    return this.request<string[]>(`/units/available/${ingredientId}/${fromUnit}`);
+  }
+
+  async convertUnit(ingredientId: number, quantity: number, fromUnit: string, toUnit: string): Promise<{
+    quantity: number;
+    unit: string;
+    ingredient_id: number;
+    original_quantity: number;
+    original_unit: string;
+  }> {
+    const url = `/unit/conversions/${ingredientId}/${fromUnit}/${toUnit}?quantity=${quantity}`;
+    return this.request<{
+      quantity: number;
+      unit: string;
+      ingredient_id: number;
+      original_quantity: number;
+      original_unit: string;
+    }>(url);
   }
 
   // Image upload

@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Simple icons
 const UploadIcon = () => (

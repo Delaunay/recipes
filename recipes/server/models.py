@@ -23,11 +23,13 @@ class RecipeIngredient(Base):
     
     def to_json(self):
         return {
-            'id': self._id,
+            # 'id': self._id,
             'recipe_id': self.recipe_id,
             'ingredient_id': self.ingredient_id,
             'quantity': self.quantity,
-            'unit': self.unit
+            'unit': self.unit,
+            'name': self.ingredient.name if self.ingredient else None,
+            'id': self._id  
         }
 
 recipe_categories = Table(
@@ -266,8 +268,8 @@ def common_conversions():
 
 def insert_common_ingredients(session):
     # Drop all existing ingredients
-    # session.query(Ingredient).delete()
-    # session.commit()
+    session.query(Ingredient).delete()
+    session.commit()
     
     ingredients = [
         Ingredient(
@@ -593,7 +595,9 @@ def main():
     Session = sessionmaker(bind=engine)
     
     with Session() as session:
+        insert_common_ingredients(session)
         insert_common_conversions(session)
+        
     
     # with Session() as session:
     #     result = session.query(UnitConversion).all()
@@ -603,11 +607,9 @@ def main():
     # if we always save by mass we can convert to volume using the density
     
     with Session() as session:
-        # insert_common_ingredients(session)
         
         smt = select(Ingredient).where(Ingredient.name == "Flour")
         ingredient_id = session.execute(smt).scalar()._id
-        
         
         stmt = available_units(ingredient_id, "g")
         result = session.execute(stmt)

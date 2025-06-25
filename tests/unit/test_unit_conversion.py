@@ -15,7 +15,6 @@ def test_unit_conversion():
     engine = create_engine('sqlite:///instance/project.db')
     Session = sessionmaker(bind=engine)
     
-    
     with Session() as sesh:
         smt = select(Ingredient).where(Ingredient.name == "Flour")
         
