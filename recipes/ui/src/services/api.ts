@@ -2,6 +2,12 @@
 // Use /api prefix to leverage Vite proxy and avoid CORS issues
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+// Check if we're in static mode (no backend server)
+const isStaticMode = () => {
+  // Check if we're in production and using static JSON files
+  return import.meta.env.PROD && API_BASE_URL === '/api';
+};
+
 interface RecipeData {
   id?: number;
   title: string;
@@ -51,7 +57,41 @@ interface UnitConversion {
 }
 
 class RecipeAPI {
+  private async requestStatic<T>(endpoint: string): Promise<T> {
+    // Convert endpoint to static JSON file path
+    let jsonPath = endpoint;
+    
+    if (endpoint === '/') {
+      jsonPath = '/api/index.json';
+    } else if (endpoint.startsWith('/')) {
+      jsonPath = `/api${endpoint}.json`;
+    }
+    
+    // Handle query parameters by removing them for static files
+    const cleanPath = jsonPath.split('?')[0];
+    
+    try {
+      const response = await fetch(cleanPath);
+      if (!response.ok) {
+        throw new Error(`Static file not found: ${cleanPath}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Static API request failed:', error);
+      throw new Error(`Failed to load static data from ${cleanPath}`);
+    }
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // In static mode, only GET requests are supported
+    if (isStaticMode()) {
+      if (options.method && options.method !== 'GET') {
+        throw new Error('Modifications not supported in static mode');
+      }
+      return this.requestStatic<T>(endpoint);
+    }
+
+    // Development mode - make actual API calls
     const url = `${API_BASE_URL}${endpoint}`;
     const config: RequestInit = {
       headers: {
@@ -92,6 +132,9 @@ class RecipeAPI {
   }
 
   async createRecipe(recipe: Omit<RecipeData, 'id'>): Promise<RecipeData> {
+    if (isStaticMode()) {
+      throw new Error('Creating recipes is not supported in static mode');
+    }
     return this.request<RecipeData>('/recipes', {
       method: 'POST',
       body: JSON.stringify(recipe),
@@ -99,6 +142,9 @@ class RecipeAPI {
   }
 
   async updateRecipe(id: number, recipe: Partial<RecipeData>): Promise<RecipeData> {
+    if (isStaticMode()) {
+      throw new Error('Updating recipes is not supported in static mode');
+    }
     return this.request<RecipeData>(`/recipes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(recipe),
@@ -106,6 +152,9 @@ class RecipeAPI {
   }
 
   async deleteRecipe(id: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting recipes is not supported in static mode');
+    }
     return this.request<{ message: string }>(`/recipes/${id}`, {
       method: 'DELETE',
     });
@@ -127,6 +176,9 @@ class RecipeAPI {
   }
 
   async createIngredient(ingredient: Omit<Ingredient, 'id'>): Promise<Ingredient> {
+    if (isStaticMode()) {
+      throw new Error('Creating ingredients is not supported in static mode');
+    }
     return this.request<Ingredient>('/ingredients', {
       method: 'POST',
       body: JSON.stringify(ingredient),
@@ -134,6 +186,9 @@ class RecipeAPI {
   }
 
   async updateIngredient(id: number, ingredient: Partial<Ingredient>): Promise<Ingredient> {
+    if (isStaticMode()) {
+      throw new Error('Updating ingredients is not supported in static mode');
+    }
     return this.request<Ingredient>(`/ingredients/${id}`, {
       method: 'PUT',
       body: JSON.stringify(ingredient),
@@ -141,6 +196,9 @@ class RecipeAPI {
   }
 
   async deleteIngredient(id: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting ingredients is not supported in static mode');
+    }
     return this.request<{ message: string }>(`/ingredients/${id}`, {
       method: 'DELETE',
     });
@@ -152,6 +210,9 @@ class RecipeAPI {
   }
 
   async createCategory(category: Omit<Category, 'id'>): Promise<Category> {
+    if (isStaticMode()) {
+      throw new Error('Creating categories is not supported in static mode');
+    }
     return this.request<Category>('/categories', {
       method: 'POST',
       body: JSON.stringify(category),
@@ -195,6 +256,9 @@ class RecipeAPI {
   }
 
   async createUnitConversion(conversion: Omit<UnitConversion, 'id'>): Promise<UnitConversion> {
+    if (isStaticMode()) {
+      throw new Error('Creating unit conversions is not supported in static mode');
+    }
     return this.request<UnitConversion>('/unit/conversions', {
       method: 'POST',
       body: JSON.stringify(conversion),
@@ -202,6 +266,9 @@ class RecipeAPI {
   }
 
   async updateUnitConversion(id: number, conversion: Partial<UnitConversion>): Promise<UnitConversion> {
+    if (isStaticMode()) {
+      throw new Error('Updating unit conversions is not supported in static mode');
+    }
     return this.request<UnitConversion>(`/unit/conversions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(conversion),
@@ -209,6 +276,9 @@ class RecipeAPI {
   }
 
   async deleteUnitConversion(id: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting unit conversions is not supported in static mode');
+    }
     return this.request<{ message: string }>(`/unit/conversions/${id}`, {
       method: 'DELETE',
     });
@@ -216,6 +286,10 @@ class RecipeAPI {
 
   // Image upload
   async uploadImage(file: File): Promise<{ url: string; filename: string }> {
+    if (isStaticMode()) {
+      throw new Error('Image upload is not supported in static mode');
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -239,6 +313,11 @@ class RecipeAPI {
       console.error('Image upload failed:', error);
       throw error;
     }
+  }
+
+  // Utility method to check if we're in static mode
+  isStaticMode(): boolean {
+    return isStaticMode();
   }
 }
 
