@@ -46,6 +46,7 @@ composed_recipe_recipes = Table(
     Column('recipe_id', Integer, ForeignKey('recipes._id'))
 )
 
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -156,8 +157,8 @@ class Ingredient(Base):
     calories = Column(Float)    # Calories per 100g or per unit
     density = Column(Float)     # Density in g/ml  | Used for conversions
 
+    composition = Column(JSON)
     extension = Column(JSON)    # Additional info as JSON
-    
     
     # preferred_unit = Column(String(50))
     # unit = Column(String(50))

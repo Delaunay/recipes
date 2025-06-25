@@ -53,7 +53,7 @@ alembic_gen:
 	cd recipes/alembic && alembic revision -m "create account table"
 
 alembic-autogen:
-	cd recipes/alembic && alembic revision --autogenerate -m "init"
+	cd recipes/alembic && alembic revision --autogenerate -m "makefile"
 
 alembic-update:
 	cd recipes/alembic && alembic upgrade head
