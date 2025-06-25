@@ -168,6 +168,7 @@ interface RecipeIngredientsProps {
   onRemoveIngredient: (index: number) => void;
   onUpdateIngredient: (index: number, field: keyof Ingredient, value: any) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+  multiplier?: number;
 }
 
 interface ConvertedIngredient {
@@ -184,6 +185,7 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
   onRemoveIngredient,
   onUpdateIngredient,
   handleKeyDown,
+  multiplier = 1.0,
 }) => {
   // State for converted ingredient values (only used in view mode)
   const [convertedIngredients, setConvertedIngredients] = useState<Record<number, ConvertedIngredient>>({});
@@ -263,21 +265,32 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
     if (!ingredient.id || !ingredient.unit) return;
 
     const converted = convertedIngredients[ingredientIndex];
-    const currentQuantity = converted?.quantity || ingredient.quantity || 1;
-    const currentUnit = converted?.unit || ingredient.unit;
+    // Always use the original measurements for conversion
+    const originalQuantity = converted?.originalQuantity || ingredient.quantity || 1;
+    const originalUnit = converted?.originalUnit || ingredient.unit;
 
-    // If selecting the same unit, no conversion needed
-    if (currentUnit === newUnit) {
+    // If selecting the same unit as original, no conversion needed
+    if (originalUnit === newUnit) {
+      setConvertedIngredients(prev => ({
+        ...prev,
+        [ingredientIndex]: {
+          quantity: originalQuantity,
+          unit: originalUnit,
+          originalQuantity: originalQuantity,
+          originalUnit: originalUnit,
+        }
+      }));
       return;
     }
 
     setLoadingUnits(prev => ({ ...prev, [ingredientIndex]: true }));
 
     try {
+      // Always convert from original unit to new unit
       const response = await recipeAPI.convertUnit(
         ingredient.id,
-        currentQuantity,
-        currentUnit,
+        originalQuantity,
+        originalUnit,
         newUnit
       );
 
@@ -286,8 +299,8 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
         [ingredientIndex]: {
           quantity: response.quantity,
           unit: response.unit,
-          originalQuantity: converted?.originalQuantity || ingredient.quantity || 1,
-          originalUnit: converted?.originalUnit || ingredient.unit || 'cup',
+          originalQuantity: originalQuantity,
+          originalUnit: originalUnit,
         }
       }));
     } catch (error) {
@@ -300,7 +313,14 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
   return (
     <Box>
       <Flex align="center" mb={4}>
-        <Text fontSize="lg" fontWeight="semibold">Ingredients</Text>
+        <VStack align="start" gap={1}>
+          <Text fontSize="lg" fontWeight="semibold">Ingredients</Text>
+          {multiplier !== 1.0 && (
+            <Text fontSize="sm" color="blue.600" fontWeight="medium">
+              Quantities shown for {multiplier.toFixed(1)}x recipe
+            </Text>
+          )}
+        </VStack>
         <Spacer />
         {isEditable && (
           <Button
@@ -318,7 +338,8 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
       <VStack gap={3} align="stretch">
         {ingredients.map((ingredient, index) => {
           const converted = convertedIngredients[index];
-          const displayQuantity = converted?.quantity || ingredient.quantity || 1;
+          const baseQuantity = converted?.quantity || ingredient.quantity || 1;
+          const displayQuantity = baseQuantity * multiplier;
           const displayUnit = converted?.unit || ingredient.unit || 'cup';
           const units = availableUnits[index] || [];
           const isLoading = loadingUnits[index];
@@ -334,10 +355,17 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
                     onKeyDown={handleKeyDown}
                   />
                 ) : (
-                  <Flex align="center" gap={1}>
-                    <Text>{displayQuantity.toFixed(2).replace(/\.?0+$/, '')}</Text>
-                    {isLoading && <Spinner size="xs" />}
-                  </Flex>
+                  <VStack align="start" gap={0}>
+                    <Flex align="center" gap={1}>
+                      <Text>{displayQuantity.toFixed(2).replace(/\.?0+$/, '')}</Text>
+                      {isLoading && <Spinner size="xs" />}
+                    </Flex>
+                    {converted && converted.unit !== converted.originalUnit && (
+                      <Text fontSize="xs" color="gray.500">
+                        (orig: {(converted.originalQuantity * multiplier).toFixed(2).replace(/\.?0+$/, '')} {converted.originalUnit})
+                      </Text>
+                    )}
+                  </VStack>
                 )}
               </Box>
               <Box minW="80px">
@@ -607,6 +635,13 @@ const Recipe: React.FC<RecipeProps> = ({
   onDelete,
 }) => {
   const [isEditable, setIsEditable] = useState(!initialRecipe); // New recipe starts in edit mode
+  const [recipeMultiplier, setRecipeMultiplier] = useState<number | string>(1.0); // Default multiplier is 1.0
+  
+  // Helper to get the effective multiplier value for calculations
+  const getEffectiveMultiplier = () => {
+    const numValue = typeof recipeMultiplier === 'string' ? parseFloat(recipeMultiplier) : recipeMultiplier;
+    return isNaN(numValue) || numValue <= 0 ? 1.0 : numValue;
+  };
   
   // Helper to generate temporary IDs for new categories
   const generateTempId = () => Math.floor(Math.random() * 1000000) * -1; // Negative numbers for temp IDs
@@ -869,7 +904,7 @@ const Recipe: React.FC<RecipeProps> = ({
         </Flex>
 
         {/* Recipe Info */}
-        <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
+        <SimpleGrid columns={{ base: 1, md: 4 }} gap={4}>
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb={1}>Prep Time (minutes)</Text>
             <ContentEditable
@@ -895,6 +930,31 @@ const Recipe: React.FC<RecipeProps> = ({
               onContentChange={handleNumberChange('servings')}
               isEditable={isEditable}
               onKeyDown={handleKeyDown}
+            />
+          </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb={1}>Recipe Multiplier</Text>
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              value={recipeMultiplier}
+              onChange={(e) => setRecipeMultiplier(e.target.value === '' ? '' : e.target.value)}
+              onBlur={(e) => {
+                const value = parseFloat(e.target.value);
+                if (isNaN(value) || value <= 0) {
+                  setRecipeMultiplier(1.0);
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '4px',
+                fontSize: '14px',
+                backgroundColor: '#f7fafc',
+              }}
+              placeholder="1.0"
             />
           </Box>
         </SimpleGrid>
@@ -930,6 +990,7 @@ const Recipe: React.FC<RecipeProps> = ({
           onRemoveIngredient={removeIngredient}
           onUpdateIngredient={updateIngredientStable}
           handleKeyDown={handleKeyDown}
+          multiplier={getEffectiveMultiplier()}
         />
 
         <Box height="1px" bg="gray.200" />
@@ -964,14 +1025,27 @@ const Recipe: React.FC<RecipeProps> = ({
         )}
 
         {/* Usage Instructions */}
-        {isEditable && (
+        {(isEditable || getEffectiveMultiplier() !== 1.0) && (
           <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
-            <Text fontWeight="medium" color="blue.800" mb={2}>Editing Tips:</Text>
+            <Text fontWeight="medium" color="blue.800" mb={2}>
+              {isEditable ? 'Editing Tips:' : 'Recipe Scaling:'}
+            </Text>
             <VStack align="start" gap={1} fontSize="sm" color="blue.700">
-              <Text>• Click on any text to edit it inline</Text>
-              <Text>• Use Shift+Enter for line breaks in multi-line fields</Text>
-              <Text>• Press Enter or click outside to finish editing a field</Text>
-              <Text>• Changes are saved to the server when you click Save</Text>
+              {isEditable ? (
+                <>
+                  <Text>• Click on any text to edit it inline</Text>
+                  <Text>• Use Shift+Enter for line breaks in multi-line fields</Text>
+                  <Text>• Press Enter or click outside to finish editing a field</Text>
+                  <Text>• Changes are saved to the server when you click Save</Text>
+                </>
+              ) : (
+                <>
+                  <Text>• Recipe multiplier is set to {getEffectiveMultiplier().toFixed(1)}x</Text>
+                  <Text>• All ingredient quantities are scaled proportionally</Text>
+                  <Text>• You can change units using the dropdowns for more convenient measurements</Text>
+                  <Text>• Original quantities are shown in gray when units are converted</Text>
+                </>
+              )}
             </VStack>
           </Box>
         )}
