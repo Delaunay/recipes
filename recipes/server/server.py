@@ -248,6 +248,65 @@ class RecipeApp:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
 
+        @self.app.route('/ingredients/<int:ingredient_id>', methods=['GET'])
+        def get_ingredient(ingredient_id: int) -> Dict[str, Any]:
+            ingredient = self.db.session.get(Ingredient, ingredient_id)
+            if not ingredient:
+                return jsonify({"error": "Ingredient not found"}), 404
+            return jsonify(ingredient.to_json())
+
+        @self.app.route('/ingredients/<string:ingredient_name>', methods=['GET'])
+        def get_ingredient_by_name(ingredient_name: str) -> Dict[str, Any]:
+            # Replace hyphens with spaces for URL-friendly names
+            formatted_name = ingredient_name.replace('-', ' ')
+            ingredient = self.db.session.query(Ingredient).filter(Ingredient.name.ilike(f"%{formatted_name}%")).first()
+            if not ingredient:
+                return jsonify({"error": "Ingredient not found"}), 404
+            return jsonify(ingredient.to_json())
+
+        @self.app.route('/ingredients/<int:ingredient_id>', methods=['PUT'])
+        def update_ingredient(ingredient_id: int) -> Dict[str, Any]:
+            try:
+                ingredient = self.db.session.get(Ingredient, ingredient_id)
+                if not ingredient:
+                    return jsonify({"error": "Ingredient not found"}), 404
+                
+                data = request.get_json()
+                
+                # Update ingredient fields
+                ingredient.name = data.get('name', ingredient.name)
+                ingredient.description = data.get('description', ingredient.description)
+                ingredient.calories = data.get('calories', ingredient.calories)
+                ingredient.density = data.get('density', ingredient.density)
+                ingredient.extension = data.get('extension', ingredient.extension)
+                
+                self.db.session.commit()
+                return jsonify(ingredient.to_json())
+                
+            except Exception as e:
+                self.db.session.rollback()
+                return jsonify({"error": str(e)}), 400
+
+        @self.app.route('/ingredients/<int:ingredient_id>', methods=['DELETE'])
+        def delete_ingredient(ingredient_id: int) -> Dict[str, Any]:
+            try:
+                ingredient = self.db.session.get(Ingredient, ingredient_id)
+                if not ingredient:
+                    return jsonify({"error": "Ingredient not found"}), 404
+                
+                # Check if ingredient is used in any recipes
+                recipe_count = self.db.session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).count()
+                if recipe_count > 0:
+                    return jsonify({"error": f"Cannot delete ingredient. It is used in {recipe_count} recipe(s)."}), 400
+                
+                self.db.session.delete(ingredient)
+                self.db.session.commit()
+                return jsonify({"message": "Ingredient deleted successfully"})
+                
+            except Exception as e:
+                self.db.session.rollback()
+                return jsonify({"error": str(e)}), 400
+
         @self.app.route('/categories', methods=['GET'])
         def get_categories() -> Dict[str, Any]:
             categories = self.db.session.query(Category).all()
@@ -269,6 +328,69 @@ class RecipeApp:
         def get_unit_conversions() -> Dict[str, Any]:
             conversions = self.db.session.query(UnitConversion).all()
             return jsonify([conversion.to_json() for conversion in conversions])
+
+        @self.app.route('/unit/conversions', methods=['POST'])
+        def create_unit_conversion() -> Dict[str, Any]:
+            try:
+                data = request.get_json()
+                conversion = UnitConversion(
+                    from_unit=data.get('from_unit'),
+                    to_unit=data.get('to_unit'),
+                    conversion_factor=data.get('conversion_factor'),
+                    category=data.get('category', 'custom'),
+                    ingredient_id=data.get('ingredient_id') if data.get('ingredient_id') else None
+                )
+                self.db.session.add(conversion)
+                self.db.session.commit()
+                return jsonify(conversion.to_json()), 201
+            except Exception as e:
+                self.db.session.rollback()
+                return jsonify({"error": str(e)}), 400
+
+        @self.app.route('/unit/conversions/<int:conversion_id>', methods=['GET'])
+        def get_unit_conversion(conversion_id: int) -> Dict[str, Any]:
+            conversion = self.db.session.get(UnitConversion, conversion_id)
+            if not conversion:
+                return jsonify({"error": "Unit conversion not found"}), 404
+            return jsonify(conversion.to_json())
+
+        @self.app.route('/unit/conversions/<int:conversion_id>', methods=['PUT'])
+        def update_unit_conversion(conversion_id: int) -> Dict[str, Any]:
+            try:
+                conversion = self.db.session.get(UnitConversion, conversion_id)
+                if not conversion:
+                    return jsonify({"error": "Unit conversion not found"}), 404
+                
+                data = request.get_json()
+                
+                # Update conversion fields
+                conversion.from_unit = data.get('from_unit', conversion.from_unit)
+                conversion.to_unit = data.get('to_unit', conversion.to_unit)
+                conversion.conversion_factor = data.get('conversion_factor', conversion.conversion_factor)
+                conversion.category = data.get('category', conversion.category)
+                conversion.ingredient_id = data.get('ingredient_id') if data.get('ingredient_id') else None
+                
+                self.db.session.commit()
+                return jsonify(conversion.to_json())
+                
+            except Exception as e:
+                self.db.session.rollback()
+                return jsonify({"error": str(e)}), 400
+
+        @self.app.route('/unit/conversions/<int:conversion_id>', methods=['DELETE'])
+        def delete_unit_conversion(conversion_id: int) -> Dict[str, Any]:
+            try:
+                conversion = self.db.session.get(UnitConversion, conversion_id)
+                if not conversion:
+                    return jsonify({"error": "Unit conversion not found"}), 404
+                
+                self.db.session.delete(conversion)
+                self.db.session.commit()
+                return jsonify({"message": "Unit conversion deleted successfully"})
+                
+            except Exception as e:
+                self.db.session.rollback()
+                return jsonify({"error": str(e)}), 400
 
         @self.app.route('/units/available/<int:ingredient_id>/<string:from_unit>', methods=['GET'])
         def available_units(ingredient_id: int, from_unit: str) -> Dict[str, Any]:

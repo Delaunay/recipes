@@ -40,6 +40,16 @@ interface Category {
   description?: string;
 }
 
+interface UnitConversion {
+  id?: number;
+  from_unit: string;
+  to_unit: string;
+  conversion_factor: number;
+  category: string;
+  ingredient_id?: number;
+  extension?: any;
+}
+
 class RecipeAPI {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -106,10 +116,33 @@ class RecipeAPI {
     return this.request<Ingredient[]>('/ingredients');
   }
 
+  async getIngredient(id: number): Promise<Ingredient> {
+    return this.request<Ingredient>(`/ingredients/${id}`);
+  }
+
+  async getIngredientByName(name: string): Promise<Ingredient> {
+    // Convert name to URL-friendly format (replace spaces with hyphens)
+    const urlName = name.toLowerCase().replace(/\s+/g, '-');
+    return this.request<Ingredient>(`/ingredients/${urlName}`);
+  }
+
   async createIngredient(ingredient: Omit<Ingredient, 'id'>): Promise<Ingredient> {
     return this.request<Ingredient>('/ingredients', {
       method: 'POST',
       body: JSON.stringify(ingredient),
+    });
+  }
+
+  async updateIngredient(id: number, ingredient: Partial<Ingredient>): Promise<Ingredient> {
+    return this.request<Ingredient>(`/ingredients/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(ingredient),
+    });
+  }
+
+  async deleteIngredient(id: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/ingredients/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -152,6 +185,35 @@ class RecipeAPI {
     }>(url);
   }
 
+  // Unit conversion CRUD methods
+  async getUnitConversions(): Promise<UnitConversion[]> {
+    return this.request<UnitConversion[]>('/unit/conversions');
+  }
+
+  async getUnitConversion(id: number): Promise<UnitConversion> {
+    return this.request<UnitConversion>(`/unit/conversions/${id}`);
+  }
+
+  async createUnitConversion(conversion: Omit<UnitConversion, 'id'>): Promise<UnitConversion> {
+    return this.request<UnitConversion>('/unit/conversions', {
+      method: 'POST',
+      body: JSON.stringify(conversion),
+    });
+  }
+
+  async updateUnitConversion(id: number, conversion: Partial<UnitConversion>): Promise<UnitConversion> {
+    return this.request<UnitConversion>(`/unit/conversions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(conversion),
+    });
+  }
+
+  async deleteUnitConversion(id: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/unit/conversions/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Image upload
   async uploadImage(file: File): Promise<{ url: string; filename: string }> {
     const formData = new FormData();
@@ -182,4 +244,4 @@ class RecipeAPI {
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
-export type { RecipeData, Ingredient, Category, Instruction }; 
+export type { RecipeData, Ingredient, Category, Instruction, UnitConversion }; 

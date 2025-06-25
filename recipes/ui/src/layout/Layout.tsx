@@ -12,6 +12,15 @@ const sidebarItems = [
   { name: 'My Favorites', href: '/favorites' },
   { name: 'My Recipes', href: '/my-recipes' },
   { name: 'Settings', href: '/settings' },
+
+  // Planning is about selecting recipes for a meal plan
+  //   - Budgeting
+  //   - Shopping list
+  //   - Calories intake
+  //   - Nutrients
+  { name: 'Planning', href: '/planning' },
+  { name: 'Ingredients', href: '/ingredients' },
+  { name: 'Unit Conversions', href: '/conversions' },
 ];
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
