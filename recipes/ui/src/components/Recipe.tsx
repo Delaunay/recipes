@@ -1,4 +1,4 @@
-import React, { useState, KeyboardEvent, useCallback, useRef, useEffect } from 'react';
+import { useState, KeyboardEvent, useCallback, useRef, useEffect, FC, FormEvent, ChangeEvent } from 'react';
 import {
   Box,
   VStack,
@@ -42,20 +42,22 @@ const CloseIcon = () => (
 );
 
 // Move ContentEditable outside to prevent recreation on every render
-const ContentEditable: React.FC<{
+interface ContentEditableProps {
   content: string;
-  onContentChange: (e: React.FormEvent<HTMLDivElement>) => void;
+  onContentChange: (e: FormEvent<HTMLDivElement>) => void;
   className?: string;
   placeholder?: string;
   multiline?: boolean;
   isEditable: boolean;
   onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
-}> = ({ content, onContentChange, className, placeholder, multiline = false, isEditable, onKeyDown }) => {
+}
+
+const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, className, placeholder, multiline = false, isEditable, onKeyDown }) => {
   const divRef = useRef<HTMLDivElement>(null);
   const cursorPositionRef = useRef<number>(0);
 
   // Save cursor position before content changes
-  const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+  const handleInput = useCallback((e: FormEvent<HTMLDivElement>) => {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
@@ -117,7 +119,7 @@ interface RecipeImagesProps {
   onImageRemove: (imageUrl: string) => void;
 }
 
-const RecipeImages: React.FC<RecipeImagesProps> = ({
+const RecipeImages: FC<RecipeImagesProps> = ({
   images,
   isEditable,
   onImageAdd,
@@ -178,7 +180,7 @@ interface ConvertedIngredient {
   originalUnit: string;
 }
 
-const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
+const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   ingredients,
   isEditable,
   onAddIngredient,
@@ -380,7 +382,7 @@ const RecipeIngredients: React.FC<RecipeIngredientsProps> = ({
                   <Box>
                     <select
                       value={displayUnit}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleUnitChange(index, e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) => handleUnitChange(index, e.target.value)}
                       disabled={isLoading || units.length === 0}
                       style={{
                         padding: '4px 8px',
@@ -437,7 +439,7 @@ interface RecipeInstructionsProps {
   handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
 }
 
-const RecipeInstructions: React.FC<RecipeInstructionsProps> = ({
+const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   instructions,
   isEditable,
   onAddInstruction,
@@ -554,7 +556,7 @@ interface RecipeCategoriesProps {
   handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
 }
 
-const RecipeCategories: React.FC<RecipeCategoriesProps> = ({
+const RecipeCategories: FC<RecipeCategoriesProps> = ({
   categories,
   isEditable,
   onAddCategory,
@@ -622,14 +624,14 @@ const RecipeCategories: React.FC<RecipeCategoriesProps> = ({
 };
 
 interface RecipeProps {
-  recipe?: RecipeData;
+  initialRecipe?: RecipeData;
   isAuthorized?: boolean;
   onSave?: (recipe: RecipeData) => void;
   onDelete?: (recipeId: number) => void;
 }
 
-const Recipe: React.FC<RecipeProps> = ({
-  recipe: initialRecipe,
+const Recipe: FC<RecipeProps> = ({
+  initialRecipe,
   isAuthorized = false,
   onSave,
   onDelete,

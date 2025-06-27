@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Spinner, Text, Button, VStack, HStack, SimpleGrid } from '@chakra-ui/react';
 import { recipeAPI, Ingredient } from '../services/api';
 
-const IngredientDetail: React.FC = () => {
+const IngredientDetail = () => {
   const { identifier } = useParams<{ identifier?: string }>();
   const navigate = useNavigate();
   const [ingredient, setIngredient] = useState<Ingredient | null>(null);

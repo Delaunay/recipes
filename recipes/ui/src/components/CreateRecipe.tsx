@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Text } from '@chakra-ui/react';
 import Recipe from './Recipe';
 import { recipeAPI, RecipeData } from '../services/api';
 
-const CreateRecipe: React.FC = () => {
+const CreateRecipe = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSaveRecipe = async (recipe: RecipeData) => {

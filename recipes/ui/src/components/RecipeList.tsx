@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { recipeAPI, RecipeData } from '../services/api';
 
-const RecipeList: React.FC = () => {
+const RecipeList = () => {
   const [recipes, setRecipes] = useState<RecipeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

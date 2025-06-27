@@ -61,8 +61,8 @@ class StaticSiteGenerator:
         self.server_process = subprocess.Popen(
             cmd, 
             cwd=self.base_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            #stdout=subprocess.STDOUT,
+            #stderr=subprocess.STDOUT
         )
         
         # Wait for server to start
@@ -232,6 +232,8 @@ class StaticSiteGenerator:
             capture_output=True,
             text=True
         )
+
+        print(result.stdout)
         
         if result.returncode != 0:
             logger.error(f"Frontend build failed: {result.stderr}")

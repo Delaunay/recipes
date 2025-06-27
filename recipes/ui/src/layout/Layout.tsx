@@ -1,9 +1,9 @@
-import React from 'react';
+import { ReactNode, FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './Layout.css';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const sidebarItems = [
@@ -23,7 +23,7 @@ const sidebarItems = [
   { name: 'Unit Conversions', href: '/conversions' },
 ];
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   
   return (

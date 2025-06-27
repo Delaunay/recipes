@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Spinner, Text, Button } from '@chakra-ui/react';
 import Recipe from './Recipe';
 import { recipeAPI, RecipeData } from '../services/api';
 
-const RecipeDetail: React.FC = () => {
+const RecipeDetail = () => {
   const { identifier } = useParams<{ identifier?: string }>();
   const navigate = useNavigate();
   const [recipe, setRecipe] = useState<RecipeData | null>(null);
@@ -124,7 +124,7 @@ const RecipeDetail: React.FC = () => {
       </Button>
       
       <Recipe
-        recipe={recipe}
+        initialRecipe={recipe}
         isAuthorized={true}
         onSave={handleSaveRecipe}
         onDelete={handleDeleteRecipe}

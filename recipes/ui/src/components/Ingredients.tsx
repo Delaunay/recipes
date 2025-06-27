@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, KeyboardEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, KeyboardEvent, FC, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -46,20 +46,22 @@ const CloseIcon = () => (
 );
 
 // ContentEditable component (copied from Recipe component)
-const ContentEditable: React.FC<{
+interface ContentEditableProps {
   content: string;
-  onContentChange: (e: React.FormEvent<HTMLDivElement>) => void;
+  onContentChange: (e: FormEvent<HTMLDivElement>) => void;
   className?: string;
   placeholder?: string;
   multiline?: boolean;
   isEditable: boolean;
   onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
-}> = ({ content, onContentChange, className, placeholder, multiline = false, isEditable, onKeyDown }) => {
+}
+
+const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, className, placeholder, multiline = false, isEditable, onKeyDown }) => {
   const divRef = useRef<HTMLDivElement>(null);
   const cursorPositionRef = useRef<number>(0);
 
   // Save cursor position before content changes
-  const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+  const handleInput = useCallback((e: FormEvent<HTMLDivElement>) => {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
@@ -126,7 +128,7 @@ interface IngredientListItemProps {
   formatName: (name: string) => string;
 }
 
-const IngredientListItem: React.FC<IngredientListItemProps> = ({
+const IngredientListItem: FC<IngredientListItemProps> = ({
   ingredient,
   isEditing,
   onUpdate,
@@ -139,7 +141,7 @@ const IngredientListItem: React.FC<IngredientListItemProps> = ({
 }) => {
   const navigate = useNavigate();
   
-  const handleUpdate = useCallback((field: keyof Ingredient) => (e: React.FormEvent<HTMLDivElement>) => {
+  const handleUpdate = useCallback((field: keyof Ingredient) => (e: FormEvent<HTMLDivElement>) => {
     let value: any = e.currentTarget.textContent || '';
     
     if (field === 'calories' || field === 'density') {
@@ -328,7 +330,7 @@ const IngredientListItem: React.FC<IngredientListItemProps> = ({
 };
 
 // Main Ingredients component
-const Ingredients: React.FC = () => {
+const Ingredients = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [editingIngredientId, setEditingIngredientId] = useState<number | null>(null);
   const [originalIngredient, setOriginalIngredient] = useState<Ingredient | null>(null);

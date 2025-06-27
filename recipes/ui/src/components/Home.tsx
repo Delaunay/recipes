@@ -1,8 +1,7 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Box, VStack, Text, Button, HStack, Heading } from '@chakra-ui/react';
 
-const Home: React.FC = () => {
+const Home = () => {
   return (
     <Box py={10}>
       <VStack gap={8} align="center" maxW="4xl" mx="auto">

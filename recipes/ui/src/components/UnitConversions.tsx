@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -56,7 +56,7 @@ interface UnitConversionsProps {
   isAuthorized?: boolean;
 }
 
-const UnitConversions: React.FC<UnitConversionsProps> = ({ isAuthorized = false }) => {
+const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversions, setConversions] = useState<UnitConversion[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
