@@ -1,0 +1,104 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          recipes/ui/package-lock.json
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('setup.py') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install virtualenv
+        python -m venv venv
+        source venv/bin/activate
+        pip install requests flask gunicorn
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f recipes/requirements.txt ]; then pip install -r recipes/requirements.txt; fi
+        pip install -e .
+
+    - name: Install Node.js dependencies (root)
+      run: |
+        if [ -f package.json ]; then npm ci; fi
+
+    - name: Install Node.js dependencies (UI)
+      run: |
+        cd recipes/ui
+        npm ci
+
+    - name: Build static website
+      run: |
+        source venv/bin/activate
+        python scripts/static_generator.py
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      with:
+        path: ./static_build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Specify runner + deployment step
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 # or specific "vX.X.X" version tag for this action

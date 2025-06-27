@@ -58,3 +58,8 @@ alembic-autogen:
 alembic-update:
 	cd recipes/alembic && alembic upgrade head
 
+static-build:
+	python scripts/static_generator.py
+
+static:
+	cd static_build && python -m http.server

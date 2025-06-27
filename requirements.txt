@@ -1,0 +1,7 @@
+sqlalchemy
+alembic
+psycopg2-binary
+flask
+werkzeug
+flask-sqlalchemy
+flask-cors
