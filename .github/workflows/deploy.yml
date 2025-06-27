@@ -72,6 +72,13 @@ jobs:
         python scripts/static_generator.py
       env:
         PYTHONPATH: ${{ github.workspace }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_ACTIONS: true
+
+    - name: Verify build output
+      run: |
+        source venv/bin/activate
+        python scripts/verify_build.py
 
     - name: Setup Pages
       uses: actions/configure-pages@v3

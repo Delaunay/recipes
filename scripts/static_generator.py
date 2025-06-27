@@ -115,7 +115,15 @@ class StaticSiteGenerator:
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2, default=str)
             
-        logger.info(f"Saved {file_path}")
+        logger.info(f"Saved {file_path} for endpoint {endpoint} ({len(str(data))} chars)")
+        
+        # Log data type and sample for debugging
+        if isinstance(data, list):
+            logger.info(f"  -> List with {len(data)} items")
+        elif isinstance(data, dict):
+            logger.info(f"  -> Dict with keys: {list(data.keys())}")
+        else:
+            logger.info(f"  -> Data type: {type(data)}")
         
     def crawl_dynamic_endpoints(self):
         """Crawl endpoints that depend on data (like individual recipes)"""
@@ -190,9 +198,11 @@ class StaticSiteGenerator:
     def crawl_api_endpoints(self):
         """Crawl all API endpoints and save JSON responses"""
         logger.info("Crawling API endpoints...")
+        logger.info(f"Endpoints to crawl: {self.api_endpoints}")
         
         # Crawl main endpoints
         for endpoint in self.api_endpoints:
+            logger.info(f"Crawling endpoint: {endpoint}")
             data = self.fetch_json(endpoint)
             if data:
                 self.save_json_file(endpoint, data)
@@ -200,12 +210,18 @@ class StaticSiteGenerator:
                 # Store data for dynamic crawling
                 if endpoint == "/recipes":
                     self.recipes_data = data
+                    logger.info(f"Stored {len(data) if isinstance(data, list) else 'non-list'} recipes for dynamic crawling")
                 elif endpoint == "/ingredients":
                     self.ingredients_data = data
+                    logger.info(f"Stored {len(data) if isinstance(data, list) else 'non-list'} ingredients for dynamic crawling")
                 elif endpoint == "/categories":
                     self.categories_data = data
+                    logger.info(f"Stored {len(data) if isinstance(data, list) else 'non-list'} categories for dynamic crawling")
                 elif endpoint == "/unit/conversions":
                     self.conversions_data = data
+                    logger.info(f"Stored unit conversions for dynamic crawling")
+            else:
+                logger.error(f"Failed to fetch data for endpoint: {endpoint}")
                     
         # Crawl dynamic endpoints
         self.crawl_dynamic_endpoints()
@@ -223,7 +239,19 @@ class StaticSiteGenerator:
         # Build the React app
         logger.info("Building React app...")
         env = os.environ.copy()
-        env["VITE_API_URL"] = "/api"  # Set API URL for static build
+        
+        # Set base path for GitHub Pages deployment
+        # Check if we're building for GitHub Pages (common environment variables)
+        if any(key in env for key in ['GITHUB_ACTIONS', 'GITHUB_REPOSITORY']):
+            # Extract repository name for GitHub Pages base path
+            repo_name = env.get('GITHUB_REPOSITORY', '').split('/')[-1] if 'GITHUB_REPOSITORY' in env else 'recipes'
+            env["VITE_BASE_PATH"] = f"/{repo_name}/"
+            env["VITE_API_URL"] = f"/{repo_name}/api"  # Set API URL with base path
+            logger.info(f"Building for GitHub Pages with base path: /{repo_name}/")
+        else:
+            env["VITE_BASE_PATH"] = "/"
+            env["VITE_API_URL"] = "/api"  # Set API URL for static build
+            logger.info("Building for local/custom deployment with base path: /")
         
         result = subprocess.run(
             ["npm", "run", "build"], 
@@ -277,6 +305,12 @@ class StaticSiteGenerator:
             
         with open(index_html_path, 'r') as f:
             index_content = f.read()
+            
+        # Create 404.html for GitHub Pages SPA routing
+        html_404_path = self.output_dir / "404.html"
+        with open(html_404_path, 'w') as f:
+            f.write(index_content)
+        logger.info("Created 404.html for GitHub Pages SPA routing")
             
         # Create index.html files for all routes
         routes = [
@@ -372,6 +406,15 @@ class StaticSiteGenerator:
             
         logger.info("Created _redirects file for Netlify")
         
+    def create_github_pages_config(self):
+        """Create configuration files for GitHub Pages"""
+        logger.info("Creating GitHub Pages configuration...")
+        
+        # Create .nojekyll file to disable Jekyll processing
+        nojekyll_file = self.output_dir / ".nojekyll"
+        nojekyll_file.touch()
+        logger.info("Created .nojekyll file for GitHub Pages")
+        
     def create_vercel_config(self):
         """Create vercel.json for Vercel hosting"""
         vercel_config = {
@@ -441,6 +484,7 @@ class StaticSiteGenerator:
             # Create hosting configs
             self.create_netlify_redirects()
             self.create_vercel_config()
+            self.create_github_pages_config()
             
             # Create build info
             self.create_build_info()

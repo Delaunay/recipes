@@ -5,7 +5,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 // Check if we're in static mode (no backend server)
 const isStaticMode = () => {
   // Check if we're in production and using static JSON files
-  return import.meta.env.PROD && API_BASE_URL === '/api';
+  // This works for both local static builds (/api) and GitHub Pages (/recipes/api)
+  return import.meta.env.PROD && API_BASE_URL.endsWith('/api');
 };
 
 interface RecipeData {
@@ -62,13 +63,18 @@ class RecipeAPI {
     let jsonPath = endpoint;
     
     if (endpoint === '/') {
-      jsonPath = '/api/index.json';
+      jsonPath = `${API_BASE_URL}/index.json`;
     } else if (endpoint.startsWith('/')) {
-      jsonPath = `/api${endpoint}.json`;
+      jsonPath = `${API_BASE_URL}${endpoint}.json`;
     }
     
     // Handle query parameters by removing them for static files
     const cleanPath = jsonPath.split('?')[0];
+    
+    // Debug logging (only in development)
+    if (import.meta.env.DEV) {
+      console.log('Static API request:', { endpoint, jsonPath, cleanPath });
+    }
     
     try {
       const response = await fetch(cleanPath);
@@ -83,6 +89,16 @@ class RecipeAPI {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // Debug logging (only in development)
+    if (import.meta.env.DEV) {
+      console.log('API Request:', { 
+        endpoint, 
+        isStatic: isStaticMode(), 
+        apiBaseUrl: API_BASE_URL, 
+        isProd: import.meta.env.PROD 
+      });
+    }
+    
     // In static mode, only GET requests are supported
     if (isStaticMode()) {
       if (options.method && options.method !== 'GET') {
