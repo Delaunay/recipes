@@ -186,12 +186,12 @@ class StaticSiteGenerator:
                         if from_unit != to_unit:
                             endpoint = f"/unit/conversions/{ingredient_id}/{from_unit}/{to_unit}"
                             # Add quantity parameter
-                            url = f"{self.api_base}{endpoint}?quantity=1.0"
+                            url = f"{self.api_base}{endpoint}"
                             try:
                                 response = requests.get(url, timeout=5)
                                 if response.status_code == 200:
                                     data = response.json()
-                                    self.save_json_file(f"{endpoint}?quantity=1.0", data)
+                                    self.save_json_file(f"{endpoint}", data)
                             except requests.exceptions.RequestException:
                                 pass  # Skip failed conversions
                                 

@@ -69,19 +69,17 @@ class RecipeAPI {
   private async requestStatic<T>(endpoint: string): Promise<T> {
     // Convert endpoint to static JSON file path
     let jsonPath = endpoint;
+    let cleanEndpoint = endpoint.split('?')[0];
     
     if (endpoint === '/') {
       jsonPath = `${API_BASE_URL}/index.json`;
     } else if (endpoint.startsWith('/')) {
-      jsonPath = `${API_BASE_URL}${endpoint}.json`;
+      jsonPath = `${API_BASE_URL}${cleanEndpoint}.json`;
     }
     
     // Handle query parameters by removing them for static files
-    // const cleanPath = jsonPath.split('?')[0];
     const cleanPath = jsonPath;
 
-    console.log('Static API request:', { endpoint, jsonPath, cleanPath });
-    
     // Debug logging (only in development)
     if (import.meta.env.DEV) {
       console.log('Static API request:', { endpoint, jsonPath, cleanPath });
