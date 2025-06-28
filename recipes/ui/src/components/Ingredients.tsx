@@ -140,8 +140,11 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
   formatName,
 }) => {
   const navigate = useNavigate();
+  const isStatic = recipeAPI.isStaticMode();
   
   const handleUpdate = useCallback((field: keyof Ingredient) => (e: FormEvent<HTMLDivElement>) => {
+    if (isStatic) return; // Prevent updates in static mode
+    
     let value: any = e.currentTarget.textContent || '';
     
     if (field === 'calories' || field === 'density') {
@@ -149,9 +152,11 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
     }
     
     onUpdate(ingredient.id!, field, value);
-  }, [ingredient.id, onUpdate]);
+  }, [ingredient.id, onUpdate, isStatic]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
+    if (isStatic) return; // Prevent editing in static mode
+    
     if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
       document.execCommand('insertLineBreak');
@@ -159,7 +164,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
       e.preventDefault();
       (e.target as HTMLElement).blur();
     }
-  }, []);
+  }, [isStatic]);
 
   const handleViewDetailsByName = () => {
     if (!isEditing) {
@@ -194,7 +199,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
             <ContentEditable
               content={ingredient.name}
               onContentChange={handleUpdate('name')}
-              isEditable={isEditing}
+              isEditable={isEditing && !isStatic}
               onKeyDown={handleKeyDown}
             />
           ) : (
@@ -235,52 +240,54 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
           )}
         </VStack>
         
-        <HStack gap={2}>
-          {isEditing ? (
-            <>
-              <Button
-                size="sm"
-                colorScheme="green"
-                onClick={onSaveEdit}
-              >
-                <CheckIcon />
-                Save
-              </Button>
+        {!isStatic && (
+          <HStack gap={2}>
+            {isEditing ? (
+              <>
+                <Button
+                  size="sm"
+                  colorScheme="green"
+                  onClick={onSaveEdit}
+                >
+                  <CheckIcon />
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onCancelEdit}
+                >
+                  <CloseIcon />
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme="red"
+                  variant="ghost"
+                  onClick={() => onDelete(ingredient.id!)}
+                >
+                  <DeleteIcon />
+                </Button>
+              </>
+            ) : (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={onCancelEdit}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartEdit();
+                }}
               >
-                <CloseIcon />
-                Cancel
+                <EditIcon />
+                Edit
               </Button>
-              <Button
-                size="sm"
-                colorScheme="red"
-                variant="ghost"
-                onClick={() => onDelete(ingredient.id!)}
-              >
-                <DeleteIcon />
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onStartEdit();
-              }}
-            >
-              <EditIcon />
-              Edit
-            </Button>
-          )}
-        </HStack>
+            )}
+          </HStack>
+        )}
       </Flex>
       
       {/* Edit Form */}
-      {isEditing && (
+      {isEditing && !isStatic && (
         <Box mt={4} pt={4} borderTop="1px solid" borderColor="gray.200">
           <VStack align="stretch" gap={4}>
             <Box>
@@ -290,7 +297,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
                 onContentChange={handleUpdate('description')}
                 placeholder="Enter description..."
                 multiline={true}
-                isEditable={isEditing}
+                isEditable={isEditing && !isStatic}
                 onKeyDown={handleKeyDown}
               />
             </Box>
@@ -304,7 +311,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
                   content={ingredient.calories?.toString() || ''}
                   onContentChange={handleUpdate('calories')}
                   placeholder="0"
-                  isEditable={isEditing}
+                  isEditable={isEditing && !isStatic}
                   onKeyDown={handleKeyDown}
                 />
               </Box>
@@ -317,7 +324,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
                   content={ingredient.density?.toString() || ''}
                   onContentChange={handleUpdate('density')}
                   placeholder="1.0"
-                  isEditable={isEditing}
+                  isEditable={isEditing && !isStatic}
                   onKeyDown={handleKeyDown}
                 />
               </Box>
@@ -337,6 +344,7 @@ const Ingredients = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const isStatic = recipeAPI.isStaticMode();
 
   const formatIngredientName = (name: string): string => {
     return name.toLowerCase().replace(/\s+/g, '-');
@@ -360,6 +368,8 @@ const Ingredients = () => {
   };
 
   const addNewIngredient = useCallback(async () => {
+    if (isStatic) return; // Prevent adding in static mode
+    
     try {
       const newIngredient = await recipeAPI.createIngredient({
         name: 'New Ingredient',
@@ -369,9 +379,11 @@ const Ingredients = () => {
     } catch (err) {
       console.error('Failed to create ingredient:', err);
     }
-  }, []);
+  }, [isStatic]);
 
   const updateIngredient = useCallback(async (id: number, field: keyof Ingredient, value: any) => {
+    if (isStatic) return; // Prevent updating in static mode
+    
     try {
       setSaving(prev => ({ ...prev, [id]: true }));
       
@@ -385,9 +397,11 @@ const Ingredients = () => {
     } finally {
       setSaving(prev => ({ ...prev, [id]: false }));
     }
-  }, []);
+  }, [isStatic]);
 
   const deleteIngredient = useCallback(async (id: number) => {
+    if (isStatic) return; // Prevent deleting in static mode
+    
     if (!window.confirm('Are you sure you want to delete this ingredient?')) {
       return;
     }
@@ -398,12 +412,14 @@ const Ingredients = () => {
     } catch (err) {
       console.error('Failed to delete ingredient:', err);
     }
-  }, []);
+  }, [isStatic]);
 
   const handleStartEdit = useCallback((ingredient: Ingredient) => {
+    if (isStatic) return; // Prevent editing in static mode
+    
     setEditingIngredientId(ingredient.id!);
     setOriginalIngredient({ ...ingredient });
-  }, []);
+  }, [isStatic]);
 
   const handleCancelEdit = useCallback(() => {
     if (originalIngredient) {
@@ -450,11 +466,26 @@ const Ingredients = () => {
   return (
     <Box maxW="4xl" mx="auto" p={6}>
       <VStack gap={6} align="stretch">
+        {/* Static Mode Notice */}
+        {isStatic && (
+          <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
+            <Text fontWeight="medium" color="blue.800" mb={1}>
+              📖 Ingredients Reference
+            </Text>
+            <Text fontSize="sm" color="blue.700">
+              You're viewing the ingredients database in read-only mode. Creating or editing ingredients is not available in this version.
+            </Text>
+          </Box>
+        )}
+
         <Flex align="center" wrap="wrap" gap={4}>
           <VStack align="start" gap={1}>
             <Text fontSize="3xl" fontWeight="bold">Ingredients Database</Text>
             <Text color="gray.600">
-              Click on any ingredient to view detailed information, or use the edit button to modify ingredients.
+              {isStatic 
+                ? 'Browse the ingredient database and view detailed information.'
+                : 'Click on any ingredient to view detailed information, or use the edit button to modify ingredients.'
+              }
             </Text>
           </VStack>
           
@@ -465,14 +496,16 @@ const Ingredients = () => {
               {ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}
             </Badge>
             
-            <Button
-              colorScheme="green"
-              size="sm"
-              onClick={addNewIngredient}
-            >
-              <AddIcon />
-              Add Ingredient
-            </Button>
+            {!isStatic && (
+              <Button
+                colorScheme="green"
+                size="sm"
+                onClick={addNewIngredient}
+              >
+                <AddIcon />
+                Add Ingredient
+              </Button>
+            )}
 
             <Button
               size="sm"
@@ -490,7 +523,7 @@ const Ingredients = () => {
               <IngredientListItem
                 key={ingredient.id}
                 ingredient={ingredient}
-                isEditing={editingIngredientId === ingredient.id}
+                isEditing={editingIngredientId === ingredient.id && !isStatic}
                 onUpdate={updateIngredient}
                 onDelete={deleteIngredient}
                 onStartEdit={() => handleStartEdit(ingredient)}
@@ -504,12 +537,14 @@ const Ingredients = () => {
         ) : (
           <Box textAlign="center" py={12}>
             <Text fontSize="lg" color="gray.500" mb={4}>
-              No ingredients found
+              {isStatic ? 'No ingredients available in this static version.' : 'No ingredients found'}
             </Text>
-            <Button colorScheme="blue" onClick={addNewIngredient}>
-              <AddIcon />
-              Add Your First Ingredient
-            </Button>
+            {!isStatic && (
+              <Button colorScheme="blue" onClick={addNewIngredient}>
+                <AddIcon />
+                Add Your First Ingredient
+              </Button>
+            )}
           </Box>
         )}
       </VStack>

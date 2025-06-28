@@ -12,9 +12,8 @@ import {
   Image,
   Spinner,
 } from '@chakra-ui/react';
-import { RecipeData, Ingredient, Instruction } from '../services/api';
+import { RecipeData, Ingredient, Instruction, recipeAPI } from '../services/api';
 import ImageUpload from './ImageUpload';
-import { recipeAPI } from '../services/api';
 
 // Simple icon components
 const DeleteIcon = () => (
@@ -125,10 +124,12 @@ const RecipeImages: FC<RecipeImagesProps> = ({
   onImageAdd,
   onImageRemove,
 }) => {
+  const isStatic = recipeAPI.isStaticMode();
+  
   return (
     <Box>
       <Text fontSize="lg" fontWeight="semibold" mb={2}>Recipe Images</Text>
-      {isEditable ? (
+      {isEditable && !isStatic ? (
         <ImageUpload
           onImageUpload={onImageAdd}
           onImageRemove={onImageRemove}
@@ -189,6 +190,8 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   handleKeyDown,
   multiplier = 1.0,
 }) => {
+  const isStatic = recipeAPI.isStaticMode();
+  
   // State for converted ingredient values (only used in view mode)
   const [convertedIngredients, setConvertedIngredients] = useState<Record<number, ConvertedIngredient>>({});
   // State for available units for each ingredient
@@ -324,7 +327,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
           )}
         </VStack>
         <Spacer />
-        {isEditable && (
+        {isEditable && !isStatic && (
           <Button
             size="sm"
             onClick={onAddIngredient}
@@ -349,7 +352,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
           return (
             <HStack key={index} gap={4} align="center">
               <Box minW="80px">
-                {isEditable ? (
+                {isEditable && !isStatic ? (
                   <ContentEditable
                     content={ingredient.quantity?.toString() || '1'}
                     onContentChange={(e) => onUpdateIngredient(index, 'quantity', parseFloat(e.currentTarget.textContent || '1') || 1)}
@@ -371,7 +374,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
                 )}
               </Box>
               <Box minW="80px">
-                {isEditable ? (
+                {isEditable && !isStatic ? (
                   <ContentEditable
                     content={ingredient.unit || 'cup'}
                     onContentChange={(e) => onUpdateIngredient(index, 'unit', e.currentTarget.textContent || '')}
@@ -405,11 +408,11 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
                 <ContentEditable
                   content={ingredient.name}
                   onContentChange={(e) => onUpdateIngredient(index, 'name', e.currentTarget.textContent || '')}
-                  isEditable={isEditable}
+                  isEditable={isEditable && !isStatic}
                   onKeyDown={handleKeyDown}
                 />
               </Box>
-              {isEditable && (
+              {isEditable && !isStatic && (
                 <Button
                   size="sm"
                   colorScheme="red"
@@ -449,12 +452,14 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   onRemoveInstructionImage,
   handleKeyDown,
 }) => {
+  const isStatic = recipeAPI.isStaticMode();
+  
   return (
     <Box>
       <Flex align="center" mb={4}>
         <Text fontSize="lg" fontWeight="semibold">Instructions</Text>
         <Spacer />
-        {isEditable && (
+        {isEditable && !isStatic && (
           <Button
             size="sm"
             onClick={onAddInstruction}
@@ -480,10 +485,10 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                   onContentChange={(e) => onUpdateInstruction(index, 'description', e.currentTarget.textContent || '')}
                   multiline={true}
                   placeholder="Enter instruction..."
-                  isEditable={isEditable}
+                  isEditable={isEditable && !isStatic}
                   onKeyDown={handleKeyDown}
                 />
-                {isEditable && (
+                {isEditable && !isStatic && (
                   <Box>
                     <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
                     <ContentEditable
@@ -496,7 +501,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                   </Box>
                 )}
               </VStack>
-              {isEditable && (
+              {isEditable && !isStatic && (
                 <Button
                   size="sm"
                   colorScheme="red"
@@ -513,7 +518,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
               <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
                 Step Image (optional)
               </Text>
-              {isEditable ? (
+              {isEditable && !isStatic ? (
                 <ImageUpload
                   onImageUpload={(imageUrl) => onAddInstructionImage(index, imageUrl)}
                   onImageRemove={() => onRemoveInstructionImage(index)}
@@ -564,12 +569,14 @@ const RecipeCategories: FC<RecipeCategoriesProps> = ({
   onUpdateCategory,
   handleKeyDown,
 }) => {
+  const isStatic = recipeAPI.isStaticMode();
+  
   return (
     <Box>
       <Flex align="center" mb={4}>
         <Text fontSize="lg" fontWeight="semibold">Categories</Text>
         <Spacer />
-        {isEditable && (
+        {isEditable && !isStatic && (
           <Button
             size="sm"
             onClick={onAddCategory}
@@ -586,7 +593,7 @@ const RecipeCategories: FC<RecipeCategoriesProps> = ({
         <VStack gap={3} align="stretch">
           {categories.map((category) => (
             <HStack key={category.id} gap={4} align="center">
-              {isEditable ? (
+              {isEditable && !isStatic ? (
                 <>
                   <Box flex="1">
                     <ContentEditable
@@ -636,7 +643,8 @@ const Recipe: FC<RecipeProps> = ({
   onSave,
   onDelete,
 }) => {
-  const [isEditable, setIsEditable] = useState(!initialRecipe); // New recipe starts in edit mode
+  const isStatic = recipeAPI.isStaticMode();
+  const [isEditable, setIsEditable] = useState(!initialRecipe && !isStatic); // New recipe starts in edit mode, but not in static mode
   const [recipeMultiplier, setRecipeMultiplier] = useState<number | string>(1.0); // Default multiplier is 1.0
   
   // Helper to get the effective multiplier value for calculations
@@ -841,6 +849,18 @@ const Recipe: FC<RecipeProps> = ({
   return (
     <Box maxW="4xl" mx="auto" p={6} borderWidth="1px" borderRadius="lg" shadow="lg" bg="white">
       <VStack gap={6} align="stretch">
+        {/* Static Mode Notice */}
+        {isStatic && (
+          <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
+            <Text fontWeight="medium" color="blue.800" mb={1}>
+              📖 Read-Only Mode
+            </Text>
+            <Text fontSize="sm" color="blue.700">
+              This is a static version of the recipe website. Editing, creating, and deleting recipes is not available.
+            </Text>
+          </Box>
+        )}
+
         {/* Header with Title and Controls */}
         <Flex align="center" wrap="wrap" gap={4}>
           <Box flex="1">
@@ -848,12 +868,12 @@ const Recipe: FC<RecipeProps> = ({
               content={recipe.title}
               onContentChange={handleTextChange('title')}
               className="recipe-title"
-              isEditable={isEditable}
+              isEditable={isEditable && !isStatic}
               onKeyDown={handleKeyDown}
             />
           </Box>
           
-          {isAuthorized && (
+          {isAuthorized && !isStatic && (
             <HStack gap={2}>
               <Flex align="center" gap={2}>
                 <Text fontSize="sm">Edit Mode</Text>
@@ -912,7 +932,7 @@ const Recipe: FC<RecipeProps> = ({
             <ContentEditable
               content={recipe.prep_time?.toString() || '0'}
               onContentChange={handleNumberChange('prep_time')}
-              isEditable={isEditable}
+              isEditable={isEditable && !isStatic}
               onKeyDown={handleKeyDown}
             />
           </Box>
@@ -921,7 +941,7 @@ const Recipe: FC<RecipeProps> = ({
             <ContentEditable
               content={recipe.cook_time?.toString() || '0'}
               onContentChange={handleNumberChange('cook_time')}
-              isEditable={isEditable}
+              isEditable={isEditable && !isStatic}
               onKeyDown={handleKeyDown}
             />
           </Box>
@@ -930,7 +950,7 @@ const Recipe: FC<RecipeProps> = ({
             <ContentEditable
               content={recipe.servings?.toString() || '1'}
               onContentChange={handleNumberChange('servings')}
-              isEditable={isEditable}
+              isEditable={isEditable && !isStatic}
               onKeyDown={handleKeyDown}
             />
           </Box>
@@ -969,7 +989,7 @@ const Recipe: FC<RecipeProps> = ({
             onContentChange={handleTextChange('description')}
             placeholder="Enter recipe description..."
             multiline={true}
-            isEditable={isEditable}
+            isEditable={isEditable && !isStatic}
             onKeyDown={handleKeyDown}
           />
         </Box>
@@ -1027,7 +1047,7 @@ const Recipe: FC<RecipeProps> = ({
         )}
 
         {/* Usage Instructions */}
-        {(isEditable || getEffectiveMultiplier() !== 1.0) && (
+        {(isEditable || getEffectiveMultiplier() !== 1.0) && !isStatic && (
           <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
             <Text fontWeight="medium" color="blue.800" mb={2}>
               {isEditable ? 'Editing Tips:' : 'Recipe Scaling:'}
@@ -1048,6 +1068,21 @@ const Recipe: FC<RecipeProps> = ({
                   <Text>• Original quantities are shown in gray when units are converted</Text>
                 </>
               )}
+            </VStack>
+          </Box>
+        )}
+
+        {/* Recipe Scaling Info for Static Mode */}
+        {isStatic && getEffectiveMultiplier() !== 1.0 && (
+          <Box p={4} bg="green.50" borderRadius="md" borderLeft="4px solid" borderColor="green.400">
+            <Text fontWeight="medium" color="green.800" mb={2}>
+              🍽️ Recipe Scaling:
+            </Text>
+            <VStack align="start" gap={1} fontSize="sm" color="green.700">
+              <Text>• Recipe multiplier is set to {getEffectiveMultiplier().toFixed(1)}x</Text>
+              <Text>• All ingredient quantities are scaled proportionally</Text>
+              <Text>• You can change units using the dropdowns for more convenient measurements</Text>
+              <Text>• Original quantities are shown in gray when units are converted</Text>
             </VStack>
           </Box>
         )}

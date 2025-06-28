@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Text } from '@chakra-ui/react';
 import Recipe from './Recipe';
@@ -8,8 +8,18 @@ const CreateRecipe = () => {
   const navigate = useNavigate();
   const [, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isStatic = recipeAPI.isStaticMode();
+
+  // Redirect to recipes list if in static mode
+  useEffect(() => {
+    if (isStatic) {
+      navigate('/recipes');
+    }
+  }, [isStatic, navigate]);
 
   const handleSaveRecipe = async (recipe: RecipeData) => {
+    if (isStatic) return; // Prevent saving in static mode
+    
     try {
       setLoading(true);
       setError(null);
@@ -25,6 +35,25 @@ const CreateRecipe = () => {
       setLoading(false);
     }
   };
+
+  // Show static mode notice while redirecting
+  if (isStatic) {
+    return (
+      <Box py={6} textAlign="center">
+        <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400" mb={4} maxW="2xl" mx="auto">
+          <Text fontWeight="medium" color="blue.800" mb={2}>
+            📖 Static Mode
+          </Text>
+          <Text fontSize="sm" color="blue.700">
+            Creating new recipes is not available in the static version. Redirecting you to the recipes list...
+          </Text>
+        </Box>
+        <Button onClick={() => navigate('/recipes')} colorScheme="blue">
+          Go to Recipes
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box py={6}>

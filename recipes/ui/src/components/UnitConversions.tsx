@@ -67,6 +67,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterIngredient, setFilterIngredient] = useState('all');
+  const isStatic = recipeAPI.isStaticMode();
 
   // Form state for creating/editing conversions
   const [formData, setFormData] = useState<Partial<UnitConversion>>({
@@ -109,6 +110,8 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   };
 
   const handleCreate = async () => {
+    if (isStatic) return; // Prevent creating in static mode
+    
     try {
       if (!formData.from_unit || !formData.to_unit || !formData.conversion_factor) {
         showNotification('Please fill in all required fields', 'error');
@@ -135,6 +138,8 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   };
 
   const handleUpdate = async (id: number, updatedData: Partial<UnitConversion>) => {
+    if (isStatic) return; // Prevent updating in static mode
+    
     try {
       const updatedConversion = await recipeAPI.updateUnitConversion(id, updatedData);
       setConversions(prev => prev.map(conv => conv.id === id ? updatedConversion : conv));
@@ -148,6 +153,8 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   };
 
   const handleDelete = async (id: number) => {
+    if (isStatic) return; // Prevent deleting in static mode
+    
     if (!window.confirm('Are you sure you want to delete this unit conversion?')) {
       return;
     }
@@ -243,18 +250,35 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   return (
     <Box maxW="6xl" mx="auto" p={6}>
       <VStack gap={6} align="stretch">
+        {/* Static Mode Notice */}
+        {isStatic && (
+          <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
+            <Text fontWeight="medium" color="blue.800" mb={1}>
+              📖 Unit Conversions Reference
+            </Text>
+            <Text fontSize="sm" color="blue.700">
+              You're viewing the unit conversions database in read-only mode. Creating or editing conversions is not available in this version.
+            </Text>
+          </Box>
+        )}
+
         {/* Header */}
         <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
           <Box>
             <Text fontSize="2xl" fontWeight="bold">Unit Conversions</Text>
-            <Text color="gray.600">Manage unit conversion factors for recipes</Text>
+            <Text color="gray.600">
+              {isStatic 
+                ? 'Browse unit conversion factors used in recipes'
+                : 'Manage unit conversion factors for recipes'
+              }
+            </Text>
             {filterIngredient !== 'all' && filterIngredient !== 'general' && (
               <Text fontSize="sm" color="orange.600" mt={1}>
                 Showing conversions for: <strong>{getIngredientName(parseInt(filterIngredient))}</strong>
               </Text>
             )}
           </Box>
-          {isAuthorized && (
+          {isAuthorized && !isStatic && (
             <Button
               colorScheme="blue"
               onClick={() => setShowCreateForm(!showCreateForm)}
@@ -266,12 +290,12 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
         </Flex>
 
         {/* Create Form */}
-        {isAuthorized && showCreateForm && (
-          <Box p={4} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.200">
-            <Text fontSize="lg" fontWeight="semibold" mb={4}>Add New Unit Conversion</Text>
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+        {showCreateForm && !isStatic && (
+          <Box p={4} bg="gray.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
+            <Text fontWeight="medium" mb={4}>Add New Unit Conversion</Text>
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={1}>From Unit *</Text>
+                <Text fontSize="sm" fontWeight="medium" mb={1}>From Unit</Text>
                 <Input
                   value={formData.from_unit || ''}
                   onChange={(e) => setFormData({...formData, from_unit: e.target.value})}
@@ -279,7 +303,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 />
               </Box>
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={1}>To Unit *</Text>
+                <Text fontSize="sm" fontWeight="medium" mb={1}>To Unit</Text>
                 <Input
                   value={formData.to_unit || ''}
                   onChange={(e) => setFormData({...formData, to_unit: e.target.value})}
@@ -287,16 +311,16 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 />
               </Box>
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={1}>Conversion Factor *</Text>
+                <Text fontSize="sm" fontWeight="medium" mb={1}>Conversion Factor</Text>
                 <Input
                   type="number"
                   step="0.000001"
                   value={formData.conversion_factor || ''}
-                  onChange={(e) => setFormData({...formData, conversion_factor: parseFloat(e.target.value) || 0})}
-                  placeholder="e.g., 236.588"
+                  onChange={(e) => setFormData({...formData, conversion_factor: parseFloat(e.target.value) || 1})}
+                  placeholder="1.0"
                 />
                 <Text fontSize="xs" color="gray.600" mt={1}>
-                  Multiply "from unit" by this number to get "to unit"
+                  How many {formData.to_unit || 'to-units'} equal 1 {formData.from_unit || 'from-unit'}
                 </Text>
               </Box>
               <Box>
@@ -304,7 +328,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 <Input
                   value={formData.category || ''}
                   onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  placeholder="e.g., volume, mass, custom"
+                  placeholder="custom"
                 />
               </Box>
               <Box>
@@ -412,20 +436,20 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
         {/* Conversions Grid */}
         <VStack gap={3} align="stretch">
           {/* Header */}
-          <SimpleGrid columns={{ base: 1, md: isAuthorized ? 6 : 5 }} gap={4} p={3} bg="gray.100" borderRadius="md" fontWeight="semibold" fontSize="sm">
+          <SimpleGrid columns={{ base: 1, md: (isAuthorized && !isStatic) ? 6 : 5 }} gap={4} p={3} bg="gray.100" borderRadius="md" fontWeight="semibold" fontSize="sm">
             <Text>From Unit</Text>
             <Text>To Unit</Text>
             <Text>Conversion Factor</Text>
             <Text>Category</Text>
             <Text>Ingredient</Text>
-            {isAuthorized && <Text>Actions</Text>}
+            {isAuthorized && !isStatic && <Text>Actions</Text>}
           </SimpleGrid>
 
           {/* Conversions */}
           {filteredConversions.map((conversion) => (
-            <SimpleGrid key={conversion.id} columns={{ base: 1, md: isAuthorized ? 6 : 5 }} gap={4} p={3} borderRadius="md" border="1px solid" borderColor="gray.200" alignItems="center">
+            <SimpleGrid key={conversion.id} columns={{ base: 1, md: (isAuthorized && !isStatic) ? 6 : 5 }} gap={4} p={3} borderRadius="md" border="1px solid" borderColor="gray.200" alignItems="center">
               <Box>
-                {editingId === conversion.id ? (
+                {editingId === conversion.id && !isStatic ? (
                   <Input
                     value={formData.from_unit || ''}
                     onChange={(e) => setFormData({...formData, from_unit: e.target.value})}
@@ -436,7 +460,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 )}
               </Box>
               <Box>
-                {editingId === conversion.id ? (
+                {editingId === conversion.id && !isStatic ? (
                   <Input
                     value={formData.to_unit || ''}
                     onChange={(e) => setFormData({...formData, to_unit: e.target.value})}
@@ -447,7 +471,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 )}
               </Box>
               <Box>
-                {editingId === conversion.id ? (
+                {editingId === conversion.id && !isStatic ? (
                   <Input
                     type="number"
                     step="0.000001"
@@ -460,7 +484,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 )}
               </Box>
               <Box>
-                {editingId === conversion.id ? (
+                {editingId === conversion.id && !isStatic ? (
                   <Input
                     value={formData.category || ''}
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
@@ -471,7 +495,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 )}
               </Box>
               <Box>
-                {editingId === conversion.id ? (
+                {editingId === conversion.id && !isStatic ? (
                   <select
                     value={formData.ingredient_id?.toString() || ''}
                     onChange={(e) => setFormData({...formData, ingredient_id: e.target.value ? parseInt(e.target.value) : undefined})}
@@ -494,7 +518,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                   <Text>{getIngredientName(conversion.ingredient_id)}</Text>
                 )}
               </Box>
-              {isAuthorized && (
+              {isAuthorized && !isStatic && (
                 <HStack gap={1}>
                   {editingId === conversion.id ? (
                     <>

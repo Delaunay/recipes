@@ -17,6 +17,7 @@ const RecipeList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const isStatic = recipeAPI.isStaticMode();
 
   useEffect(() => {
     fetchRecipes();
@@ -67,11 +68,13 @@ const RecipeList = () => {
     return (
       <Box textAlign="center" py={10}>
         <Text fontSize="lg" color="gray.600" mb={4}>
-          No recipes found. Create your first recipe!
+          {isStatic ? 'No recipes available in this static version.' : 'No recipes found. Create your first recipe!'}
         </Text>
-        <Button colorScheme="blue" onClick={() => navigate('/create')}>
-          Create Recipe
-        </Button>
+        {!isStatic && (
+          <Button colorScheme="blue" onClick={() => navigate('/create')}>
+            Create Recipe
+          </Button>
+        )}
       </Box>
     );
   }
@@ -79,6 +82,18 @@ const RecipeList = () => {
   return (
     <Box py={6}>
       <VStack gap={6} align="stretch">
+        {/* Static Mode Notice */}
+        {isStatic && (
+          <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
+            <Text fontWeight="medium" color="blue.800" mb={1}>
+              📖 Static Recipe Collection
+            </Text>
+            <Text fontSize="sm" color="blue.700">
+              You're viewing a read-only collection of recipes. Creating new recipes is not available in this version.
+            </Text>
+          </Box>
+        )}
+
         <Box>
           <Text fontSize="3xl" fontWeight="bold" mb={2}>
             All Recipes
@@ -87,9 +102,11 @@ const RecipeList = () => {
             <Text fontSize="lg" color="gray.600">
               {recipes.length} recipe{recipes.length !== 1 ? 's' : ''} found
             </Text>
-            <Button colorScheme="blue" onClick={() => navigate('/create')}>
-              Create New Recipe
-            </Button>
+            {!isStatic && (
+              <Button colorScheme="blue" onClick={() => navigate('/create')}>
+                Create New Recipe
+              </Button>
+            )}
           </HStack>
         </Box>
 
@@ -106,48 +123,43 @@ const RecipeList = () => {
                   </Link>
                 </Heading>
               </Box>
-              <Box pt={0}>
-                {recipe.description && (
-                  <Text color="gray.600" mb={3}>
-                    {recipe.description.length > 100 
-                      ? `${recipe.description.substring(0, 100)}...` 
-                      : recipe.description}
-                  </Text>
+              
+              {recipe.description && (
+                <Text fontSize="sm" color="gray.600" mb={3}>
+                  {recipe.description}
+                </Text>
+              )}
+              
+              <HStack gap={4} fontSize="sm" color="gray.500" mb={3}>
+                {recipe.prep_time && (
+                  <Text>Prep: {recipe.prep_time}min</Text>
                 )}
-                <VStack align="start" gap={2}>
-                  {(recipe.prep_time || recipe.cook_time) && (
-                    <HStack gap={4}>
-                      {recipe.prep_time && (
-                        <Text fontSize="sm" color="gray.500">
-                          Prep: {recipe.prep_time}min
-                        </Text>
-                      )}
-                      {recipe.cook_time && (
-                        <Text fontSize="sm" color="gray.500">
-                          Cook: {recipe.cook_time}min
-                        </Text>
-                      )}
-                    </HStack>
-                  )}
-                  {recipe.servings && (
-                    <Text fontSize="sm" color="gray.500">
-                      Serves: {recipe.servings}
-                    </Text>
-                  )}
-                  <HStack gap={2} mt={3}>
-                    <Link to={`/recipes/${recipe.id}`}>
-                      <Button size="sm" colorScheme="blue" variant="solid">
-                        View by ID
-                      </Button>
-                    </Link>
-                    <Link to={`/recipes/${formatRecipeName(recipe.title)}`}>
-                      <Button size="sm" colorScheme="green" variant="outline">
-                        View by Name
-                      </Button>
-                    </Link>
-                  </HStack>
-                </VStack>
-              </Box>
+                {recipe.cook_time && (
+                  <Text>Cook: {recipe.cook_time}min</Text>
+                )}
+                {recipe.servings && (
+                  <Text>Serves: {recipe.servings}</Text>
+                )}
+              </HStack>
+              
+              <VStack gap={2} align="stretch">
+                <Button 
+                  size="sm" 
+                  colorScheme="blue" 
+                  variant="solid"
+                  onClick={() => navigate(`/recipes/${recipe.id}`)}
+                >
+                  View Recipe
+                </Button>
+                
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => navigate(`/recipes/${formatRecipeName(recipe.title)}`)}
+                >
+                  View by Name
+                </Button>
+              </VStack>
             </Box>
           ))}
         </SimpleGrid>
