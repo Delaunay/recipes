@@ -57,6 +57,14 @@ interface UnitConversion {
   extension?: any;
 }
 
+interface UnitConversionResult {
+  quantity: number;
+  unit: string;
+  ingredient_id: number;
+  original_quantity: number;
+  original_unit: string;
+}
+
 class RecipeAPI {
   private async requestStatic<T>(endpoint: string): Promise<T> {
     // Convert endpoint to static JSON file path
@@ -69,7 +77,10 @@ class RecipeAPI {
     }
     
     // Handle query parameters by removing them for static files
-    const cleanPath = jsonPath.split('?')[0];
+    // const cleanPath = jsonPath.split('?')[0];
+    const cleanPath = jsonPath;
+
+    console.log('Static API request:', { endpoint, jsonPath, cleanPath });
     
     // Debug logging (only in development)
     if (import.meta.env.DEV) {
@@ -245,21 +256,16 @@ class RecipeAPI {
     return this.request<string[]>(`/units/available/${ingredientId}/${fromUnit}`);
   }
 
-  async convertUnit(ingredientId: number, quantity: number, fromUnit: string, toUnit: string): Promise<{
-    quantity: number;
-    unit: string;
-    ingredient_id: number;
-    original_quantity: number;
-    original_unit: string;
-  }> {
-    const url = `/unit/conversions/${ingredientId}/${fromUnit}/${toUnit}?quantity=${quantity}`;
-    return this.request<{
-      quantity: number;
-      unit: string;
-      ingredient_id: number;
-      original_quantity: number;
-      original_unit: string;
-    }>(url);
+  async convertUnit(ingredientId: number, quantity: number, fromUnit: string, toUnit: string): Promise<UnitConversionResult> {
+    const url = `/unit/conversions/${ingredientId}/${fromUnit}/${toUnit}?quantity=1.0`;
+    const result = await this.request<UnitConversionResult>(url);
+    
+    // Scale the returned quantity by the original quantity
+    return {
+      ...result,
+      quantity: result.quantity * quantity,
+      original_quantity: quantity
+    };
   }
 
   // Unit conversion CRUD methods
@@ -339,4 +345,4 @@ class RecipeAPI {
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
-export type { RecipeData, Ingredient, Category, Instruction, UnitConversion }; 
+export type { RecipeData, Ingredient, Category, Instruction, UnitConversion, UnitConversionResult }; 

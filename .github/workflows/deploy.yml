@@ -57,10 +57,6 @@ jobs:
         if [ -f recipes/requirements.txt ]; then pip install -r recipes/requirements.txt; fi
         pip install -e .
 
-    - name: Install Node.js dependencies (root)
-      run: |
-        if [ -f package.json ]; then npm ci; fi
-
     - name: Install Node.js dependencies (UI)
       run: |
         cd recipes/ui
