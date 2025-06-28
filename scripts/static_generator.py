@@ -171,29 +171,33 @@ class StaticSiteGenerator:
         for ingredient in self.ingredients_data:
             ingredient_id = ingredient.get('id')
             if ingredient_id:
-                # Common units to check
-                common_units = ['g', 'kg', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'oz', 'lb']
+                # We use grams as the base unit so we know gram will always be available
+                # and we will also always convert to grams
+                endpoint = f"/units/available/{ingredient_id}/g"
+                available_units = self.fetch_json(endpoint) + ["g"]
+                available_units = list(set(available_units))
+                self.save_json_file(endpoint, available_units)
                 
-                for from_unit in common_units:
-                    # Available units endpoint
-                    endpoint = f"/units/available/{ingredient_id}/{from_unit}"
+                for unit in available_units:
+                    endpoint = f"/unit/conversions/{ingredient_id}/g/{unit}"
+                    
                     data = self.fetch_json(endpoint)
                     if data:
                         self.save_json_file(endpoint, data)
                         
                     # Unit conversion endpoints
-                    for to_unit in common_units:
-                        if from_unit != to_unit:
-                            endpoint = f"/unit/conversions/{ingredient_id}/{from_unit}/{to_unit}"
-                            # Add quantity parameter
-                            url = f"{self.api_base}{endpoint}"
-                            try:
-                                response = requests.get(url, timeout=5)
-                                if response.status_code == 200:
-                                    data = response.json()
-                                    self.save_json_file(f"{endpoint}", data)
-                            except requests.exceptions.RequestException:
-                                pass  # Skip failed conversions
+                    # for to_unit in common_units:
+                    #     if from_unit != to_unit:
+                    #         endpoint = f"/unit/conversions/{ingredient_id}/{from_unit}/{to_unit}"
+                    #         # Add quantity parameter
+                    #         url = f"{self.api_base}{endpoint}"
+                    #         try:
+                    #             response = requests.get(url, timeout=5)
+                    #             if response.status_code == 200:
+                    #                 data = response.json()
+                    #                 self.save_json_file(f"{endpoint}", data)
+                    #         except requests.exceptions.RequestException:
+                    #             pass  # Skip failed conversions
                                 
     def crawl_api_endpoints(self):
         """Crawl all API endpoints and save JSON responses"""
