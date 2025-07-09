@@ -16,7 +16,7 @@ def main():
     
     # Configuration from environment variables
     host = os.getenv('FLASK_HOST', '0.0.0.0')
-    port = int(os.getenv('FLASK_PORT', '5000'))
+    port = int(os.getenv('FLASK_PORT', '5001'))
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
     print("🍳 Starting Recipe API Server...")

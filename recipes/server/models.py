@@ -147,6 +147,34 @@ class Recipe(Base):
             'categories': [category.to_json() for category in self.categories] if self.categories else []
         }
 
+
+class IngredientComposition(Base):
+    __tablename__ = 'ingredient_compositions'
+    
+    _id = Column(Integer, primary_key=True)
+    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
+
+    name = Column(String(50), unique=True, nullable=False)
+    quantity = Column(Float, nullable=False)
+    unit = Column(String(50), nullable=False)
+
+    extension = Column(JSON)
+
+    ingredient = relationship('Ingredient')
+
+    def __repr__(self):
+        return f'<IngredientComposition {self.name}>'
+
+    def to_json(self):
+        return {
+            'id': self._id,
+            'ingredient_id': self.ingredient_id,
+            'name': self.name,
+            'quantity': self.quantity,
+            'unit': self.unit,
+            'extension': self.extension
+        }
+
 class Ingredient(Base):
     __tablename__ = 'ingredients'
 
@@ -165,6 +193,7 @@ class Ingredient(Base):
 
     # Relationships
     recipe_ingredients = relationship('RecipeIngredient', back_populates='ingredient')
+    compositions = relationship('IngredientComposition', back_populates='ingredient')
 
     def __repr__(self):
         return f'<Ingredient {self.name}>'
@@ -178,6 +207,7 @@ class Ingredient(Base):
             'density': self.density,
             'extension': self.extension
         }
+
 
 class Category(Base):
     __tablename__ = 'categories'
