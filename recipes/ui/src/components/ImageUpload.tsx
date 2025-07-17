@@ -15,13 +15,13 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 // Simple icons
 const UploadIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
   </svg>
 );
 
 const DeleteIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
   </svg>
 );
 
@@ -32,6 +32,7 @@ interface ImageUploadProps {
   multiple?: boolean;
   maxImages?: number;
   disabled?: boolean;
+  recipeId?: number;
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -40,7 +41,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   existingImages = [],
   multiple = false,
   maxImages = 5,
-  disabled = false
+  disabled = false,
+  recipeId
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -60,10 +62,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const handleFileUpload = useCallback(async (files: FileList) => {
     if (disabled) return;
-    
+
     const fileArray = Array.from(files);
     const remainingSlots = maxImages - existingImages.length;
-    
+
     if (fileArray.length > remainingSlots) {
       showMessage(`You can only upload ${remainingSlots} more image(s)`, true);
       return;
@@ -82,7 +84,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
         // No file size limit - removed validation
 
-        const result = await recipeAPI.uploadImage(file);
+        const result = await recipeAPI.uploadImage(file, recipeId);
         onImageUpload(result.url);
         showMessage("Image uploaded successfully");
 
@@ -93,7 +95,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     } finally {
       setUploading(false);
     }
-  }, [disabled, maxImages, existingImages.length, onImageUpload, multiple]);
+  }, [disabled, maxImages, existingImages.length, onImageUpload, multiple, recipeId]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -108,9 +110,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    
+
     if (disabled) return;
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       handleFileUpload(files);
@@ -200,7 +202,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             multiple={multiple}
             style={{ display: 'none' }}
           />
-          
+
           <Box
             border="2px dashed"
             borderColor={dragOver ? "blue.400" : "gray.300"}
@@ -267,4 +269,4 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   );
 };
 
-export default ImageUpload; 
+export default ImageUpload;

@@ -11,19 +11,29 @@ from flask_cors import CORS
 from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient
 
 
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, '..'))
+
+STATIC_FOLDER = os.path.join(ROOT, 'static')
+STATIC_UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, 'uploads')
+
+
 class RecipeApp:
     def __init__(self):
-        self.app = Flask(__name__)
+        print(STATIC_FOLDER)
+
+        self.app = Flask(__name__, static_folder=STATIC_FOLDER)
         self.app.config['JSON_SORT_KEYS'] = False
         self.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///project.db"
-        
+
         # Configure file uploads
         self.app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
         # No file size limit
-        
+
         # Create uploads directory if it doesn't exist
         os.makedirs(self.app.config['UPLOAD_FOLDER'], exist_ok=True)
-        
+
         # Allowed file extensions
         self.ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -46,7 +56,7 @@ class RecipeApp:
 
         # users = db.session.execute(db.select(User).order_by(User.username)).scalars()
         self.setup_routes()
-    
+
     def setup_routes(self):
         @self.app.route('/')
         def home() -> Dict[str, str]:
@@ -60,12 +70,12 @@ class RecipeApp:
         def get_recipes() -> Dict[str, Any]:
             recipes = self.db.session.query(Recipe).all()
             return jsonify([recipe.to_json() for recipe in recipes])
-        
+
         @self.app.route('/recipes', methods=['POST'])
         def create_recipe() -> Dict[str, Any]:
             try:
                 data = request.get_json()
-                
+
                 # Create new recipe
                 recipe = Recipe(
                     title=data.get('title'),
@@ -77,10 +87,10 @@ class RecipeApp:
                     images=data.get('images', []),
                     author_id=data.get('author_id', 1)  # Default author for now
                 )
-                
+
                 self.db.session.add(recipe)
                 self.db.session.flush()  # Get the ID
-                
+
                 # Handle ingredients if provided
                 if 'ingredients' in data:
                     for ing_data in data['ingredients']:
@@ -90,7 +100,7 @@ class RecipeApp:
                             ingredient = Ingredient(name=ing_data['name'])
                             self.db.session.add(ingredient)
                             self.db.session.flush()
-                        
+
                         # Create RecipeIngredient with quantity and unit
                         recipe_ingredient = RecipeIngredient(
                             recipe_id=recipe._id,
@@ -99,7 +109,7 @@ class RecipeApp:
                             unit=ing_data.get('unit', 'piece')
                         )
                         self.db.session.add(recipe_ingredient)
-                
+
                 # Handle categories if provided
                 if 'categories' in data:
                     for cat_data in data['categories']:
@@ -109,33 +119,33 @@ class RecipeApp:
                             category = self.db.session.query(Category).filter_by(name=cat_data['name']).first()
                             if not category:
                                 category = Category(
-                                    name=cat_data['name'], 
+                                    name=cat_data['name'],
                                     description=cat_data.get('description', '')
                                 )
                                 self.db.session.add(category)
                                 self.db.session.flush()
-                            
+
                             recipe.categories.append(category)
                         else:
                             # Existing category with real ID
                             category = self.db.session.get(Category, cat_data['id'])
                             if category:
                                 recipe.categories.append(category)
-                
+
                 self.db.session.commit()
                 return jsonify(recipe.to_json()), 201
-                
+
             except Exception as e:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
-        
+
         @self.app.route('/recipes/<int:recipe_id>', methods=['GET'])
         def get_recipe(recipe_id: int) -> Dict[str, Any]:
             recipe = self.db.session.get(Recipe, recipe_id)
             if not recipe:
                 return jsonify({"error": "Recipe not found"}), 404
             return jsonify(recipe.to_json())
-        
+
         @self.app.route('/recipes/<string:recipe_name>', methods=['GET'])
         def get_recipe_by_name(recipe_name: str) -> Dict[str, Any]:
             # Replace hyphens with spaces for URL-friendly names
@@ -144,16 +154,16 @@ class RecipeApp:
             if not recipe:
                 return jsonify({"error": "Recipe not found"}), 404
             return jsonify(recipe.to_json())
-        
+
         @self.app.route('/recipes/<int:recipe_id>', methods=['PUT'])
         def update_recipe(recipe_id: int) -> Dict[str, Any]:
             try:
                 recipe = self.db.session.get(Recipe, recipe_id)
                 if not recipe:
                     return jsonify({"error": "Recipe not found"}), 404
-                
+
                 data = request.get_json()
-                
+
                 # Update recipe fields
                 recipe.title = data.get('title', recipe.title)
                 recipe.description = data.get('description', recipe.description)
@@ -162,13 +172,13 @@ class RecipeApp:
                 recipe.cook_time = data.get('cook_time', recipe.cook_time)
                 recipe.servings = data.get('servings', recipe.servings)
                 recipe.images = data.get('images', recipe.images)
-                
+
                 # Handle ingredients update
                 if 'ingredients' in data:
                     # Clear existing recipe ingredients
                     for recipe_ingredient in recipe.recipe_ingredients:
                         self.db.session.delete(recipe_ingredient)
-                    
+
                     for ing_data in data['ingredients']:
                         # Find or create ingredient
                         ingredient = self.db.session.query(Ingredient).filter_by(name=ing_data['name']).first()
@@ -176,7 +186,7 @@ class RecipeApp:
                             ingredient = Ingredient(name=ing_data['name'])
                             self.db.session.add(ingredient)
                             self.db.session.flush()
-                        
+
                         # Create new RecipeIngredient with quantity and unit
                         recipe_ingredient = RecipeIngredient(
                             recipe_id=recipe._id,
@@ -185,7 +195,7 @@ class RecipeApp:
                             unit=ing_data.get('unit', 'piece')
                         )
                         self.db.session.add(recipe_ingredient)
-                
+
                 # Handle categories update
                 if 'categories' in data:
                     recipe.categories.clear()
@@ -196,37 +206,37 @@ class RecipeApp:
                             category = self.db.session.query(Category).filter_by(name=cat_data['name']).first()
                             if not category:
                                 category = Category(
-                                    name=cat_data['name'], 
+                                    name=cat_data['name'],
                                     description=cat_data.get('description', '')
                                 )
                                 self.db.session.add(category)
                                 self.db.session.flush()
-                            
+
                             recipe.categories.append(category)
                         else:
                             # Existing category with real ID
                             category = self.db.session.get(Category, cat_data['id'])
                             if category:
                                 recipe.categories.append(category)
-                
+
                 self.db.session.commit()
                 return jsonify(recipe.to_json())
-                
+
             except Exception as e:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
-        
+
         @self.app.route('/recipes/<int:recipe_id>', methods=['DELETE'])
         def delete_recipe(recipe_id: int) -> Dict[str, Any]:
             try:
                 recipe = self.db.session.get(Recipe, recipe_id)
                 if not recipe:
                     return jsonify({"error": "Recipe not found"}), 404
-                
+
                 self.db.session.delete(recipe)
                 self.db.session.commit()
                 return jsonify({"message": "Recipe deleted successfully"})
-                
+
             except Exception as e:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
@@ -235,7 +245,7 @@ class RecipeApp:
         def get_ingredients() -> Dict[str, Any]:
             ingredients = self.db.session.query(Ingredient).all()
             return jsonify([ingredient.to_json() for ingredient in ingredients])
-        
+
         @self.app.route('/ingredients', methods=['POST'])
         def create_ingredient() -> Dict[str, Any]:
             try:
@@ -270,19 +280,19 @@ class RecipeApp:
                 ingredient = self.db.session.get(Ingredient, ingredient_id)
                 if not ingredient:
                     return jsonify({"error": "Ingredient not found"}), 404
-                
+
                 data = request.get_json()
-                
+
                 # Update ingredient fields
                 ingredient.name = data.get('name', ingredient.name)
                 ingredient.description = data.get('description', ingredient.description)
                 ingredient.calories = data.get('calories', ingredient.calories)
                 ingredient.density = data.get('density', ingredient.density)
                 ingredient.extension = data.get('extension', ingredient.extension)
-                
+
                 self.db.session.commit()
                 return jsonify(ingredient.to_json())
-                
+
             except Exception as e:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
@@ -293,16 +303,16 @@ class RecipeApp:
                 ingredient = self.db.session.get(Ingredient, ingredient_id)
                 if not ingredient:
                     return jsonify({"error": "Ingredient not found"}), 404
-                
+
                 # Check if ingredient is used in any recipes
                 recipe_count = self.db.session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).count()
                 if recipe_count > 0:
                     return jsonify({"error": f"Cannot delete ingredient. It is used in {recipe_count} recipe(s)."}), 400
-                
+
                 self.db.session.delete(ingredient)
                 self.db.session.commit()
                 return jsonify({"message": "Ingredient deleted successfully"})
-                
+
             except Exception as e:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
@@ -311,7 +321,7 @@ class RecipeApp:
         def get_categories() -> Dict[str, Any]:
             categories = self.db.session.query(Category).all()
             return jsonify([category.to_json() for category in categories])
-        
+
         @self.app.route('/categories', methods=['POST'])
         def create_category() -> Dict[str, Any]:
             try:
@@ -360,19 +370,19 @@ class RecipeApp:
                 conversion = self.db.session.get(UnitConversion, conversion_id)
                 if not conversion:
                     return jsonify({"error": "Unit conversion not found"}), 404
-                
+
                 data = request.get_json()
-                
+
                 # Update conversion fields
                 conversion.from_unit = data.get('from_unit', conversion.from_unit)
                 conversion.to_unit = data.get('to_unit', conversion.to_unit)
                 conversion.conversion_factor = data.get('conversion_factor', conversion.conversion_factor)
                 conversion.category = data.get('category', conversion.category)
                 conversion.ingredient_id = data.get('ingredient_id') if data.get('ingredient_id') else None
-                
+
                 self.db.session.commit()
                 return jsonify(conversion.to_json())
-                
+
             except Exception as e:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
@@ -383,11 +393,11 @@ class RecipeApp:
                 conversion = self.db.session.get(UnitConversion, conversion_id)
                 if not conversion:
                     return jsonify({"error": "Unit conversion not found"}), 404
-                
+
                 self.db.session.delete(conversion)
                 self.db.session.commit()
                 return jsonify({"message": "Unit conversion deleted successfully"})
-                
+
             except Exception as e:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
@@ -395,7 +405,7 @@ class RecipeApp:
         @self.app.route('/units/available/<int:ingredient_id>/<string:from_unit>', methods=['GET'])
         def available_units(ingredient_id: int, from_unit: str) -> Dict[str, Any]:
             conversions = self.db.session.query(UnitConversion).filter(
-                UnitConversion.ingredient_id == ingredient_id, 
+                UnitConversion.ingredient_id == ingredient_id,
                 UnitConversion.from_unit == from_unit
             ).all()
             return jsonify([conversion.to_unit for conversion in conversions])
@@ -404,9 +414,9 @@ class RecipeApp:
         def convert_unit(ingredient_id: int, from_unit: str, to_unit: str) -> Dict[str, Any]:
             # Get quantity from query parameters, default to 1.0
             quantity = float(request.args.get('quantity', 1.0))
-            
+
             conversion = convert(
-                self.db.session, 
+                self.db.session,
                 RecipeIngredient(
                     ingredient_id=ingredient_id,
                     quantity=quantity,
@@ -415,44 +425,55 @@ class RecipeApp:
                 to_unit
             )
             return jsonify({
-                "quantity": conversion, 
-                "unit": to_unit, 
+                "quantity": conversion,
+                "unit": to_unit,
                 "ingredient_id": ingredient_id,
                 "original_quantity": quantity,
                 "original_unit": from_unit
             })
 
+
+        def generate_redistribuable_image(self, file_path: str) -> str:
+            pass
+
         @self.app.route('/upload', methods=['POST'])
         def upload_file() -> Dict[str, Any]:
             """Upload a single image file"""
+            # Github file limit
+            #    * Soft limit
+            #       * With Git:  50 MiB
+            #       * With the Browser: 25 MiB
+            #    * Hard limit: 100 MiB
+            #       * With the Browser: 100 MiB
             try:
                 if 'file' not in request.files:
                     return jsonify({"error": "No file provided"}), 400
-                
+
                 file = request.files['file']
                 if file.filename == '':
                     return jsonify({"error": "No file selected"}), 400
-                
+
                 if not self.allowed_file(file.filename):
                     return jsonify({"error": "File type not allowed. Please use: png, jpg, jpeg, gif, webp"}), 400
-                
+
                 # Generate unique filename
                 file_extension = file.filename.rsplit('.', 1)[1].lower()
                 unique_filename = f"{uuid.uuid4()}.{file_extension}"
-                
+
                 # Save file
                 file_path = os.path.join(self.app.config['UPLOAD_FOLDER'], unique_filename)
                 file.save(file_path)
-                
-                print(file)
-                
+
+                # --
+                generate_redistribuable_image(file)
+
                 # Return the file URL
                 file_url = f"/uploads/{unique_filename}"
                 return jsonify({
                     "url": file_url,
                     "filename": unique_filename
                 }), 201
-                
+
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
