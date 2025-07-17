@@ -1,5 +1,6 @@
 from typing import Dict, Any
 import os
+import sys
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -10,13 +11,23 @@ from flask_cors import CORS
 
 from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, '..'))
+
+STATIC_FOLDER_DEFAULT = os.path.join(ROOT, 'static')
+STATIC_FOLDER = os.path.abspath(os.getenv("FLASK_STATIC", STATIC_FOLDER_DEFAULT))
+STATIC_UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, 'uploads')
+
+ROOT = os.path.join(STATIC_FOLDER, "..")
+
 
 class RecipeApp:
     def __init__(self):
-        self.app = Flask(__name__)
+        print(STATIC_FOLDER)
+        self.app = Flask(__name__, static_folder=STATIC_FOLDER)
         self.app.config['JSON_SORT_KEYS'] = False
-        self.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///project.db"
-        
+        self.app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{ROOT}/database.db"
+
         # Configure file uploads
         self.app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
         # No file size limit
@@ -48,9 +59,13 @@ class RecipeApp:
         self.setup_routes()
     
     def setup_routes(self):
-        @self.app.route('/')
-        def home() -> Dict[str, str]:
-            return jsonify({"message": "Welcome to the Recipe API"})
+        @self.app.route('/', defaults={'path': ''})
+        @self.app.route('/<path:path>')
+        def serve_frontend(path):
+            if path != "" and os.path.exists(os.path.join(self.app.static_folder, path)):
+                return send_from_directory(self.app.static_folder, path)
+            else:
+                return send_from_directory(self.app.static_folder, 'index.html')
 
         @self.app.route('/health')
         def health_check() -> Dict[str, str]:

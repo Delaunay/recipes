@@ -35,5 +35,11 @@ def main():
         print(f"❌ Error starting server: {e}")
         sys.exit(1)
 
+
+def entry():
+    app = RecipeApp()
+    return app.app
+
+
 if __name__ == '__main__':
     main() 
