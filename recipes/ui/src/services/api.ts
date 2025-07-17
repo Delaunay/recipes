@@ -75,13 +75,13 @@ class RecipeAPI {
     // Convert endpoint to static JSON file path
     let jsonPath = endpoint;
     let cleanEndpoint = endpoint.split('?')[0];
-    
+
     if (endpoint === '/') {
       jsonPath = `${API_BASE_URL}/index.json`;
     } else if (endpoint.startsWith('/')) {
       jsonPath = `${API_BASE_URL}${cleanEndpoint}.json`;
     }
-    
+
     // Handle query parameters by removing them for static files
     const cleanPath = jsonPath;
 
@@ -89,7 +89,7 @@ class RecipeAPI {
     if (import.meta.env.DEV) {
       console.log('Static API request:', { endpoint, jsonPath, cleanPath });
     }
-    
+
     try {
       const response = await fetch(cleanPath);
       if (!response.ok) {
@@ -105,14 +105,14 @@ class RecipeAPI {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     // Debug logging (only in development)
     if (import.meta.env.DEV) {
-      console.log('API Request:', { 
-        endpoint, 
-        isStatic: isStaticMode(), 
-        apiBaseUrl: API_BASE_URL, 
-        isProd: import.meta.env.PROD 
+      console.log('API Request:', {
+        endpoint,
+        isStatic: isStaticMode(),
+        apiBaseUrl: API_BASE_URL,
+        isProd: import.meta.env.PROD
       });
     }
-    
+
     // In static mode, only GET requests are supported
     if (isStaticMode()) {
       if (options.method && options.method !== 'GET') {
@@ -133,7 +133,7 @@ class RecipeAPI {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -262,7 +262,7 @@ class RecipeAPI {
   async convertUnit(ingredientId: number, quantity: number, fromUnit: string, toUnit: string): Promise<UnitConversionResult> {
     const url = `/unit/conversions/${ingredientId}/${fromUnit}/${toUnit}?quantity=1.0`;
     const result = await this.request<UnitConversionResult>(url);
-    
+
     // Scale the returned quantity by the original quantity
     return {
       ...result,
@@ -310,13 +310,18 @@ class RecipeAPI {
   }
 
   // Image upload
-  async uploadImage(file: File): Promise<{ url: string; filename: string }> {
+  async uploadImage(file: File, recipeId?: number): Promise<{ url: string; filename: string }> {
     if (isStaticMode()) {
       throw new Error('Image upload is not supported in static mode');
     }
 
     const formData = new FormData();
     formData.append('file', file);
+
+    // Add recipe_id if provided
+    if (recipeId) {
+      formData.append('recipe_id', recipeId.toString());
+    }
 
     const url = `${API_BASE_URL}/upload`;
     const config: RequestInit = {
@@ -327,7 +332,7 @@ class RecipeAPI {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -348,4 +353,4 @@ class RecipeAPI {
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
-export type { RecipeData, Ingredient, Category, Instruction, UnitConversion, UnitConversionResult }; 
+export type { RecipeData, Ingredient, Category, Instruction, UnitConversion, UnitConversionResult };

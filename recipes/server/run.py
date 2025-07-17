@@ -8,7 +8,7 @@ Simple script to run the Flask development server with the Recipe API.
 import os
 import sys
 
-from .server import RecipeApp
+from .server import RecipeApp, STATIC_FOLDER
 
 
 def main():
@@ -19,11 +19,13 @@ def main():
     port = int(os.getenv('FLASK_PORT', '5001'))
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
+    print("")
     print("🍳 Starting Recipe API Server...")
     print(f"📍 Host: {host}")
     print(f"🔌 Port: {port}")
     print(f"🐛 Debug: {debug}")
     print(f"🌐 Access at: http://localhost:{port}")
+    print(f"STATIC_FOLDER {STATIC_FOLDER}")
     print("=" * 50)
     
     try:

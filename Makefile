@@ -63,3 +63,20 @@ static-build:
 
 static:
 	cd static_build && python -m http.server
+
+# flask --app recipes.server.run:main 
+
+local-deploy:
+	cd recipes/website
+	python3 -m venv .venv
+	source .venv/bin/activate
+	pip install -r ../requirements.txt
+	pip install waitress
+	pip install ../
+	npm install --prefix ../recipes/ui
+	npm run build --prefix  ../recipes/ui
+	mv ../recipes/ui/dist ./static
+	python -c 'import secrets; print(f"SECRET_KEY = \"{secrets.token_hex()}\"")' > .venv/var/flaskr-instance/config.py
+	FLASK_STATIC="./static" FLASK_ENV=production waitress-serve --call 'recipes.server.run:main'
+
+	
