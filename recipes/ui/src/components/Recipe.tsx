@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useCallback, useRef, useEffect, FC, FormEvent, ChangeEvent } from 'react';
+import { useState, KeyboardEvent, useCallback, useRef, useEffect, FC, FormEvent, ChangeEvent, ClipboardEvent } from 'react';
 import {
   Box,
   VStack,
@@ -11,32 +11,313 @@ import {
   SimpleGrid,
   Image,
   Spinner,
+  Link,
 } from '@chakra-ui/react';
 import { RecipeData, Ingredient, Instruction, recipeAPI } from '../services/api';
 import ImageUpload from './ImageUpload';
 
+// Utility functions for ingredient references
+interface IngredientReference {
+  originalText: string;
+  ingredientName: string;
+  quantity?: string;
+  fullIngredientName?: string;
+  quantityValue?: number;
+  unit?: string;
+}
+
+// Temperature command interface
+interface TemperatureCommand {
+  originalText: string;
+  temperature: number;
+  unit: 'C' | 'F';
+}
+
+// Time command interface
+interface TimeCommand {
+  originalText: string;
+  time: number;
+  unit: string; // 'm', 'h', 's', etc.
+}
+
+// Parse ingredient references in text
+const parseIngredientReferences = (text: string): IngredientReference[] => {
+  const references: IngredientReference[] = [];
+  const regex = /@([a-zA-Z0-9_]+)(?:\{([^}]+)\})?/g;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    references.push({
+      originalText: match[0],
+      ingredientName: match[1].trim(),
+      quantity: match[2] || '1'
+    });
+  }
+
+  return references;
+};
+
+// Parse temperature commands in text
+const parseTemperatureCommands = (text: string): TemperatureCommand[] => {
+  const commands: TemperatureCommand[] = [];
+  const regex = /\$temp\{([0-9]+(?:\.[0-9]+)?)\}\{([CF])\}/g;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    commands.push({
+      originalText: match[0],
+      temperature: parseFloat(match[1]),
+      unit: match[2] as 'C' | 'F'
+    });
+  }
+
+  return commands;
+};
+
+// Parse time commands in text
+const parseTimeCommands = (text: string): TimeCommand[] => {
+  const commands: TimeCommand[] = [];
+  const regex = /\$time\{([0-9]+(?:\.[0-9]+)?)([mhs])\}/g;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    commands.push({
+      originalText: match[0],
+      time: parseFloat(match[1]),
+      unit: match[2]
+    });
+  }
+
+  return commands;
+};
+
+// Find ingredient by partial name match
+const findIngredientByName = (ingredients: Ingredient[], partialName: string): Ingredient | null => {
+  // Replace underscores with spaces for matching
+  const normalizedPartialName = partialName.replace(/_/g, ' ').toLowerCase();
+
+  // First try exact match
+  const exactMatch = ingredients.find(ing =>
+    ing.name.toLowerCase() === normalizedPartialName
+  );
+  if (exactMatch) return exactMatch;
+
+  // Then try starts with
+  const startsWithMatch = ingredients.find(ing =>
+    ing.name.toLowerCase().startsWith(normalizedPartialName)
+  );
+  if (startsWithMatch) return startsWithMatch;
+
+  // Finally try contains
+  const containsMatch = ingredients.find(ing =>
+    ing.name.toLowerCase().includes(normalizedPartialName)
+  );
+  if (containsMatch) return containsMatch;
+
+  return null;
+};
+
+// Evaluate quantity expression (e.g., "1/4", "2.5", "1+1/2")
+const evaluateQuantity = (quantityStr: string): number => {
+  try {
+    // Handle fractions like "1/4"
+    if (quantityStr.includes('/')) {
+      const [numerator, denominator] = quantityStr.split('/').map(Number);
+      return numerator / denominator;
+    }
+
+    // Handle mixed numbers like "1+1/2"
+    if (quantityStr.includes('+')) {
+      const parts = quantityStr.split('+');
+      return parts.reduce((sum, part) => sum + evaluateQuantity(part.trim()), 0);
+    }
+
+    // Handle simple numbers
+    return parseFloat(quantityStr) || 1;
+  } catch {
+    return 1;
+  }
+};
+
+// Convert temperature between Celsius and Fahrenheit
+const convertTemperature = (temp: number, fromUnit: 'C' | 'F', toUnit: 'C' | 'F'): number => {
+  if (fromUnit === toUnit) return temp;
+
+  if (fromUnit === 'C' && toUnit === 'F') {
+    return Math.round((temp * 9 / 5) + 32);
+  } else if (fromUnit === 'F' && toUnit === 'C') {
+    return Math.round((temp - 32) * 5 / 9);
+  }
+
+  return temp;
+};
+
+// Format time with appropriate unit
+const formatTime = (time: number, unit: string): string => {
+  if (unit === 'm') {
+    return `${time} min`;
+  } else if (unit === 'h') {
+    return `${time} hour${time !== 1 ? 's' : ''}`;
+  } else if (unit === 's') {
+    return `${time} second${time !== 1 ? 's' : ''}`;
+  }
+  return `${time} ${unit}`;
+};
+
+// Render instruction text with ingredient references
+interface InstructionTextRendererProps {
+  text: string;
+  ingredients: Ingredient[];
+  multiplier?: number;
+  convertedIngredients?: Record<number, ConvertedIngredient>;
+  preferredTemperatureUnit?: 'C' | 'F';
+}
+
+const InstructionTextRenderer: FC<InstructionTextRendererProps> = ({ text, ingredients, multiplier = 1, convertedIngredients = {}, preferredTemperatureUnit = 'C' }) => {
+  const [temperatureUnit, setTemperatureUnit] = useState<'C' | 'F'>(preferredTemperatureUnit);
+
+  const references = parseIngredientReferences(text);
+  const temperatureCommands = parseTemperatureCommands(text);
+  const timeCommands = parseTimeCommands(text);
+
+  if (references.length === 0 && temperatureCommands.length === 0 && timeCommands.length === 0) {
+    return <span style={{ paddingLeft: "10px" }}>{text}</span>;
+  }
+
+  let lastIndex = 0;
+  const elements: React.ReactElement[] = [];
+
+  // Process all commands in order of appearance
+  const allCommands = [
+    ...references.map(ref => ({ ...ref, type: 'ingredient' as const })),
+    ...temperatureCommands.map(cmd => ({ ...cmd, type: 'temperature' as const })),
+    ...timeCommands.map(cmd => ({ ...cmd, type: 'time' as const }))
+  ].sort((a, b) => {
+    const aIndex = text.indexOf(a.originalText);
+    const bIndex = text.indexOf(b.originalText);
+    return aIndex - bIndex;
+  });
+
+  allCommands.forEach((command, index) => {
+    const startIndex = text.indexOf(command.originalText, lastIndex);
+    const endIndex = startIndex + command.originalText.length;
+
+    // Add text before the command
+    if (startIndex > lastIndex) {
+      elements.push(
+        <span key={`text-${index}`}>
+          {text.slice(lastIndex, startIndex)}
+        </span>
+      );
+    }
+
+    if (command.type === 'ingredient') {
+      // Handle ingredient references
+      const ingredient = findIngredientByName(ingredients, command.ingredientName);
+      const quantityValue = evaluateQuantity(command.quantity || '1');
+
+      if (ingredient) {
+        const ingredientIndex = ingredients.findIndex(ing => ing.name === ingredient.name);
+        const converted = ingredientIndex >= 0 ? convertedIngredients[ingredientIndex] : null;
+
+        const baseQuantity = converted ? converted.quantity : (ingredient.quantity || 1);
+        const finalQuantity = quantityValue * baseQuantity * multiplier;
+        const unit = converted ? converted.unit : (ingredient.unit || 'unit');
+
+        const displayQuantity = `${finalQuantity.toFixed(2).replace(/\.?0+$/, '')} ${unit}`;
+        elements.push(
+          <Text as="span" key={`ref-${index}`} fontWeight="bold" color="black">
+            {ingredient.name} ({displayQuantity})
+          </Text>
+        );
+      } else {
+        elements.push(
+          <span key={`ref-${index}`} style={{ color: 'red', fontStyle: 'italic' }}>
+            {command.originalText} (ingredient not found)
+          </span>
+        );
+      }
+    } else if (command.type === 'temperature') {
+      // Handle temperature commands
+      const convertedTemp = convertTemperature(command.temperature, command.unit, temperatureUnit);
+      elements.push(
+        <Text
+          as="span"
+          key={`temp-${index}`}
+          fontWeight="bold"
+          color="black"
+          cursor="pointer"
+          onClick={() => setTemperatureUnit(temperatureUnit === 'C' ? 'F' : 'C')}
+          _hover={{
+            color: 'blue.600',
+            textDecoration: 'underline'
+          }}
+          display="inline-flex"
+          alignItems="center"
+          gap={1}
+        >
+          {convertedTemp}°{temperatureUnit}
+          <span style={{ fontSize: '1em', opacity: 0.6, paddingLeft: "2px" }}>(to °{temperatureUnit === 'C' ? 'F' : 'C'})</span>
+        </Text>
+      );
+    } else if (command.type === 'time') {
+      // Handle time commands
+      elements.push(
+        <Text as="span" key={`time-${index}`} fontWeight="bold" color="black">
+          {formatTime(command.time, command.unit)}
+        </Text>
+      );
+    }
+
+    lastIndex = endIndex;
+  });
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    elements.push(
+      <span key="text-end">
+        {text.slice(lastIndex)}
+      </span>
+    );
+  }
+
+  return <span style={{ paddingLeft: "10px" }}>{elements}</span>;
+};
+
 // Simple icon components
 const DeleteIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
   </svg>
 );
 
 const AddIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
   </svg>
 );
 
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
   </svg>
 );
 
 const CloseIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+  </svg>
+);
+
+const DragHandleIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+  </svg>
+);
+
+const ShareIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
   </svg>
 );
 
@@ -54,16 +335,86 @@ interface ContentEditableProps {
 const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, className, placeholder, multiline = false, isEditable, onKeyDown }) => {
   const divRef = useRef<HTMLDivElement>(null);
   const cursorPositionRef = useRef<number>(0);
+  const isPasteRef = useRef<boolean>(false);
+  const undoStackRef = useRef<string[]>([]);
+  const redoStackRef = useRef<string[]>([]);
+  const lastContentRef = useRef<string>('');
 
   // Save cursor position before content changes
   const handleInput = useCallback((e: FormEvent<HTMLDivElement>) => {
+    const currentContent = e.currentTarget.textContent || '';
     const selection = window.getSelection();
+
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       cursorPositionRef.current = range.startOffset;
     }
+
+    // Save to undo stack if content actually changed
+    if (currentContent !== lastContentRef.current) {
+      undoStackRef.current.push(lastContentRef.current);
+      redoStackRef.current = []; // Clear redo stack when new changes are made
+      lastContentRef.current = currentContent;
+    }
+
     onContentChange(e);
   }, [onContentChange]);
+
+  // Handle paste events
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    isPasteRef.current = true;
+    // Let the default paste behavior happen, then we'll handle cursor position
+    setTimeout(() => {
+      isPasteRef.current = false;
+    }, 0);
+  }, []);
+
+  // Handle keyboard events for undo/redo
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        // Undo
+        if (undoStackRef.current.length > 0) {
+          const previousContent = undoStackRef.current.pop()!;
+          redoStackRef.current.push(lastContentRef.current);
+          lastContentRef.current = previousContent;
+
+          if (divRef.current) {
+            divRef.current.textContent = previousContent;
+            // Trigger the input event to update the parent component
+            const inputEvent = new Event('input', { bubbles: true });
+            divRef.current.dispatchEvent(inputEvent);
+          }
+        }
+      } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+        e.preventDefault();
+        // Redo
+        if (redoStackRef.current.length > 0) {
+          const nextContent = redoStackRef.current.pop()!;
+          undoStackRef.current.push(lastContentRef.current);
+          lastContentRef.current = nextContent;
+
+          if (divRef.current) {
+            divRef.current.textContent = nextContent;
+            // Trigger the input event to update the parent component
+            const inputEvent = new Event('input', { bubbles: true });
+            divRef.current.dispatchEvent(inputEvent);
+          }
+        }
+      }
+    }
+
+    // Call the original onKeyDown handler if provided
+    if (multiline && onKeyDown) {
+      onKeyDown(e);
+    }
+  }, [multiline, onKeyDown]);
+
+  // Initialize lastContentRef when content changes
+  useEffect(() => {
+    lastContentRef.current = content;
+  }, [content]);
 
   // Restore cursor position after content update
   useEffect(() => {
@@ -72,13 +423,19 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
       if (textNode && textNode.nodeType === Node.TEXT_NODE) {
         const range = document.createRange();
         const selection = window.getSelection();
-        
+
+        // If this was a paste operation, put cursor at the end
+        if (isPasteRef.current) {
+          const maxOffset = textNode.textContent?.length || 0;
+          cursorPositionRef.current = maxOffset;
+        }
+
         const maxOffset = textNode.textContent?.length || 0;
         const offset = Math.min(cursorPositionRef.current, maxOffset);
-        
+
         range.setStart(textNode, offset);
         range.setEnd(textNode, offset);
-        
+
         if (selection) {
           selection.removeAllRanges();
           selection.addRange(range);
@@ -93,7 +450,8 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
       contentEditable={isEditable}
       suppressContentEditableWarning={true}
       onInput={handleInput}
-      onKeyDown={multiline ? onKeyDown : undefined}
+      onPaste={handlePaste}
+      onKeyDown={isEditable ? handleKeyDown : undefined}
       className={className}
       style={{
         minHeight: multiline ? '60px' : 'auto',
@@ -116,6 +474,7 @@ interface RecipeImagesProps {
   isEditable: boolean;
   onImageAdd: (imageUrl: string) => void;
   onImageRemove: (imageUrl: string) => void;
+  namespace?: string;
 }
 
 const RecipeImages: FC<RecipeImagesProps> = ({
@@ -123,9 +482,10 @@ const RecipeImages: FC<RecipeImagesProps> = ({
   isEditable,
   onImageAdd,
   onImageRemove,
+  namespace,
 }) => {
   const isStatic = recipeAPI.isStaticMode();
-  
+
   return (
     <Box>
       <Text fontSize="lg" fontWeight="semibold" mb={2}>Recipe Images</Text>
@@ -137,6 +497,7 @@ const RecipeImages: FC<RecipeImagesProps> = ({
           multiple={true}
           maxImages={5}
           disabled={false}
+          namespace={namespace}
         />
       ) : (
         images && images.length > 0 ? (
@@ -170,8 +531,15 @@ interface RecipeIngredientsProps {
   onAddIngredient: () => void;
   onRemoveIngredient: (index: number) => void;
   onUpdateIngredient: (index: number, field: keyof Ingredient, value: any) => void;
+  onReorderIngredients: (fromIndex: number, toIndex: number) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   multiplier?: number;
+  convertedIngredients: Record<number, ConvertedIngredient>;
+  setConvertedIngredients: React.Dispatch<React.SetStateAction<Record<number, ConvertedIngredient>>>;
+  availableUnits: Record<number, string[]>;
+  setAvailableUnits: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
+  loadingUnits: Record<number, boolean>;
+  setLoadingUnits: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
 }
 
 interface ConvertedIngredient {
@@ -187,17 +555,51 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   onAddIngredient,
   onRemoveIngredient,
   onUpdateIngredient,
+  onReorderIngredients,
   handleKeyDown,
   multiplier = 1.0,
+  convertedIngredients,
+  setConvertedIngredients,
+  availableUnits,
+  setAvailableUnits,
+  loadingUnits,
+  setLoadingUnits,
 }) => {
   const isStatic = recipeAPI.isStaticMode();
-  
-  // State for converted ingredient values (only used in view mode)
-  const [convertedIngredients, setConvertedIngredients] = useState<Record<number, ConvertedIngredient>>({});
-  // State for available units for each ingredient
-  const [availableUnits, setAvailableUnits] = useState<Record<number, string[]>>({});
-  // Loading state for unit conversions
-  const [loadingUnits, setLoadingUnits] = useState<Record<number, boolean>>({});
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      onReorderIngredients(draggedIndex, dropIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   // Load available units for each ingredient when not in edit mode
   useEffect(() => {
@@ -211,20 +613,20 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
           if (ingredient.id && ingredient.unit) {
             try {
               const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.id, ingredient.unit);
-              
+
               // Always include the current unit first, then add other available units
               const currentUnit = ingredient.unit;
               const availableUnits = [currentUnit];
-              
+
               // Add other units that aren't already in the list
               availableUnitsFromAPI.forEach((unit: string) => {
                 if (unit !== currentUnit && !availableUnits.includes(unit)) {
                   availableUnits.push(unit);
                 }
               });
-              
+
               newAvailableUnits[i] = availableUnits;
-              
+
               // Initialize converted ingredients with original values
               newConvertedIngredients[i] = {
                 quantity: ingredient.quantity || 1,
@@ -350,7 +752,38 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
           const isLoading = loadingUnits[index];
 
           return (
-            <HStack key={index} gap={4} align="center">
+            <HStack
+              key={index}
+              gap={4}
+              align="center"
+              bg={dragOverIndex === index ? "blue.50" : "transparent"}
+              border={dragOverIndex === index ? "2px dashed" : "1px solid"}
+              borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
+              opacity={draggedIndex === index ? 0.5 : 1}
+              transition="all 0.2s"
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, index)}
+              onDragEnd={handleDragEnd}
+            >
+              {/* Drag Handle - Left Side */}
+              {isEditable && !isStatic && (
+                <Box
+                  minW="24px"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  color="gray.400"
+                  _hover={{ color: "gray.600" }}
+                  cursor="grab"
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <DragHandleIcon />
+                </Box>
+              )}
+
               <Box minW="80px">
                 {isEditable && !isStatic ? (
                   <ContentEditable
@@ -433,27 +866,78 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
 // RecipeInstructions Component
 interface RecipeInstructionsProps {
   instructions: Instruction[];
+  ingredients: Ingredient[];
   isEditable: boolean;
   onAddInstruction: () => void;
   onRemoveInstruction: (index: number) => void;
   onUpdateInstruction: (index: number, field: keyof Instruction, value: string) => void;
   onAddInstructionImage: (index: number, imageUrl: string) => void;
   onRemoveInstructionImage: (index: number) => void;
+  onReorderInstructions: (fromIndex: number, toIndex: number) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+  baseNamespace?: string;
+  multiplier?: number;
+  convertedIngredients?: Record<number, ConvertedIngredient>;
+  preferredTemperatureUnit?: 'C' | 'F';
 }
 
 const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   instructions,
+  ingredients,
   isEditable,
   onAddInstruction,
   onRemoveInstruction,
   onUpdateInstruction,
   onAddInstructionImage,
   onRemoveInstructionImage,
+  onReorderInstructions,
   handleKeyDown,
+  baseNamespace,
+  multiplier = 1,
+  convertedIngredients = {},
+  preferredTemperatureUnit = 'C',
 }) => {
+  // Function to handle step sharing
+  const handleStepShare = (stepNumber: string) => {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.hash = `step-${stepNumber}`;
+    window.location.href = currentUrl.toString();
+  };
   const isStatic = recipeAPI.isStaticMode();
-  
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      onReorderInstructions(draggedIndex, dropIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
   return (
     <Box>
       <Flex align="center" mb={4}>
@@ -472,78 +956,168 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
         )}
       </Flex>
 
+      {isEditable && !isStatic && (
+        <Box p={3} bg="blue.50" borderRadius="md" mb={4}>
+          <Text fontSize="sm" color="blue.700" mb={2}>
+            💡 <strong>Tip:</strong> You can use special commands in your instructions:
+          </Text>
+          <VStack align="start" gap={1} fontSize="sm" color="blue.700">
+            <Text>• <strong>Ingredients:</strong> <code>@tomatoes{`{1/4}`}</code> or <code>@flour{`{2}`}</code> or just <code>@salt</code></Text>
+            <Text>• <strong>Temperatures:</strong> <code>$temp{`{180}{C}`}</code> or <code>$temp{`{350}{F}`}</code> (clickable to convert)</Text>
+            <Text>• <strong>Times:</strong> <code>$time{`{40m}`}</code> or <code>$time{`{2h}`}</code> or <code>$time{`{30s}`}</code></Text>
+          </VStack>
+        </Box>
+      )}
+
       <VStack gap={4} align="stretch">
         {instructions.map((instruction, index) => (
-          <VStack key={index} align="stretch" gap={3} p={4} borderRadius="md" bg="gray.50">
+          <VStack
+            key={index}
+            id={`step-${instruction.step}`}
+            align="stretch"
+            gap={3}
+            p={4}
+            borderRadius="md"
+            bg={dragOverIndex === index ? "blue.50" : "gray.50"}
+            border={dragOverIndex === index ? "2px dashed" : "1px solid"}
+            borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
+            opacity={draggedIndex === index ? 0.5 : 1}
+            transition="all 0.2s"
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+          >
             <HStack align="flex-start" gap={4}>
-              <Badge colorScheme="blue" fontSize="sm" px={3} py={1}>
-                Step {instruction.step}
-              </Badge>
-              <VStack flex="1" align="stretch" gap={2}>
-                <ContentEditable
-                  content={instruction.description}
-                  onContentChange={(e) => onUpdateInstruction(index, 'description', e.currentTarget.textContent || '')}
-                  multiline={true}
-                  placeholder="Enter instruction..."
-                  isEditable={isEditable && !isStatic}
-                  onKeyDown={handleKeyDown}
-                />
-                {isEditable && !isStatic && (
-                  <Box>
-                    <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
-                    <ContentEditable
-                      content={instruction.duration || ''}
-                      onContentChange={(e) => onUpdateInstruction(index, 'duration', e.currentTarget.textContent || '')}
-                      placeholder="e.g., 5 minutes"
-                      isEditable={isEditable}
-                      onKeyDown={handleKeyDown}
-                    />
-                  </Box>
-                )}
-              </VStack>
+              {/* Drag Handle - Left Side */}
               {isEditable && !isStatic && (
-                <Button
-                  size="sm"
-                  colorScheme="red"
-                  variant="ghost"
-                  onClick={() => onRemoveInstruction(index)}
+                <Box
+                  minW="24px"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  color="gray.400"
+                  _hover={{ color: "gray.600" }}
+                  cursor="grab"
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <DeleteIcon />
-                </Button>
+                  <DragHandleIcon />
+                </Box>
               )}
-            </HStack>
-            
-            {/* Step Image */}
-            <Box>
-              <Text fontSize="sm" fontWeight="medium" color="gray.700" mb={2}>
-                Step Image (optional)
-              </Text>
-              {isEditable && !isStatic ? (
-                <ImageUpload
-                  onImageUpload={(imageUrl) => onAddInstructionImage(index, imageUrl)}
-                  onImageRemove={() => onRemoveInstructionImage(index)}
-                  existingImages={instruction.image ? [instruction.image] : []}
-                  multiple={false}
-                  maxImages={1}
-                  disabled={false}
-                />
-              ) : (
-                instruction.image ? (
-                  <Image
-                    src={instruction.image.startsWith('http') ? instruction.image : `/api${instruction.image}`}
-                    alt={`Step ${instruction.step} image`}
-                    width="200px"
-                    height="150px"
-                    objectFit="cover"
-                    borderRadius="md"
-                    border="1px solid"
-                    borderColor="gray.200"
-                  />
+
+              {/* Step Image - Left Side */}
+              <Box minW="200px" maxW="200px">
+                {isEditable && !isStatic ? (
+                  <VStack align="stretch" gap={2}>
+                    <Text fontSize="xs" color="gray.600" fontWeight="medium">
+                      Step Image (optional)
+                    </Text>
+                    <ImageUpload
+                      onImageUpload={(imageUrl) => onAddInstructionImage(index, imageUrl)}
+                      onImageRemove={() => onRemoveInstructionImage(index)}
+                      existingImages={instruction.image ? [instruction.image] : []}
+                      multiple={false}
+                      maxImages={1}
+                      disabled={false}
+                      namespace={baseNamespace ? `${baseNamespace}/step_${instruction.step}` : undefined}
+                    />
+                  </VStack>
                 ) : (
-                  <Text color="gray.500" fontSize="sm">No image for this step</Text>
-                )
-              )}
-            </Box>
+                  instruction.image ? (
+                    <Image
+                      src={instruction.image.startsWith('http') ? instruction.image : `/api${instruction.image}`}
+                      alt={`Step ${instruction.step} image`}
+                      width="200px"
+                      height="150px"
+                      objectFit="cover"
+                      borderRadius="md"
+                      border="1px solid"
+                      borderColor="gray.200"
+                    />
+                  ) : (
+                    <Box
+                      width="200px"
+                      height="150px"
+                      bg="gray.100"
+                      borderRadius="md"
+                      border="2px dashed"
+                      borderColor="gray.300"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Text color="gray.500" fontSize="sm" textAlign="center">
+                        No image
+                      </Text>
+                    </Box>
+                  )
+                )}
+              </Box>
+
+              {/* Step Content - Right Side */}
+              <VStack flex="1" align="stretch" gap={2}>
+                <VStack align="flex-start" gap={1}>
+                  <HStack gap={2} align="center">
+                    <Link
+                      href={`#step-${instruction.step}`}
+                      colorScheme="blue"
+                      cursor="pointer"
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                      fontSize="md"
+                    >
+                      Step {instruction.step}
+                    </Link>
+                    {instruction.duration}
+                  </HStack>
+                  <VStack flex="1" align="stretch" gap={1}>
+                    {isEditable && !isStatic ? (
+                      <ContentEditable
+                        content={instruction.description}
+                        onContentChange={(e) => onUpdateInstruction(index, 'description', e.currentTarget.textContent || '')}
+                        multiline={true}
+                        placeholder="Enter instruction..."
+                        isEditable={isEditable && !isStatic}
+                        onKeyDown={handleKeyDown}
+                      />
+                    ) : (
+                      <InstructionTextRenderer
+                        text={instruction.description}
+                        ingredients={ingredients}
+                        multiplier={multiplier}
+                        convertedIngredients={convertedIngredients}
+                        preferredTemperatureUnit={preferredTemperatureUnit}
+                      />
+                    )}
+                    {isEditable && !isStatic && (
+                      <Box>
+                        <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
+                        <ContentEditable
+                          content={instruction.duration || ''}
+                          onContentChange={(e) => onUpdateInstruction(index, 'duration', e.currentTarget.textContent || '')}
+                          placeholder="e.g., 5 minutes"
+                          isEditable={isEditable}
+                          onKeyDown={handleKeyDown}
+                        />
+                      </Box>
+                    )}
+                  </VStack>
+                  {isEditable && !isStatic && (
+                    <Button
+                      size="sm"
+                      colorScheme="red"
+                      variant="ghost"
+                      onClick={() => onRemoveInstruction(index)}
+                    >
+                      <DeleteIcon />
+                    </Button>
+                  )}
+                </VStack>
+              </VStack>
+            </HStack>
           </VStack>
         ))}
       </VStack>
@@ -570,7 +1144,7 @@ const RecipeCategories: FC<RecipeCategoriesProps> = ({
   handleKeyDown,
 }) => {
   const isStatic = recipeAPI.isStaticMode();
-  
+
   return (
     <Box>
       <Flex align="center" mb={4}>
@@ -646,13 +1220,52 @@ const Recipe: FC<RecipeProps> = ({
   const isStatic = recipeAPI.isStaticMode();
   const [isEditable, setIsEditable] = useState(!initialRecipe && !isStatic); // New recipe starts in edit mode, but not in static mode
   const [recipeMultiplier, setRecipeMultiplier] = useState<number | string>(1.0); // Default multiplier is 1.0
-  
+
+  // State for converted ingredient values (shared between components)
+  const [convertedIngredients, setConvertedIngredients] = useState<Record<number, ConvertedIngredient>>({});
+  // State for available units for each ingredient
+  const [availableUnits, setAvailableUnits] = useState<Record<number, string[]>>({});
+  // Loading state for unit conversions
+  const [loadingUnits, setLoadingUnits] = useState<Record<number, boolean>>({});
+  // State for preferred temperature unit
+  const [preferredTemperatureUnit, setPreferredTemperatureUnit] = useState<'C' | 'F'>('C');
+
+  // Handle step navigation from URL hash
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#step-')) {
+        const stepNumber = hash.replace('#step-', '');
+        const stepElement = document.getElementById(`step-${stepNumber}`);
+        if (stepElement) {
+          stepElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          // Add a brief highlight effect
+          stepElement.style.transition = 'background-color 0.3s ease';
+          stepElement.style.backgroundColor = '#fef3c7';
+          setTimeout(() => {
+            stepElement.style.backgroundColor = '';
+          }, 2000);
+        }
+      }
+    };
+
+    // Handle initial load
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   // Helper to get the effective multiplier value for calculations
   const getEffectiveMultiplier = () => {
     const numValue = typeof recipeMultiplier === 'string' ? parseFloat(recipeMultiplier) : recipeMultiplier;
     return isNaN(numValue) || numValue <= 0 ? 1.0 : numValue;
   };
-  
+
   // Helper to generate temporary IDs for new categories
   const generateTempId = () => Math.floor(Math.random() * 1000000) * -1; // Negative numbers for temp IDs
 
@@ -668,12 +1281,77 @@ const Recipe: FC<RecipeProps> = ({
       categories: [],
       images: [],
     };
-    
+
     return {
       ...baseRecipe,
       categories: baseRecipe.categories || []
     };
   });
+
+  // Load available units for each ingredient when not in edit mode
+  useEffect(() => {
+    if (!isEditable && recipe.ingredients && recipe.ingredients.length > 0) {
+      const loadAvailableUnits = async () => {
+        const newAvailableUnits: Record<number, string[]> = {};
+        const newConvertedIngredients: Record<number, ConvertedIngredient> = {};
+
+        for (let i = 0; i < (recipe.ingredients?.length || 0); i++) {
+          const ingredient = recipe.ingredients && recipe.ingredients[i];
+          if (ingredient?.id && ingredient?.unit) {
+            try {
+              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.id, ingredient.unit);
+
+              // Always include the current unit first, then add other available units
+              const currentUnit = ingredient.unit;
+              const availableUnits = [currentUnit];
+
+              // Add other units that aren't already in the list
+              availableUnitsFromAPI.forEach((unit: string) => {
+                if (unit !== currentUnit && !availableUnits.includes(unit)) {
+                  availableUnits.push(unit);
+                }
+              });
+
+              newAvailableUnits[i] = availableUnits;
+
+              // Initialize converted ingredients with original values
+              newConvertedIngredients[i] = {
+                quantity: ingredient.quantity || 1,
+                unit: ingredient.unit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: ingredient.unit,
+              };
+            } catch (error) {
+              console.error('Error loading available units:', error);
+              const fallbackUnit = ingredient.unit || 'cup';
+              newAvailableUnits[i] = [fallbackUnit]; // Fallback to original unit
+              newConvertedIngredients[i] = {
+                quantity: ingredient.quantity || 1,
+                unit: fallbackUnit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: fallbackUnit,
+              };
+            }
+          } else if (ingredient) {
+            // For ingredients without ID (new recipes), just show the original unit
+            const fallbackUnit = ingredient.unit || 'cup';
+            newAvailableUnits[i] = [fallbackUnit];
+            newConvertedIngredients[i] = {
+              quantity: ingredient.quantity || 1,
+              unit: fallbackUnit,
+              originalQuantity: ingredient.quantity || 1,
+              originalUnit: fallbackUnit,
+            };
+          }
+        }
+
+        setAvailableUnits(newAvailableUnits);
+        setConvertedIngredients(newConvertedIngredients);
+      };
+
+      loadAvailableUnits();
+    }
+  }, [isEditable, recipe.ingredients]);
 
   const addIngredient = useCallback(() => {
     const newIngredient: Ingredient = {
@@ -720,10 +1398,52 @@ const Recipe: FC<RecipeProps> = ({
   }, [recipe.instructions?.length]);
 
   const removeInstruction = useCallback((index: number) => {
-    setRecipe(prev => ({
-      ...prev,
-      instructions: prev.instructions?.filter((_, i) => i !== index) || []
-    }));
+    setRecipe(prev => {
+      const filteredInstructions = prev.instructions?.filter((_, i) => i !== index) || [];
+
+      // Update step numbers to reflect new order
+      const updatedInstructions = filteredInstructions.map((instruction, index) => ({
+        ...instruction,
+        step: (index + 1).toString()
+      }));
+
+      return {
+        ...prev,
+        instructions: updatedInstructions
+      };
+    });
+  }, []);
+
+  const reorderInstructions = useCallback((fromIndex: number, toIndex: number) => {
+    setRecipe(prev => {
+      const instructions = [...(prev.instructions || [])];
+      const [movedInstruction] = instructions.splice(fromIndex, 1);
+      instructions.splice(toIndex, 0, movedInstruction);
+
+      // Update step numbers to reflect new order
+      const updatedInstructions = instructions.map((instruction, index) => ({
+        ...instruction,
+        step: (index + 1).toString()
+      }));
+
+      return {
+        ...prev,
+        instructions: updatedInstructions
+      };
+    });
+  }, []);
+
+  const reorderIngredients = useCallback((fromIndex: number, toIndex: number) => {
+    setRecipe(prev => {
+      const ingredients = [...(prev.ingredients || [])];
+      const [movedIngredient] = ingredients.splice(fromIndex, 1);
+      ingredients.splice(toIndex, 0, movedIngredient);
+
+      return {
+        ...prev,
+        ingredients: ingredients
+      };
+    });
   }, []);
 
   const removeCategory = useCallback((categoryId: number) => {
@@ -749,7 +1469,7 @@ const Recipe: FC<RecipeProps> = ({
         })) || [],
         // Ensure categories exist
         categories: recipe.categories || [],
-        // Ensure images exist  
+        // Ensure images exist
         images: recipe.images || []
       };
       onSave(recipeToSave);
@@ -789,7 +1509,7 @@ const Recipe: FC<RecipeProps> = ({
   const updateCategoryStable = useCallback((categoryId: number, field: string, value: string) => {
     setRecipe(prev => ({
       ...prev,
-      categories: prev.categories?.map(cat => 
+      categories: prev.categories?.map(cat =>
         cat.id === categoryId ? { ...cat, [field]: value } : cat
       ) || []
     }));
@@ -798,7 +1518,7 @@ const Recipe: FC<RecipeProps> = ({
   const updateIngredientStable = useCallback((index: number, field: keyof Ingredient, value: any) => {
     setRecipe(prev => ({
       ...prev,
-      ingredients: prev.ingredients?.map((ing, i) => 
+      ingredients: prev.ingredients?.map((ing, i) =>
         i === index ? { ...ing, [field]: value } : ing
       ) || []
     }));
@@ -807,7 +1527,7 @@ const Recipe: FC<RecipeProps> = ({
   const updateInstructionStable = useCallback((index: number, field: keyof Instruction, value: string) => {
     setRecipe(prev => ({
       ...prev,
-      instructions: prev.instructions?.map((inst, i) => 
+      instructions: prev.instructions?.map((inst, i) =>
         i === index ? { ...inst, [field]: value } : inst
       ) || []
     }));
@@ -831,7 +1551,7 @@ const Recipe: FC<RecipeProps> = ({
   const addInstructionImage = useCallback((index: number, imageUrl: string) => {
     setRecipe(prev => ({
       ...prev,
-      instructions: prev.instructions?.map((inst, i) => 
+      instructions: prev.instructions?.map((inst, i) =>
         i === index ? { ...inst, image: imageUrl } : inst
       ) || []
     }));
@@ -840,7 +1560,7 @@ const Recipe: FC<RecipeProps> = ({
   const removeInstructionImage = useCallback((index: number) => {
     setRecipe(prev => ({
       ...prev,
-      instructions: prev.instructions?.map((inst, i) => 
+      instructions: prev.instructions?.map((inst, i) =>
         i === index ? { ...inst, image: undefined } : inst
       ) || []
     }));
@@ -872,7 +1592,7 @@ const Recipe: FC<RecipeProps> = ({
               onKeyDown={handleKeyDown}
             />
           </Box>
-          
+
           {isAuthorized && !isStatic && (
             <HStack gap={2}>
               <Flex align="center" gap={2}>
@@ -925,61 +1645,113 @@ const Recipe: FC<RecipeProps> = ({
           )}
         </Flex>
 
-        {/* Recipe Info */}
-        <SimpleGrid columns={{ base: 1, md: 4 }} gap={4}>
-          <Box>
-            <Text fontSize="sm" fontWeight="medium" mb={1}>Prep Time (minutes)</Text>
-            <ContentEditable
-              content={recipe.prep_time?.toString() || '0'}
-              onContentChange={handleNumberChange('prep_time')}
-              isEditable={isEditable && !isStatic}
-              onKeyDown={handleKeyDown}
-            />
+        {/* Recipe Showcase and Info */}
+        <HStack align="flex-start" gap={6} mb={6}>
+          {/* Recipe Images Component - Larger Size */}
+          <Box flex="1">
+            {isEditable && !isStatic ? (
+              <ImageUpload
+                onImageUpload={addRecipeImage}
+                onImageRemove={removeRecipeImage}
+                existingImages={recipe.images || []}
+                multiple={true}
+                maxImages={5}
+                disabled={false}
+                namespace={recipe.id ? `${recipe.id}_${recipe.title.replace(/[^a-zA-Z0-9]/g, '_')}/preview_${(recipe.images?.length || 0) + 1}` : undefined}
+              />
+            ) : (
+              recipe.images && recipe.images.length > 0 ? (
+                <HStack wrap="wrap" gap={3}>
+                  {recipe.images.map((imageUrl, index) => (
+                    <Image
+                      key={index}
+                      src={imageUrl.startsWith('http') ? imageUrl : `/api${imageUrl}`}
+                      alt={`Recipe image ${index + 1}`}
+                      maxHeight="300px"
+                      objectFit="cover"
+                      borderRadius="lg"
+                      border="2px solid"
+                      borderColor="gray.200"
+                      shadow="md"
+                    />
+                  ))}
+                </HStack>
+              ) : (
+                <Box
+                  width="300px"
+                  height="250px"
+                  bg="gray.100"
+                  borderRadius="lg"
+                  border="2px dashed"
+                  borderColor="gray.300"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Text color="gray.500" fontSize="sm" textAlign="center">
+                    No showcase images
+                  </Text>
+                </Box>
+              )
+            )}
           </Box>
-          <Box>
-            <Text fontSize="sm" fontWeight="medium" mb={1}>Cook Time (minutes)</Text>
-            <ContentEditable
-              content={recipe.cook_time?.toString() || '0'}
-              onContentChange={handleNumberChange('cook_time')}
-              isEditable={isEditable && !isStatic}
-              onKeyDown={handleKeyDown}
-            />
-          </Box>
-          <Box>
-            <Text fontSize="sm" fontWeight="medium" mb={1}>Servings</Text>
-            <ContentEditable
-              content={recipe.servings?.toString() || '1'}
-              onContentChange={handleNumberChange('servings')}
-              isEditable={isEditable && !isStatic}
-              onKeyDown={handleKeyDown}
-            />
-          </Box>
-          <Box>
-            <Text fontSize="sm" fontWeight="medium" mb={1}>Recipe Multiplier</Text>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
-              value={recipeMultiplier}
-              onChange={(e) => setRecipeMultiplier(e.target.value === '' ? '' : e.target.value)}
-              onBlur={(e) => {
-                const value = parseFloat(e.target.value);
-                if (isNaN(value) || value <= 0) {
-                  setRecipeMultiplier(1.0);
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '4px',
-                fontSize: '14px',
-                backgroundColor: '#f7fafc',
-              }}
-              placeholder="1.0"
-            />
-          </Box>
-        </SimpleGrid>
+
+          {/* Recipe Info - Right Side */}
+          <VStack align="stretch" gap={4} minW="200px">
+            <Box>
+              <Text fontSize="sm" fontWeight="medium" mb={1}>Prep Time (minutes)</Text>
+              <ContentEditable
+                content={recipe.prep_time?.toString() || '0'}
+                onContentChange={handleNumberChange('prep_time')}
+                isEditable={isEditable && !isStatic}
+                onKeyDown={handleKeyDown}
+              />
+            </Box>
+            <Box>
+              <Text fontSize="sm" fontWeight="medium" mb={1}>Cook Time (minutes)</Text>
+              <ContentEditable
+                content={recipe.cook_time?.toString() || '0'}
+                onContentChange={handleNumberChange('cook_time')}
+                isEditable={isEditable && !isStatic}
+                onKeyDown={handleKeyDown}
+              />
+            </Box>
+            <Box>
+              <Text fontSize="sm" fontWeight="medium" mb={1}>Servings</Text>
+              <ContentEditable
+                content={recipe.servings?.toString() || '1'}
+                onContentChange={handleNumberChange('servings')}
+                isEditable={isEditable && !isStatic}
+                onKeyDown={handleKeyDown}
+              />
+            </Box>
+            <Box>
+              <Text fontSize="sm" fontWeight="medium" mb={1}>Recipe Multiplier</Text>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={recipeMultiplier}
+                onChange={(e) => setRecipeMultiplier(e.target.value === '' ? '' : e.target.value)}
+                onBlur={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (isNaN(value) || value <= 0) {
+                    setRecipeMultiplier(1.0);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  backgroundColor: '#f7fafc',
+                }}
+                placeholder="1.0"
+              />
+            </Box>
+          </VStack>
+        </HStack>
 
         {/* Description */}
         <Box>
@@ -994,14 +1766,6 @@ const Recipe: FC<RecipeProps> = ({
           />
         </Box>
 
-        {/* Recipe Images Component */}
-        <RecipeImages
-          images={recipe.images || []}
-          isEditable={isEditable}
-          onImageAdd={addRecipeImage}
-          onImageRemove={removeRecipeImage}
-        />
-
         <Box height="1px" bg="gray.200" />
 
         {/* Ingredients Component */}
@@ -1011,8 +1775,15 @@ const Recipe: FC<RecipeProps> = ({
           onAddIngredient={addIngredient}
           onRemoveIngredient={removeIngredient}
           onUpdateIngredient={updateIngredientStable}
+          onReorderIngredients={reorderIngredients}
           handleKeyDown={handleKeyDown}
           multiplier={getEffectiveMultiplier()}
+          convertedIngredients={convertedIngredients}
+          setConvertedIngredients={setConvertedIngredients}
+          availableUnits={availableUnits}
+          setAvailableUnits={setAvailableUnits}
+          loadingUnits={loadingUnits}
+          setLoadingUnits={setLoadingUnits}
         />
 
         <Box height="1px" bg="gray.200" />
@@ -1020,13 +1791,19 @@ const Recipe: FC<RecipeProps> = ({
         {/* Instructions Component */}
         <RecipeInstructions
           instructions={recipe.instructions || []}
+          ingredients={recipe.ingredients || []}
           isEditable={isEditable}
           onAddInstruction={addInstruction}
           onRemoveInstruction={removeInstruction}
           onUpdateInstruction={updateInstructionStable}
           onAddInstructionImage={addInstructionImage}
           onRemoveInstructionImage={removeInstructionImage}
+          onReorderInstructions={reorderInstructions}
           handleKeyDown={handleKeyDown}
+          baseNamespace={recipe.id ? `${recipe.id}_${recipe.title.replace(/[^a-zA-Z0-9]/g, '_')}` : undefined}
+          multiplier={getEffectiveMultiplier()}
+          convertedIngredients={convertedIngredients}
+          preferredTemperatureUnit={preferredTemperatureUnit}
         />
 
         {/* Categories Component */}
@@ -1059,6 +1836,7 @@ const Recipe: FC<RecipeProps> = ({
                   <Text>• Use Shift+Enter for line breaks in multi-line fields</Text>
                   <Text>• Press Enter or click outside to finish editing a field</Text>
                   <Text>• Changes are saved to the server when you click Save</Text>
+                  <Text>• Use @ syntax to reference ingredients: @tomatoes{1 / 4} or @flour{2}</Text>
                 </>
               ) : (
                 <>
@@ -1066,6 +1844,7 @@ const Recipe: FC<RecipeProps> = ({
                   <Text>• All ingredient quantities are scaled proportionally</Text>
                   <Text>• You can change units using the dropdowns for more convenient measurements</Text>
                   <Text>• Original quantities are shown in gray when units are converted</Text>
+                  <Text>• Ingredient references are automatically scaled with the recipe multiplier</Text>
                 </>
               )}
             </VStack>

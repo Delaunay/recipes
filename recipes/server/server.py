@@ -433,7 +433,7 @@ class RecipeApp:
             })
 
 
-        def generate_redistribuable_image(self, file_path: str) -> str:
+        def generate_redistribuable_image(file_path: str) -> str:
             pass
 
         @self.app.route('/upload', methods=['POST'])
@@ -456,31 +456,50 @@ class RecipeApp:
                 if not self.allowed_file(file.filename):
                     return jsonify({"error": "File type not allowed. Please use: png, jpg, jpeg, gif, webp"}), 400
 
-                # Generate unique filename
+                # Get namespace from form data
+                namespace = request.form.get('namespace')
+
+                # Get file extension
                 file_extension = file.filename.rsplit('.', 1)[1].lower()
-                unique_filename = f"{uuid.uuid4()}.{file_extension}"
 
-                # Save file
-                file_path = os.path.join(self.app.config['UPLOAD_FOLDER'], unique_filename)
-                file.save(file_path)
+                if namespace:
+                    # Use namespace directly as filename with extension
+                    filename = f"{namespace}.{file_extension}"
+                    file_path = os.path.join(self.app.config['UPLOAD_FOLDER'], filename)
 
-                # --
-                generate_redistribuable_image(file)
+                    folder_path = os.path.dirname(file_path)
 
-                # Return the file URL
-                file_url = f"/uploads/{unique_filename}"
-                return jsonify({
-                    "url": file_url,
-                    "filename": unique_filename
-                }), 201
+                    # Ensure the upload folder exists
+                    os.makedirs(folder_path, exist_ok=True)
 
+                    # Save file directly to the specified path
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print("Removing")
+                    
+                    file.save(file_path)
+
+                    # Return the file URL
+                    file_url = f"/uploads/{filename}"
+                    return jsonify({
+                        "url": file_url,
+                        "filename": filename,
+                        "folder": ""
+                    }), 201
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
-        @self.app.route('/uploads/<filename>')
-        def uploaded_file(filename):
-            """Serve uploaded files"""
-            return send_from_directory(self.app.config['UPLOAD_FOLDER'], filename)
+        @self.app.route('/uploads/<path:filepath>')
+        def uploaded_file(filepath):
+            """Serve uploaded files from recipe-specific folders or direct files"""
+            # Split the filepath to get folder and filename
+            if '/' in filepath:
+                folder, filename = filepath.split('/', 1)
+                folder_path = os.path.join(self.app.config['UPLOAD_FOLDER'], folder)
+                return send_from_directory(folder_path, filename)
+            else:
+                # Files saved directly in upload folder (when namespace is used)
+                return send_from_directory(self.app.config['UPLOAD_FOLDER'], filepath)
 
     def allowed_file(self, filename):
         """Check if the file extension is allowed"""

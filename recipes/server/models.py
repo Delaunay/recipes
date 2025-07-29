@@ -1,26 +1,190 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table, Text, UniqueConstraint, JSON, create_engine, select
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table, Text, UniqueConstraint, JSON, create_engine, select, Boolean
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 
 Base = declarative_base()
 
+
+#
+# Calendar
+#
+#
+#   How tp handle recuring events ?
+#       We can generate events as the time passes
+#
+#   Generate Task list based on Events ?
+#   Prioritized ?
+#
+#
+# Template Day/week ?
+#       Winter / Summer / Spring / Fall
+#
+#   Event is time based, blocks the time
+#       they can have task attached to it
+#
+#   Tasks are things to do but they are not necessarily attached to
+#   time to do it
+#
+
+
+#
+#   The TODO list is a combination of Event and tasks
+#
+
+class Event(Base):
+    __tablename__ = 'events'
+
+    # To display a calaender
+    # Column Week Days
+    # Rows Time + Week Count
+
+    _id = Column(Integer, primary_key=True)
+
+    kind = Column(Integer)
+    color = Column(String(7))  # Hex color code like #FF0000
+    datetime_start = Column(DateTime, nullable=False)
+    datetime_end = Column(DateTime, nullable=False)
+    location = Column(String(200))
+    title = Column(String(100), nullable=False)
+    description = Column(Text)
+    guests = Column(JSON)  # List of guest names or IDs
+
+    # Scheduled Task ?
+    task = Column(Integer, ForeignKey('tasks._id'), nullable=True)
+    done = Column(Boolean, default=False)
+
+    # Budgeting
+    price_budget = Column(Float)
+    price_real = Column(Float)
+    people_count = Column(Integer)
+
+    # Template Event
+    template = Column(Boolean, default=False)
+    recuring = Column(Boolean, default=False)
+    active = Column(Boolean, default=True)
+
+    extension = Column(JSON)
+
+    # Relationships
+    # task = relationship('Task', back_populates='events')
+
+    def __repr__(self):
+        return f'<Event {self.title}>'
+
+    def to_json(self):
+        return {
+            'id': self._id,
+            'kind': self.kind,
+            'color': self.color,
+            'datetime_start': self.datetime_start.isoformat() if self.datetime_start else None,
+            'datetime_end': self.datetime_end.isoformat() if self.datetime_end else None,
+            'location': self.location,
+            'title': self.title,
+            'description': self.description,
+            'guests': self.guests,
+            'task': self.task,
+            'done': self.done,
+            'price_budget': self.price_budget,
+            'price_real': self.price_real,
+            'people_count': self.people_count,
+            'template': self.template,
+            'recuring': self.recuring,
+            'active': self.active,
+            'extension': self.extension
+        }
+
+
+class Task(Base):
+    __tablename__ = 'tasks'
+
+    _id = Column(Integer, primary_key=True)
+
+    title = Column(String(100), nullable=False)
+    description = Column(Text)
+    datetime_deadline = Column(DateTime)
+    done = Column(Boolean, default=False)
+
+    # Budgeting
+    price_budget = Column(Float)
+    price_real = Column(Float)
+    people_count = Column(Integer)
+
+    # Template Task
+    template = Column(Boolean, default=False)
+    recuring = Column(Boolean, default=False)
+    active = Column(Boolean, default=True)
+
+    #
+    extension = Column(JSON)
+
+    # Relationships
+    parent_subtasks = relationship('SubTask', foreign_keys='SubTask.parent_id', back_populates='parent')
+    child_subtasks = relationship('SubTask', foreign_keys='SubTask.child_id', back_populates='child')
+
+    def __repr__(self):
+        return f'<Task {self.title}>'
+
+    def to_json(self):
+        return {
+            'id': self._id,
+            'title': self.title,
+            'description': self.description,
+            'datetime_deadline': self.datetime_deadline.isoformat() if self.datetime_deadline else None,
+            'done': self.done,
+            'price_budget': self.price_budget,
+            'price_real': self.price_real,
+            'people_count': self.people_count,
+            'template': self.template,
+            'recuring': self.recuring,
+            'active': self.active,
+            'extension': self.extension
+        }
+
+
+
+class SubTask(Base):
+    __tablename__ = 'substasks'
+
+    _id = Column(Integer, primary_key=True)
+    parent_id = Column(Integer, ForeignKey('tasks._id'), nullable=False)
+    child_id = Column(Integer, ForeignKey('tasks._id'), nullable=False)
+
+    # Relationships
+    parent = relationship('Task', foreign_keys=[parent_id], back_populates='child_subtasks')
+    child = relationship('Task', foreign_keys=[child_id], back_populates='parent_subtasks')
+
+    def __repr__(self):
+        return f'<SubTask parent={self.parent_id} child={self.child_id}>'
+
+    def to_json(self):
+        return {
+            'id': self._id,
+            'parent_id': self.parent_id,
+            'child_id': self.child_id
+        }
+
+#
+# Recipe
+#
+
+
 # Recipe ingredients association model
 class RecipeIngredient(Base):
     __tablename__ = 'recipe_ingredients'
-    
+
     _id = Column(Integer, primary_key=True)
     recipe_id = Column(Integer, ForeignKey('recipes._id'), nullable=False)
     ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
     quantity = Column(Float, nullable=False)
     unit = Column(String(50), nullable=False)
-    
+
     # Relationships
     recipe = relationship('Recipe', back_populates='recipe_ingredients')
     ingredient = relationship('Ingredient', back_populates='recipe_ingredients')
-    
+
     def __repr__(self):
         return f'<RecipeIngredient {self.quantity} {self.unit} of ingredient {self.ingredient_id} in recipe {self.recipe_id}>'
-    
+
     def to_json(self):
         return {
             # 'id': self._id,
@@ -29,7 +193,7 @@ class RecipeIngredient(Base):
             'quantity': self.quantity,
             'unit': self.unit,
             'name': self.ingredient.name if self.ingredient else None,
-            'id': self._id  
+            'id': self._id
         }
 
 recipe_categories = Table(
@@ -70,16 +234,16 @@ class User(Base):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             # 'recipes': [recipe.to_json() for recipe in self.recipes] if self.recipes else []
         }
-        
-        
+
+
 class ComposedRecipe(Base):
     __tablename__ = 'composed'
-    
-    
+
+
     _id = Column(Integer, primary_key=True)
     title = Column(String(100), nullable=False)
     description = Column(Text)
-    
+
     # [image, image, image]
     images = Column(JSON)
 
@@ -91,7 +255,7 @@ class ComposedRecipe(Base):
     author_id = Column(Integer, ForeignKey('users._id'))
 
     extension = Column(JSON)
-    
+
     # steps = relationship('Recipe', back_populates='author')
 
 # Composed recipe map to multiple Recipe
@@ -104,7 +268,7 @@ class Recipe(Base):
     _id = Column(Integer, primary_key=True)
     title = Column(String(100), nullable=False)
     description = Column(Text)
-    
+
     # [image, image, image]
     images = Column(JSON)
 
@@ -150,7 +314,7 @@ class Recipe(Base):
 
 class IngredientComposition(Base):
     __tablename__ = 'ingredient_compositions'
-    
+
     _id = Column(Integer, primary_key=True)
     ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
 
@@ -187,7 +351,7 @@ class Ingredient(Base):
 
     composition = Column(JSON)
     extension = Column(JSON)    # Additional info as JSON
-    
+
     # preferred_unit = Column(String(50))
     # unit = Column(String(50))
 
@@ -258,7 +422,7 @@ class UnitConversion(Base):
             'ingredient_id': self.ingredient_id,
             'extension': self.extension
         }
-        
+
     def __repr__(self):
         return f'<UnitConversion {self.from_unit}->{self.to_unit} {self.conversion_factor}>'
 
@@ -267,7 +431,7 @@ def common_conversions():
     return {
         # Density
         # Mass/Volume
-        
+
         # Mass
         # 1g/this = that
         'g': {
@@ -277,7 +441,7 @@ def common_conversions():
             'lb': 453.592,
             'oz': 28.3495
         },
-        
+
         # Volume
         'ml': {
             'ml': 1,
@@ -288,7 +452,7 @@ def common_conversions():
             'tbsp': 14.7868,
             'tsp': 4.92892,
             # 'wineglass': 236.588 / 4,
-            # 'teacup': 236.588 / 2, 
+            # 'teacup': 236.588 / 2,
             'cup': 236.588,
             "pint": 473.176,
             "quart": 946.353,
@@ -301,7 +465,7 @@ def insert_common_ingredients(session):
     # Drop all existing ingredients
     session.query(Ingredient).delete()
     session.commit()
-    
+
     ingredients = [
         Ingredient(
             name="Salt",
@@ -436,8 +600,8 @@ def insert_common_ingredients(session):
             density=0.92,
         )
     ]
-    
-    
+
+
     for ingredient in ingredients:
         session.add(ingredient)
         session.commit()
@@ -446,7 +610,7 @@ def insert_common_ingredients(session):
 def insert_common_conversions(session):
     session.query(UnitConversion).delete()
     session.commit()
-    
+
     for unit, conversions in common_conversions().items():
         for to_unit, conversion_factor in conversions.items():
             conv = UnitConversion(
@@ -467,23 +631,23 @@ def insert_common_conversions(session):
             )
             session.add(conv)
             # print(conv)
-    
+
     mass = common_conversions()["g"]
     volume = common_conversions()["ml"]
-    
+
     for ingredient in session.query(Ingredient).all():
         for vol_unit, vol_factor in volume.items():
             for mass_unit, mass_factor in mass.items():
-                
+
                 # ml/vol_unit: conversions
                 # g/mass_unit: conversions
                 # density = g/ml
-                
+
                 # vol_unit -> mass_unit = (ml/vol) (g/ml) / (g/mass)
                 # vol_unit -> mass_unit = (g/vol) * (mass/g)
                 # vol_unit -> mass_unit = mass/vol
                 conversion = vol_factor * ingredient.density / mass_factor
-                
+
                 conv = UnitConversion(
                     ingredient_id=ingredient._id,
                     from_unit=vol_unit,
@@ -493,7 +657,7 @@ def insert_common_conversions(session):
                 )
                 session.add(conv)
                 # print(conv)
-                
+
                 conv = UnitConversion(
                     ingredient_id=ingredient._id,
                     from_unit=mass_unit,
@@ -504,16 +668,16 @@ def insert_common_conversions(session):
 
                 session.add(conv)
                 # print(conv)
-    
+
     session.commit()
             # conv.save()
 
 
 def available_units(ingredient_id: int, from_unit: str):
     from sqlalchemy import select, or_
-    
+
     return select(UnitConversion.to_unit).where(
-        UnitConversion.from_unit == from_unit, 
+        UnitConversion.from_unit == from_unit,
         or_(
             UnitConversion.ingredient_id == ingredient_id,
             UnitConversion.ingredient_id.is_(None)
@@ -527,16 +691,16 @@ def available_units(ingredient_id: int, from_unit: str):
 
 def is_volume(unit: str):
     return unit in [
-        "ml", "cl", "l", "cm3", "fl oz", "tbsp", 
+        "ml", "cl", "l", "cm3", "fl oz", "tbsp",
         "tsp", "cup", "pint", "quart", "gallon"
     ]
 
 
 def make_unit_from_input(sesh, recipe_ingredient: RecipeIngredient):
-    
+
     if is_volume(recipe_ingredient.unit):
         qty = convert_mass(sesh, recipe_ingredient, "g")
-        
+
     else:
         qty = convert(sesh, recipe_ingredient, "g")
 
@@ -549,11 +713,11 @@ def make_unit_from_input(sesh, recipe_ingredient: RecipeIngredient):
 
 def convert_volume(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
     from sqlalchemy import select, or_
-    
+
     ingredient = sesh.query(Ingredient).get(recipe_ingredient.ingredient_id)
-    
+
     vals = select(UnitConversion).where(
-        UnitConversion.from_unit == "ml", 
+        UnitConversion.from_unit == "ml",
         UnitConversion.to_unit == to_unit,
         or_(
             UnitConversion.ingredient_id == recipe_ingredient.ingredient_id,
@@ -563,22 +727,22 @@ def convert_volume(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
 
     vals = sesh.execute(vals)
     vals = vals.all()
-    
+
     if len(vals) == 0:
         return None
-    
-    volume = recipe_ingredient.quantity / ingredient.density 
+
+    volume = recipe_ingredient.quantity / ingredient.density
     return volume / vals[0][0].conversion_factor
 
 
 def convert_mass(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
     from sqlalchemy import select, or_
-    
+
     ingredient = sesh.query(Ingredient).get(recipe_ingredient.ingredient_id)
-    
+
     # 1. Convert volume to ml
     vals = select(UnitConversion).where(
-        UnitConversion.from_unit == recipe_ingredient.unit, 
+        UnitConversion.from_unit == recipe_ingredient.unit,
         UnitConversion.to_unit == "ml",
         or_(
             UnitConversion.ingredient_id == recipe_ingredient.ingredient_id,
@@ -589,69 +753,69 @@ def convert_mass(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
     # 2. Convert ml to mass
     vals = sesh.execute(vals)
     vals = vals.all()
-    
+
     if len(vals) == 0:
         return None
-    
+
     volume_ml = recipe_ingredient.quantity / vals[0][0].conversion_factor
     return volume_ml * ingredient.density
-        
+
 
 def convert(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
     from sqlalchemy import select, or_
-    
+
     vals = select(UnitConversion).where(
-        UnitConversion.from_unit == recipe_ingredient.unit, 
+        UnitConversion.from_unit == recipe_ingredient.unit,
         UnitConversion.to_unit == to_unit,
         or_(
             UnitConversion.ingredient_id ==recipe_ingredient.ingredient_id,
             UnitConversion.ingredient_id.is_(None)
         )
     )
-    
+
     vals = sesh.execute(vals)
     vals = vals.all()
-    
+
     if len(vals) == 0:
         return None
-    
+
     return recipe_ingredient.quantity * vals[0][0].conversion_factor
-    
-    
+
+
 def main():
     from sqlalchemy.orm import sessionmaker, scoped_session
 
     # open the instance/project.db with SQLAlchemy and insert the common conversions
     engine = create_engine('sqlite:///instance/project.db')
     Session = sessionmaker(bind=engine)
-    
+
     with Session() as session:
         insert_common_ingredients(session)
         insert_common_conversions(session)
-        
-    
+
+
     # with Session() as session:
     #     result = session.query(UnitConversion).all()
     #     print(result)
-    
-    
+
+
     # if we always save by mass we can convert to volume using the density
-    
+
     with Session() as session:
-        
+
         smt = select(Ingredient).where(Ingredient.name == "Flour")
         ingredient_id = session.execute(smt).scalar()._id
-        
+
         stmt = available_units(ingredient_id, "g")
         result = session.execute(stmt)
-        
+
         data = []
         for result in result.all():
             result = result[0]
             data.append(result)
-            
+
         print(data)
-    
+
         # for u in data:
             # print(convert(
             #     session,
@@ -663,7 +827,7 @@ def main():
             #     ),
             #     u
             # ), u)
-            
+
             # print("Volume")
             # print(convert_volume(
             #     session,
@@ -675,24 +839,23 @@ def main():
             #     ),
             #     "ml"
             # ), "ml")
-            
-        
+
+
         ingredient = RecipeIngredient(
             recipe_id=None,
             ingredient_id=ingredient_id,
             quantity=120,
             unit="g",
         )
-        
+
         for u in data:
             print(convert(session, ingredient, u), u)
         print(convert(session, ingredient, "ml"), "ml")
         print(convert(session, ingredient, "g"), "g")
         print(convert(session, ingredient, "cup"), "cup")
         # print(convert(session, ingredient, "ml"), "ml")
-        
-    
+
+
 if __name__ == '__main__':
     main()
 
-    

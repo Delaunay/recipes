@@ -32,7 +32,7 @@ interface ImageUploadProps {
   multiple?: boolean;
   maxImages?: number;
   disabled?: boolean;
-  recipeId?: number;
+  namespace?: string;
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -42,7 +42,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   multiple = false,
   maxImages = 5,
   disabled = false,
-  recipeId
+  namespace
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -84,7 +84,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
         // No file size limit - removed validation
 
-        const result = await recipeAPI.uploadImage(file, recipeId);
+        const result = await recipeAPI.uploadImage(file, namespace);
         onImageUpload(result.url);
         showMessage("Image uploaded successfully");
 
@@ -95,7 +95,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     } finally {
       setUploading(false);
     }
-  }, [disabled, maxImages, existingImages.length, onImageUpload, multiple, recipeId]);
+  }, [disabled, maxImages, existingImages.length, onImageUpload, multiple, namespace]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -258,6 +258,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       )}
 
       {/* Max Images Message */}
+      {/*
       {existingImages.length >= maxImages && (
         <Box p={3} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
           <Text fontSize="sm" color="blue.700">
@@ -265,6 +266,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           </Text>
         </Box>
       )}
+      */}
     </VStack>
   );
 };

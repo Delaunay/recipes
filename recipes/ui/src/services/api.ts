@@ -305,7 +305,7 @@ class RecipeAPI {
   }
 
   // Image upload
-  async uploadImage(file: File, recipeId?: number): Promise<{ url: string; filename: string }> {
+  async uploadImage(file: File, namespace?: string): Promise<{ url: string; filename: string; folder: string }> {
     if (isStaticMode()) {
       throw new Error('Image upload is not supported in static mode');
     }
@@ -313,9 +313,9 @@ class RecipeAPI {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Add recipe_id if provided
-    if (recipeId) {
-      formData.append('recipe_id', recipeId.toString());
+    // Add namespace if provided
+    if (namespace) {
+      formData.append('namespace', namespace);
     }
 
     const url = `${API_BASE_URL}/upload`;
