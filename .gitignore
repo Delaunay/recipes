@@ -10,7 +10,7 @@
 *.lock
 .vite/
 
-
+recipes.egg-info/
 node_modules/
 uploads/
 
@@ -86,3 +86,4 @@ staticfiles/
 media/
 
 static_build/
+website/

@@ -1,12 +1,17 @@
 // API service for recipe management
 // Use /api prefix to leverage Vite proxy and avoid CORS issues
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+
+const USE_STATIC_MODE = import.meta.env.VITE_USE_STATIC_MODE === 'true';
+const API_BASE_URL = USE_STATIC_MODE ? '/api' : "";
+
+console.log(USE_STATIC_MODE, API_BASE_URL)
 
 // Check if we're in static mode (no backend server)
 const isStaticMode = () => {
   // Check if we're in production and using static JSON files
   // This works for both local static builds (/api) and GitHub Pages (/recipes/api)
-  return import.meta.env.PROD && API_BASE_URL.endsWith('/api');
+  return USE_STATIC_MODE && API_BASE_URL.endsWith('/api');
 };
 
 interface RecipeData {
