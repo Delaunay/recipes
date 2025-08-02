@@ -13,7 +13,7 @@ import {
   Spinner,
   Link,
 } from '@chakra-ui/react';
-import { RecipeData, Ingredient, Instruction, recipeAPI } from '../services/api';
+import { RecipeData, Ingredient, Instruction, recipeAPI, imagePath } from '../services/api';
 import ImageUpload from './ImageUpload';
 
 // Utility functions for ingredient references
@@ -965,7 +965,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                 ) : (
                   instruction.image ? (
                     <Image
-                      src={instruction.image.startsWith('http') ? instruction.image : `/api${instruction.image}`}
+                      src={imagePath(instruction.image)}
                       alt={`Step ${instruction.step} image`}
                       width="200px"
                       height="150px"
@@ -1603,7 +1603,7 @@ const Recipe: FC<RecipeProps> = ({
                   {recipe.images.map((imageUrl, index) => (
                     <Image
                       key={index}
-                      src={imageUrl.startsWith('http') ? imageUrl : `/api${imageUrl}`}
+                      src={imagePath(imageUrl)}
                       alt={`Recipe image ${index + 1}`}
                       maxHeight="300px"
                       objectFit="cover"

@@ -14,6 +14,11 @@ const isStaticMode = () => {
   return USE_STATIC_MODE && API_BASE_URL.endsWith('/api');
 };
 
+
+function imagePath(image: string): string {
+  return API_BASE_URL + image;
+}
+
 interface RecipeData {
   id?: number;
   title: string;
@@ -353,4 +358,5 @@ class RecipeAPI {
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
+export { imagePath };
 export type { RecipeData, Ingredient, Category, Instruction, UnitConversion, UnitConversionResult };

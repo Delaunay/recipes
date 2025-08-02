@@ -8,9 +8,8 @@ import {
   Image,
   Spinner
 } from '@chakra-ui/react';
-import { recipeAPI } from '../services/api';
+import { recipeAPI, imagePath } from '../services/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Simple icons
 const UploadIcon = () => (
@@ -160,7 +159,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             {existingImages.map((imageUrl, index) => (
               <Box key={index} position="relative" borderRadius="md" overflow="hidden">
                 <Image
-                  src={imageUrl.startsWith('http') ? imageUrl : `${API_BASE_URL}${imageUrl}`}
+                  src={imagePath(imageUrl)}
                   alt={`Image ${index + 1}`}
                   width="100px"
                   height="100px"

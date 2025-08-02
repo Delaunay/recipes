@@ -12,7 +12,7 @@ import {
   Image,
   Badge
 } from '@chakra-ui/react';
-import { recipeAPI, RecipeData } from '../services/api';
+import { recipeAPI, RecipeData, imagePath } from '../services/api';
 
 const RecipeList = () => {
   const [recipes, setRecipes] = useState<RecipeData[]>([]);
@@ -136,7 +136,7 @@ const RecipeList = () => {
               <Box position="relative" height="350px" overflow="hidden">
                 {recipe.images && recipe.images.length > 0 ? (
                   <Image
-                    src={recipe.images[0].startsWith('http') ? recipe.images[0] : `/api${recipe.images[0]}`}
+                    src={imagePath(recipe.images[0])}
                     alt={recipe.title}
                     width="100%"
                     height="100%"

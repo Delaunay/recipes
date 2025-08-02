@@ -70,6 +70,7 @@ jobs:
       run: |
         source venv/bin/activate
         python scripts/static_generator.py
+        cp -R ${{ github.repository }}/website/uploads static_build/api
       env:
         PYTHONPATH: ${{ github.workspace }}
         GITHUB_REPOSITORY: ${{ github.repository }}
