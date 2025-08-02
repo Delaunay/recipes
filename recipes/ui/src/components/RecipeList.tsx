@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   VStack,
@@ -39,9 +39,7 @@ const RecipeList = () => {
     }
   };
 
-  const formatRecipeName = (title: string): string => {
-    return title.toLowerCase().replace(/\s+/g, '-');
-  };
+
 
   const handleCardClick = (recipe: RecipeData) => {
     navigate(`/recipes/${recipe.id}`);

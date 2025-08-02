@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useCallback, useRef, useEffect, FC, FormEvent, ChangeEvent, ClipboardEvent } from 'react';
+import { useState, KeyboardEvent, useCallback, useRef, useEffect, FC, FormEvent, ChangeEvent } from 'react';
 import {
   Box,
   VStack,
@@ -8,7 +8,7 @@ import {
   Badge,
   Flex,
   Spacer,
-  SimpleGrid,
+
   Image,
   Spinner,
   Link,
@@ -315,11 +315,7 @@ const DragHandleIcon = () => (
   </svg>
 );
 
-const ShareIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
-  </svg>
-);
+
 
 // Move ContentEditable outside to prevent recreation on every render
 interface ContentEditableProps {
@@ -361,7 +357,7 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
   }, [onContentChange]);
 
   // Handle paste events
-  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+  const handlePaste = useCallback(() => {
     isPasteRef.current = true;
     // Let the default paste behavior happen, then we'll handle cursor position
     setTimeout(() => {
@@ -469,60 +465,7 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
 };
 
 // RecipeImages Component
-interface RecipeImagesProps {
-  images: string[];
-  isEditable: boolean;
-  onImageAdd: (imageUrl: string) => void;
-  onImageRemove: (imageUrl: string) => void;
-  namespace?: string;
-}
 
-const RecipeImages: FC<RecipeImagesProps> = ({
-  images,
-  isEditable,
-  onImageAdd,
-  onImageRemove,
-  namespace,
-}) => {
-  const isStatic = recipeAPI.isStaticMode();
-
-  return (
-    <Box>
-      <Text fontSize="lg" fontWeight="semibold" mb={2}>Recipe Images</Text>
-      {isEditable && !isStatic ? (
-        <ImageUpload
-          onImageUpload={onImageAdd}
-          onImageRemove={onImageRemove}
-          existingImages={images}
-          multiple={true}
-          maxImages={5}
-          disabled={false}
-          namespace={namespace}
-        />
-      ) : (
-        images && images.length > 0 ? (
-          <HStack wrap="wrap" gap={2}>
-            {images.map((imageUrl, index) => (
-              <Image
-                key={index}
-                src={imageUrl.startsWith('http') ? imageUrl : `/api${imageUrl}`}
-                alt={`Recipe image ${index + 1}`}
-                width="150px"
-                height="150px"
-                objectFit="cover"
-                borderRadius="md"
-                border="1px solid"
-                borderColor="gray.200"
-              />
-            ))}
-          </HStack>
-        ) : (
-          <Text color="gray.500" fontSize="sm">No images added</Text>
-        )
-      )}
-    </Box>
-  );
-};
 
 // RecipeIngredients Component
 interface RecipeIngredientsProps {
@@ -897,12 +840,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   convertedIngredients = {},
   preferredTemperatureUnit = 'C',
 }) => {
-  // Function to handle step sharing
-  const handleStepShare = (stepNumber: string) => {
-    const currentUrl = new URL(window.location.href);
-    currentUrl.hash = `step-${stepNumber}`;
-    window.location.href = currentUrl.toString();
-  };
+
   const isStatic = recipeAPI.isStaticMode();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -1228,7 +1166,7 @@ const Recipe: FC<RecipeProps> = ({
   // Loading state for unit conversions
   const [loadingUnits, setLoadingUnits] = useState<Record<number, boolean>>({});
   // State for preferred temperature unit
-  const [preferredTemperatureUnit, setPreferredTemperatureUnit] = useState<'C' | 'F'>('C');
+  const [preferredTemperatureUnit] = useState<'C' | 'F'>('C');
 
   // Handle step navigation from URL hash
   useEffect(() => {

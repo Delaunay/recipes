@@ -27,7 +27,7 @@ class StaticSiteGenerator:
         self.base_dir = Path(__file__).parent.parent
         self.output_dir = self.base_dir / "static_build"
         self.server_process = None
-        self.server_url = "http://localhost:5000"
+        self.server_url = "http://localhost:5001"
         self.api_base = f"{self.server_url}"
         
         # Ensure output directory exists
