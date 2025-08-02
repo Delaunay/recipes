@@ -8,6 +8,7 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
   server: {
     port: 3000,
+    host: true,
     open: true,
     allowedHosts: [
       "recipes.local",

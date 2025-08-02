@@ -8,7 +8,9 @@ import {
   Spinner,
   HStack,
   Heading,
-  SimpleGrid
+  SimpleGrid,
+  Image,
+  Badge
 } from '@chakra-ui/react';
 import { recipeAPI, RecipeData } from '../services/api';
 
@@ -39,6 +41,10 @@ const RecipeList = () => {
 
   const formatRecipeName = (title: string): string => {
     return title.toLowerCase().replace(/\s+/g, '-');
+  };
+
+  const handleCardClick = (recipe: RecipeData) => {
+    navigate(`/recipes/${recipe.id}`);
   };
 
   if (loading) {
@@ -110,56 +116,101 @@ const RecipeList = () => {
           </HStack>
         </Box>
 
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 6 }} gap={6}>
           {recipes.map((recipe) => (
-            <Box key={recipe.id} p={4} borderWidth="1px" borderRadius="md" _hover={{ shadow: "md" }}>
-              <Box pb={2}>
-                <Heading size="md">
-                  <Link
-                    to={`/recipes/${recipe.id}`}
-                    style={{ textDecoration: 'none', color: 'inherit' }}
+            <Box
+              key={recipe.id}
+              borderWidth="1px"
+              borderRadius="lg"
+              overflow="hidden"
+              bg="white"
+              shadow="sm"
+              _hover={{
+                shadow: "lg",
+                transform: "translateY(-2px)",
+                transition: "all 0.2s"
+              }}
+              cursor="pointer"
+              onClick={() => handleCardClick(recipe)}
+              transition="all 0.2s"
+            >
+              {/* Recipe Image */}
+              <Box position="relative" height="350px" overflow="hidden">
+                {recipe.images && recipe.images.length > 0 ? (
+                  <Image
+                    src={recipe.images[0].startsWith('http') ? recipe.images[0] : `/api${recipe.images[0]}`}
+                    alt={recipe.title}
+                    width="100%"
+                    height="100%"
+                    objectFit="cover"
+                  />
+                ) : (
+                  <Box
+                    width="100%"
+                    height="100%"
+                    bg="gray.100"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
                   >
-                    {recipe.title}
-                  </Link>
-                </Heading>
+                    <Text color="gray.500" fontSize="sm" textAlign="center">
+                      No image
+                    </Text>
+                  </Box>
+                )}
               </Box>
-              
-              {recipe.description && (
-                <Text fontSize="sm" color="gray.600" mb={3}>
-                  {recipe.description}
-                </Text>
-              )}
-              
-              <HStack gap={4} fontSize="sm" color="gray.500" mb={3}>
-                {recipe.prep_time && (
-                  <Text>Prep: {recipe.prep_time}min</Text>
-                )}
-                {recipe.cook_time && (
-                  <Text>Cook: {recipe.cook_time}min</Text>
-                )}
-                {recipe.servings && (
-                  <Text>Serves: {recipe.servings}</Text>
-                )}
-              </HStack>
-              
-              <VStack gap={2} align="stretch">
-                <Button 
-                  size="sm" 
-                  colorScheme="blue" 
-                  variant="solid"
-                  onClick={() => navigate(`/recipes/${recipe.id}`)}
-                >
-                  View Recipe
-                </Button>
-                
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => navigate(`/recipes/${formatRecipeName(recipe.title)}`)}
-                >
-                  View by Name
-                </Button>
-              </VStack>
+
+              {/* Recipe Details */}
+              <Box p={4}>
+                <VStack align="stretch" gap={3}>
+                  {/* Recipe Title */}
+                  <Heading size="md">
+                    {recipe.title}
+                  </Heading>
+
+                  {/* Recipe Description */}
+                  {recipe.description && (
+                    <Text fontSize="sm" color="gray.600" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                      {recipe.description}
+                    </Text>
+                  )}
+
+                  {/* Recipe Stats */}
+                  <HStack gap={3} fontSize="sm" color="gray.500" flexWrap="wrap">
+                    {recipe.prep_time && (
+                      <Badge colorScheme="blue" variant="subtle">
+                        Prep: {recipe.prep_time}min
+                      </Badge>
+                    )}
+                    {recipe.cook_time && (
+                      <Badge colorScheme="green" variant="subtle">
+                        Cook: {recipe.cook_time}min
+                      </Badge>
+                    )}
+                    {recipe.servings && (
+                      <Badge colorScheme="purple" variant="subtle">
+                        Serves: {recipe.servings}
+                      </Badge>
+                    )}
+                  </HStack>
+
+                  {/* Categories */}
+                  {recipe.categories && recipe.categories.length > 0 && (
+                    <HStack gap={2} flexWrap="wrap">
+                      {recipe.categories.slice(0, 3).map((category) => (
+                        <Badge key={category.id} colorScheme="gray" variant="outline" fontSize="xs">
+                          {category.name}
+                        </Badge>
+                      ))}
+                      {recipe.categories.length > 3 && (
+                        <Badge colorScheme="gray" variant="outline" fontSize="xs">
+                          +{recipe.categories.length - 3} more
+                        </Badge>
+                      )}
+                    </HStack>
+                  )}
+                </VStack>
+              </Box>
             </Box>
           ))}
         </SimpleGrid>
@@ -168,4 +219,4 @@ const RecipeList = () => {
   );
 };
 
-export default RecipeList; 
+export default RecipeList;
