@@ -59,7 +59,7 @@ alembic-update:
 	cd recipes/alembic && alembic upgrade head
 
 static-build:
-	(. website/.venv/bin/activate; python scripts/static_generator.py)
+	(. website/.venv/bin/activate; VITE_USE_STATIC_MODE=true FLASK_STATIC=website python scripts/static_generator.py)
 
 static:
 	cd static_build && python -m http.server

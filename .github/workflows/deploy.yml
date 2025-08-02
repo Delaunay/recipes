@@ -64,7 +64,7 @@ jobs:
 
     - name: Fetch Resources
       run: |
-        git clone https://github.com/Delaunay/backup.git website/
+        git clone https://github.com/Delaunay/backup.git ${{ github.repository }}/website/
 
     - name: Build static website
       run: |
@@ -75,6 +75,7 @@ jobs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_ACTIONS: true
         FLASK_STATIC: ${{ github.repository }}/website
+        VITE_USE_STATIC_MODE: true
 
     - name: Verify build output
       run: |
