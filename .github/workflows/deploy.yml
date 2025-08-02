@@ -62,6 +62,10 @@ jobs:
         cd recipes/ui
         npm ci
 
+    - name: Fetch Resources
+      run: |
+        git clone https://github.com/Delaunay/backup.git website/
+
     - name: Build static website
       run: |
         source venv/bin/activate
@@ -70,6 +74,7 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_ACTIONS: true
+        FLASK_STATIC: ${{ github.repository }}/website
 
     - name: Verify build output
       run: |
