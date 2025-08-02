@@ -76,6 +76,7 @@ jobs:
         GITHUB_ACTIONS: true
         FLASK_STATIC: ${{ github.repository }}/website
         VITE_USE_STATIC_MODE: true
+        VITE_API_URL: /recipes/api
 
     - name: Verify build output
       run: |
