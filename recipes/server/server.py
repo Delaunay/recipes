@@ -27,7 +27,7 @@ class RecipeApp:
         self.app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{STATIC_FOLDER}/database.db"
 
         # Configure file uploads
-        self.app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+        self.app.config['UPLOAD_FOLDER'] = STATIC_UPLOAD_FOLDER
         # No file size limit
 
         # Create uploads directory if it doesn't exist
