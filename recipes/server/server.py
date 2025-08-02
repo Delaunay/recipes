@@ -12,20 +12,10 @@ from flask_cors import CORS
 from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, '..'))
+ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 
 STATIC_FOLDER_DEFAULT = os.path.join(ROOT, 'static')
 STATIC_FOLDER = os.path.abspath(os.getenv("FLASK_STATIC", STATIC_FOLDER_DEFAULT))
-STATIC_UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, 'uploads')
-
-ROOT = os.path.join(STATIC_FOLDER, "..")
-
-
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, '..'))
-
-STATIC_FOLDER = os.path.join(ROOT, 'static')
 STATIC_UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, 'uploads')
 
 
@@ -34,7 +24,7 @@ class RecipeApp:
         print(STATIC_FOLDER)
         self.app = Flask(__name__, static_folder=STATIC_FOLDER)
         self.app.config['JSON_SORT_KEYS'] = False
-        self.app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{ROOT}/database.db"
+        self.app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{STATIC_FOLDER}/database.db"
 
         # Configure file uploads
         self.app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')

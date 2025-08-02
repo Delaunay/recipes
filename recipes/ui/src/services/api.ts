@@ -3,7 +3,7 @@
 
 
 const USE_STATIC_MODE = import.meta.env.VITE_USE_STATIC_MODE === 'true';
-const API_BASE_URL = USE_STATIC_MODE ? '/api' : "";
+const API_BASE_URL = "/api"; // USE_STATIC_MODE ? '/api' : "";
 
 console.log(USE_STATIC_MODE, API_BASE_URL)
 
