@@ -16,9 +16,9 @@ const RecipeDetail = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         let fetchedRecipe: RecipeData;
-        
+
         if (identifier && !isNaN(Number(identifier))) {
           // Fetch by ID if identifier is a number
           fetchedRecipe = await recipeAPI.getRecipe(Number(identifier));
@@ -28,7 +28,7 @@ const RecipeDetail = () => {
         } else {
           throw new Error('Invalid recipe identifier');
         }
-        
+
         setRecipe(fetchedRecipe);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch recipe');
@@ -47,7 +47,7 @@ const RecipeDetail = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       if (updatedRecipe.id) {
         const savedRecipe = await recipeAPI.updateRecipe(updatedRecipe.id, updatedRecipe);
         setRecipe(savedRecipe);
@@ -64,13 +64,13 @@ const RecipeDetail = () => {
     if (!window.confirm('Are you sure you want to delete this recipe?')) {
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       await recipeAPI.deleteRecipe(recipeId);
-      
+
       // Navigate back to recipes list after deletion
       navigate('/recipes');
     } catch (err) {
@@ -122,7 +122,7 @@ const RecipeDetail = () => {
       <Button mb={4} onClick={() => navigate('/recipes')} variant="outline">
         ← Back to Recipes
       </Button>
-      
+
       <Recipe
         initialRecipe={recipe}
         isAuthorized={true}
@@ -133,4 +133,4 @@ const RecipeDetail = () => {
   );
 };
 
-export default RecipeDetail; 
+export default RecipeDetail;

@@ -17,31 +17,31 @@ import { recipeAPI, Ingredient } from '../services/api';
 // Icon components
 const DeleteIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
   </svg>
 );
 
 const AddIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
   </svg>
 );
 
 const EditIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
   </svg>
 );
 
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
   </svg>
 );
 
 const CloseIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
   </svg>
 );
 
@@ -77,13 +77,13 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
       if (textNode && textNode.nodeType === Node.TEXT_NODE) {
         const range = document.createRange();
         const selection = window.getSelection();
-        
+
         const maxOffset = textNode.textContent?.length || 0;
         const offset = Math.min(cursorPositionRef.current, maxOffset);
-        
+
         range.setStart(textNode, offset);
         range.setEnd(textNode, offset);
-        
+
         if (selection) {
           selection.removeAllRanges();
           selection.addRange(range);
@@ -141,22 +141,22 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
 }) => {
   const navigate = useNavigate();
   const isStatic = recipeAPI.isStaticMode();
-  
+
   const handleUpdate = useCallback((field: keyof Ingredient) => (e: FormEvent<HTMLDivElement>) => {
     if (isStatic) return; // Prevent updates in static mode
-    
+
     let value: any = e.currentTarget.textContent || '';
-    
+
     if (field === 'calories' || field === 'density') {
       value = parseFloat(value) || null;
     }
-    
+
     onUpdate(ingredient.id!, field, value);
   }, [ingredient.id, onUpdate, isStatic]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
     if (isStatic) return; // Prevent editing in static mode
-    
+
     if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
       document.execCommand('insertLineBreak');
@@ -192,7 +192,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
           <Spinner size="sm" color="blue.500" />
         </Box>
       )}
-      
+
       <Flex align="center" justify="space-between">
         <VStack align="start" gap={1} flex="1">
           {isEditing ? (
@@ -205,7 +205,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
           ) : (
             <Text fontWeight="medium" fontSize="lg">{ingredient.name}</Text>
           )}
-          
+
           <HStack gap={4} fontSize="sm" color="gray.600">
             {ingredient.calories && (
               <Text>{ingredient.calories} cal/100g</Text>
@@ -217,17 +217,17 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
               <Text color="gray.400">ID: {ingredient.id}</Text>
             )}
           </HStack>
-          
+
           {ingredient.description && !isEditing && (
-            <Text fontSize="sm" color="gray.700" 
-                  overflow="hidden" 
-                  textOverflow="ellipsis" 
-                  whiteSpace="nowrap"
-                  maxW="400px">
+            <Text fontSize="sm" color="gray.700"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+              maxW="400px">
               {ingredient.description}
             </Text>
           )}
-          
+
           {!isEditing && (
             <HStack gap={2} mt={2}>
               <Button size="xs" colorScheme="blue" variant="solid" onClick={handleViewDetailsById}>
@@ -239,7 +239,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
             </HStack>
           )}
         </VStack>
-        
+
         {!isStatic && (
           <HStack gap={2}>
             {isEditing ? (
@@ -285,7 +285,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
           </HStack>
         )}
       </Flex>
-      
+
       {/* Edit Form */}
       {isEditing && !isStatic && (
         <Box mt={4} pt={4} borderTop="1px solid" borderColor="gray.200">
@@ -301,7 +301,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
                 onKeyDown={handleKeyDown}
               />
             </Box>
-            
+
             <SimpleGrid columns={2} gap={4}>
               <Box>
                 <Text fontSize="sm" fontWeight="medium" mb={1}>
@@ -315,7 +315,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
                   onKeyDown={handleKeyDown}
                 />
               </Box>
-              
+
               <Box>
                 <Text fontSize="sm" fontWeight="medium" mb={1}>
                   Density (g/ml)
@@ -369,7 +369,7 @@ const Ingredients = () => {
 
   const addNewIngredient = useCallback(async () => {
     if (isStatic) return; // Prevent adding in static mode
-    
+
     try {
       const newIngredient = await recipeAPI.createIngredient({
         name: 'New Ingredient',
@@ -383,13 +383,13 @@ const Ingredients = () => {
 
   const updateIngredient = useCallback(async (id: number, field: keyof Ingredient, value: any) => {
     if (isStatic) return; // Prevent updating in static mode
-    
+
     try {
       setSaving(prev => ({ ...prev, [id]: true }));
-      
+
       const updatedIngredient = await recipeAPI.updateIngredient(id, { [field]: value });
-      
-      setIngredients(prev => 
+
+      setIngredients(prev =>
         prev.map(ing => ing.id === id ? updatedIngredient : ing)
       );
     } catch (err) {
@@ -401,7 +401,7 @@ const Ingredients = () => {
 
   const deleteIngredient = useCallback(async (id: number) => {
     if (isStatic) return; // Prevent deleting in static mode
-    
+
     if (!window.confirm('Are you sure you want to delete this ingredient?')) {
       return;
     }
@@ -416,14 +416,14 @@ const Ingredients = () => {
 
   const handleStartEdit = useCallback((ingredient: Ingredient) => {
     if (isStatic) return; // Prevent editing in static mode
-    
+
     setEditingIngredientId(ingredient.id!);
     setOriginalIngredient({ ...ingredient });
   }, [isStatic]);
 
   const handleCancelEdit = useCallback(() => {
     if (originalIngredient) {
-      setIngredients(prev => 
+      setIngredients(prev =>
         prev.map(ing => ing.id === originalIngredient.id ? originalIngredient : ing)
       );
     }
@@ -482,20 +482,20 @@ const Ingredients = () => {
           <VStack align="start" gap={1}>
             <Text fontSize="3xl" fontWeight="bold">Ingredients Database</Text>
             <Text color="gray.600">
-              {isStatic 
+              {isStatic
                 ? 'Browse the ingredient database and view detailed information.'
                 : 'Click on any ingredient to view detailed information, or use the edit button to modify ingredients.'
               }
             </Text>
           </VStack>
-          
+
           <Spacer />
-          
+
           <HStack gap={3}>
             <Badge colorScheme="blue" fontSize="sm" px={3} py={1}>
               {ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}
             </Badge>
-            
+
             {!isStatic && (
               <Button
                 colorScheme="green"
@@ -552,4 +552,4 @@ const Ingredients = () => {
   );
 };
 
-export default Ingredients; 
+export default Ingredients;

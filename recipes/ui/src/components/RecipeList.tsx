@@ -25,6 +25,14 @@ const RecipeList = () => {
     fetchRecipes();
   }, []);
 
+  useEffect(() => {
+      if (!loading && recipes.length > 0) {
+        restoreScrollPosition()
+      }
+    },
+    [loading, recipes.length]
+  )
+
   const fetchRecipes = async () => {
     try {
       setLoading(true);
@@ -39,9 +47,22 @@ const RecipeList = () => {
     }
   };
 
+  const saveScrollPosition = () => {
+    sessionStorage.setItem("scroll_recipe", JSON.stringify({x: window.pageXOffset,  y: window.pageYOffset}))
+  }
 
+  const restoreScrollPosition = () => {
+    const saved = sessionStorage.getItem(`scroll_recipe`);
+    let coord = {x: 0, y: 0};
+
+    if (saved) {
+      coord = JSON.parse(saved)
+    }
+    window.scrollTo(coord.x, coord.y);
+  }
 
   const handleCardClick = (recipe: RecipeData) => {
+    saveScrollPosition()
     navigate(`/recipes/${recipe.id}`);
   };
 

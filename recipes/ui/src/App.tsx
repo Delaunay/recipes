@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { 
-  ChakraProvider, 
+import {
+  ChakraProvider,
   createSystem,
   defaultConfig
 } from '@chakra-ui/react';

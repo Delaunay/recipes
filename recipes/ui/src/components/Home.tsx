@@ -13,7 +13,7 @@ const Home = () => {
             Welcome to RecipeBook
           </Heading>
           <Text fontSize="xl" color="gray.600" mb={8}>
-            {isStatic 
+            {isStatic
               ? 'Browse this curated collection of recipes - your static recipe reference'
               : 'Your digital cookbook for organizing, creating, and sharing recipes'
             }
@@ -27,7 +27,7 @@ const Home = () => {
               📖 Static Recipe Collection
             </Text>
             <Text fontSize="sm" color="blue.700" textAlign="center">
-              This is a read-only version of RecipeBook. You can browse recipes, scale quantities, 
+              This is a read-only version of RecipeBook. You can browse recipes, scale quantities,
               and convert units, but creating or editing recipes is not available.
             </Text>
           </Box>
@@ -77,4 +77,4 @@ const Home = () => {
   );
 };
 
-export default Home; 
+export default Home;
