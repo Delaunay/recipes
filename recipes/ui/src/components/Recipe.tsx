@@ -1692,17 +1692,19 @@ const Recipe: FC<RecipeProps> = ({
         </HStack>
 
         {/* Description */}
-        <Box>
-          <Text fontSize="lg" fontWeight="semibold" mb={2}>Description</Text>
-          <ContentEditable
-            content={recipe.description || ''}
-            onContentChange={handleTextChange('description')}
-            placeholder="Enter recipe description..."
-            multiline={true}
-            isEditable={isEditable && !isStatic}
-            onKeyDown={handleKeyDown}
-          />
-        </Box>
+        {(recipe.description || isEditable) && (
+          <Box>
+            <Text fontSize="lg" fontWeight="semibold" mb={2}>Description</Text>
+            <ContentEditable
+              content={recipe.description || ''}
+              onContentChange={handleTextChange('description')}
+              placeholder="Enter recipe description..."
+              multiline={true}
+              isEditable={isEditable && !isStatic}
+              onKeyDown={handleKeyDown}
+            />
+          </Box>
+        )}
 
         <Box height="1px" bg="gray.200" />
 
