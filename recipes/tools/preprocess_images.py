@@ -40,24 +40,42 @@ DATABASE_URI = f"sqlite:///{STATIC_FOLDER}/database.db"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 
+def image_found(image_path):
+    filename = image_path.replace('uploads/', '')
+
+    # Split namespace and extension
+    if '.' in filename:
+        namespace, extension = filename.rsplit('.', 1)
+    else:
+        namespace = filename
+        extension = 'jpg'  # Default extension
+
+    return os.path.exists(os.path.join(STATIC_UPLOAD_FOLDER, filename))
+
+
 def extract_all_image_paths(session):
-    """Extract all image paths from the database into a list"""
+    """Extract all image paths from the database and identify missing images"""
     image_paths = []
+    missing_image_objects = []  # List of (object, field_name, index) tuples
 
     # Get images from Recipe table
     recipes = session.query(Recipe).all()
     for recipe in recipes:
         # Check recipe images
         if recipe.images:
-            for image_path in recipe.images:
+            for i, image_path in enumerate(recipe.images):
                 if image_path:
                     # Remove leading slash if present
                     clean_path = image_path.lstrip('/')
                     image_paths.append(clean_path)
 
+                    # Check if image exists
+                    if not image_found(clean_path):
+                        missing_image_objects.append((recipe, 'images', i))
+
         # Check recipe instructions/steps for images
         if recipe.instructions:
-            for instruction in recipe.instructions:
+            for i, instruction in enumerate(recipe.instructions):
                 if isinstance(instruction, dict) and 'image' in instruction:
                     image_path = instruction['image']
                     if image_path:
@@ -65,17 +83,25 @@ def extract_all_image_paths(session):
                         clean_path = image_path.lstrip('/')
                         image_paths.append(clean_path)
 
+                        # Check if image exists
+                        if not image_found(clean_path):
+                            missing_image_objects.append((recipe, 'instructions', i))
+
     # Get images from ComposedRecipe table
     composed_recipes = session.query(ComposedRecipe).all()
     for recipe in composed_recipes:
         if recipe.images:
-            for image_path in recipe.images:
+            for i, image_path in enumerate(recipe.images):
                 if image_path:
                     # Remove leading slash if present
                     clean_path = image_path.lstrip('/')
                     image_paths.append(clean_path)
 
-    return image_paths
+                    # Check if image exists
+                    if not image_found(clean_path):
+                        missing_image_objects.append((recipe, 'images', i))
+
+    return image_paths, missing_image_objects
 
 
 def get_all_files_in_upload_folder():
@@ -132,8 +158,9 @@ def process_database_images(session):
     print("Processing images in database...")
 
     # Extract all image paths
-    image_paths = extract_all_image_paths(session)
+    image_paths, missing_image_objects = extract_all_image_paths(session)
     print(f"Found {len(image_paths)} image paths in database")
+    print(f"Found {len(missing_image_objects)} missing image references")
 
     # Remove duplicates while preserving order
     unique_paths = []
@@ -160,13 +187,68 @@ def process_database_images(session):
 
     print(f"Processing complete. Processed: {processed_count}, Errors: {error_count}")
 
+    return missing_image_objects
+
+
+def remove_missing_image_references(missing_image_objects, session, dry_run=False):
+    """Remove references to missing images from database objects"""
+    print("Removing missing image references from database...")
+
+    removed_count = 0
+    modified_objects = set()  # Track which objects were modified
+
+    for obj, field_name, index in missing_image_objects:
+        try:
+            if field_name == 'images':
+                # Handle recipe images array
+                if obj.images and index < len(obj.images):
+                    image_path = obj.images[index]
+                    if not dry_run:
+                        obj.images.pop(index)
+                        # Explicitly mark the field as modified
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(obj, 'images')
+                        modified_objects.add(obj)
+                        print(f"Removed missing image reference: {image_path}")
+                    else:
+                        print(f"Would remove missing image reference: {image_path}")
+                    removed_count += 1
+
+            elif field_name == 'instructions':
+                # Handle recipe instruction image
+                if obj.instructions and index < len(obj.instructions):
+                    instruction = obj.instructions[index]
+                    if isinstance(instruction, dict) and 'image' in instruction:
+                        image_path = instruction['image']
+                        if not dry_run:
+                            instruction['image'] = None
+                            # Explicitly mark the field as modified
+                            from sqlalchemy.orm.attributes import flag_modified
+                            flag_modified(obj, 'instructions')
+                            modified_objects.add(obj)
+                            print(f"Removed missing image reference from step: {image_path}")
+                        else:
+                            print(f"Would remove missing image reference from step: {image_path}")
+                        removed_count += 1
+
+        except Exception as e:
+            print(f"Error removing missing image reference: {e}")
+
+    if dry_run:
+        print(f"Would remove {removed_count} missing image references")
+    else:
+        print(f"Removed {removed_count} missing image references")
+        print(f"Modified {len(modified_objects)} database objects")
+
+    return removed_count
+
 
 def cleanup_orphaned_images(session, dry_run=False):
     """Remove images in upload folder that don't exist in database"""
     print("Cleaning up orphaned images...")
 
     # Get all image paths from database
-    db_image_paths = set(extract_all_image_paths(session))
+    db_image_paths = set(extract_all_image_paths(session)[0])  # Only get the paths, not the missing objects
 
     # Get all files in upload folder
     upload_files = get_all_files_in_upload_folder()
@@ -218,11 +300,20 @@ def main():
     Session = sessionmaker(bind=engine)
 
     with Session() as session:
-        # Process images in database
-        process_database_images(session)
+        # Process images in database and get missing image objects
+        missing_image_objects = process_database_images(session)
 
         # Clean up orphaned images
         cleanup_orphaned_images(session, dry_run=args.dry_run)
+
+        # Remove missing image references
+        if missing_image_objects:
+            remove_missing_image_references(missing_image_objects, session, dry_run=args.dry_run)
+
+            # Commit changes if not dry run
+            if not args.dry_run:
+                session.commit()
+                print("Database changes committed")
 
     print("Image preprocessing and cleanup complete!")
 
