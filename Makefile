@@ -80,3 +80,5 @@ local-deploy:
 	FLASK_STATIC="./static" FLASK_ENV=production waitress-serve --call 'recipes.server.run:main'
 
 	
+preprocess-images:
+		(. website/.venv/bin/activate; VITE_USE_STATIC_MODE=true FLASK_STATIC=website python scripts/static_generator.py)

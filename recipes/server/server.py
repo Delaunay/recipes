@@ -2,12 +2,13 @@ from typing import Dict, Any
 import os
 import sys
 import uuid
-from werkzeug.utils import secure_filename
+from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 from sqlalchemy.orm import sessionmaker, scoped_session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient
 
@@ -28,6 +29,7 @@ class RecipeApp:
 
         # Configure file uploads
         self.app.config['UPLOAD_FOLDER'] = STATIC_UPLOAD_FOLDER
+        self.app.config['ORIGINALS_FOLDER'] = '/mnt/xshare/projects/recipes/originals'
         # No file size limit
 
         # Create uploads directory if it doesn't exist
@@ -435,9 +437,34 @@ class RecipeApp:
                 "original_unit": from_unit
             })
 
+        def save_original_image(file, filename):
+            # Save the original image without modification
+            if os.path.exists(self.app.config["ORIGINALS_FOLDER"]):
+                original_path = os.path.join(self.app.config["ORIGINALS_FOLDER"], filename)
+                folder_path = os.path.dirname(original_path)
+                os.makedirs(folder_path, exist_ok=True)
 
-        def generate_redistribuable_image(file_path: str) -> str:
-            pass
+                if os.path.exists(original_path):
+                    os.rename(original_path, original_path + '.old')
+                
+                file.save(original_path)
+            # ---
+
+        def save_production_image(file, namespace, extension):
+            try:
+                image = Image.open(file.stream)
+
+                path = centercrop_resize_image(
+                    self.app.config['UPLOAD_FOLDER'], 
+                    image, 
+                    namespace, 
+                    extension
+                )
+
+                return path
+
+            except Exception as err:
+                print(err)
 
         @self.app.route('/upload', methods=['POST'])
         def upload_file() -> Dict[str, Any]:
@@ -468,22 +495,14 @@ class RecipeApp:
                 if namespace:
                     # Use namespace directly as filename with extension
                     filename = f"{namespace}.{file_extension}"
-                    file_path = os.path.join(self.app.config['UPLOAD_FOLDER'], filename)
 
-                    folder_path = os.path.dirname(file_path)
+                    save_original_image(file, filename)
 
-                    # Ensure the upload folder exists
-                    os.makedirs(folder_path, exist_ok=True)
-
-                    # Save file directly to the specified path
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        print("Removing")
-                    
-                    file.save(file_path)
-
+                    filename = save_production_image(file, namespace, file_extension)
+                
                     # Return the file URL
                     file_url = f"/uploads/{filename}"
+
                     return jsonify({
                         "url": file_url,
                         "filename": filename,

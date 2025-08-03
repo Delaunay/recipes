@@ -31,6 +31,7 @@ if __name__ == "__main__":
         ],
         packages=[
             "recipes.server",
+            "recipes.tools",
             # "recipes.recipes",
             #   "recipes.recipes.migrations",
             # "recipes.recipes.templatetags",
