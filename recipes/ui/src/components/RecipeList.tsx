@@ -26,10 +26,10 @@ const RecipeList = () => {
   }, []);
 
   useEffect(() => {
-      if (!loading && recipes.length > 0) {
-        restoreScrollPosition()
-      }
-    },
+    if (!loading && recipes.length > 0) {
+      restoreScrollPosition()
+    }
+  },
     [loading, recipes.length]
   )
 
@@ -48,15 +48,15 @@ const RecipeList = () => {
   };
 
   const saveScrollPosition = () => {
-    sessionStorage.setItem("scroll_recipe", JSON.stringify({x: window.pageXOffset,  y: window.pageYOffset}))
+    sessionStorage.setItem("scroll_recipe", JSON.stringify({ x: window.pageXOffset, y: window.pageYOffset }))
   }
 
   const restoreScrollPosition = () => {
     const saved = sessionStorage.getItem(`scroll_recipe`);
-    let coord = {x: 0, y: 0};
+    let coord = { x: 0, y: 0 };
 
     if (saved) {
-      coord = JSON.parse(saved)
+      coord = JSON.parse(saved) 
     }
     window.scrollTo(coord.x, coord.y);
   }
@@ -135,7 +135,7 @@ const RecipeList = () => {
           </HStack>
         </Box>
 
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 6 }} gap={6}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 }} gap={4}>
           {recipes.map((recipe) => (
             <Box
               key={recipe.id}
@@ -152,19 +152,26 @@ const RecipeList = () => {
               cursor="pointer"
               onClick={() => handleCardClick(recipe)}
               transition="all 0.2s"
+              maxW="100%"
             >
-              {/* Recipe Image */}
-              <Box position="relative" height="350px" overflow="hidden">
+              {/* Recipe Image - Square */}
+              <Box position="relative" width="100%" paddingBottom="100%" overflow="hidden">
                 {recipe.images && recipe.images.length > 0 ? (
                   <Image
                     src={imagePath(recipe.images[0])}
                     alt={recipe.title}
+                    position="absolute"
+                    top="0"
+                    left="0"
                     width="100%"
                     height="100%"
                     objectFit="cover"
                   />
                 ) : (
                   <Box
+                    position="absolute"
+                    top="0"
+                    left="0"
                     width="100%"
                     height="100%"
                     bg="gray.100"

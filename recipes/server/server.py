@@ -3,6 +3,7 @@ import os
 import sys
 import uuid
 from pathlib import Path
+from datetime import datetime
 
 from PIL import Image
 from flask import Flask, jsonify, request, send_from_directory
@@ -12,7 +13,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from ..tools.images import centercrop_resize_image
-from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient
+from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient, Event, Task, SubTask
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -72,6 +73,234 @@ class RecipeApp:
         @self.app.route('/health')
         def health_check() -> Dict[str, str]:
             return jsonify({"status": "healthy"})
+
+        # Tasks endpoints
+        @self.app.route('/tasks', methods=['GET'])
+        def get_tasks() -> Dict[str, Any]:
+            try:
+                tasks = self.db.session.query(Task).all()
+                return jsonify([task.to_json() for task in tasks])
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/tasks', methods=['POST'])
+        def create_task() -> Dict[str, Any]:
+            try:
+                data = request.get_json()
+
+                task = Task(
+                    title=data.get('title'),
+                    description=data.get('description'),
+                    datetime_deadline=datetime.fromisoformat(data.get('datetime_deadline').replace('Z', '+00:00')) if data.get('datetime_deadline') else None,
+                    done=data.get('done', False),
+                    price_budget=data.get('price_budget'),
+                    price_real=data.get('price_real'),
+                    people_count=data.get('people_count'),
+                    template=data.get('template', False),
+                    recuring=data.get('recuring', False),
+                    active=data.get('active', True)
+                )
+
+                self.db.session.add(task)
+                self.db.session.commit()
+
+                return jsonify(task.to_json()), 201
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/tasks/<int:task_id>', methods=['GET'])
+        def get_task(task_id: int) -> Dict[str, Any]:
+            try:
+                task = self.db.session.query(Task).get(task_id)
+                if task:
+                    return jsonify(task.to_json())
+                else:
+                    return jsonify({"error": "Task not found"}), 404
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/tasks/<int:task_id>', methods=['PUT'])
+        def update_task(task_id: int) -> Dict[str, Any]:
+            try:
+                task = self.db.session.query(Task).get(task_id)
+                if not task:
+                    return jsonify({"error": "Task not found"}), 404
+
+                data = request.get_json()
+
+                task.title = data.get('title', task.title)
+                task.description = data.get('description', task.description)
+                if data.get('datetime_deadline'):
+                    task.datetime_deadline = datetime.fromisoformat(data.get('datetime_deadline').replace('Z', '+00:00'))
+                task.done = data.get('done', task.done)
+                task.price_budget = data.get('price_budget', task.price_budget)
+                task.price_real = data.get('price_real', task.price_real)
+                task.people_count = data.get('people_count', task.people_count)
+                task.template = data.get('template', task.template)
+                task.recuring = data.get('recuring', task.recuring)
+                task.active = data.get('active', task.active)
+
+                self.db.session.commit()
+
+                return jsonify(task.to_json())
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/tasks/<int:task_id>', methods=['DELETE'])
+        def delete_task(task_id: int) -> Dict[str, Any]:
+            try:
+                task = self.db.session.query(Task).get(task_id)
+                if not task:
+                    return jsonify({"error": "Task not found"}), 404
+
+                self.db.session.delete(task)
+                self.db.session.commit()
+
+                return jsonify({"message": "Task deleted successfully"})
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        # Subtasks endpoints
+        @self.app.route('/subtasks', methods=['GET'])
+        def get_subtasks() -> Dict[str, Any]:
+            try:
+                subtasks = self.db.session.query(SubTask).all()
+                return jsonify([subtask.to_json() for subtask in subtasks])
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/subtasks', methods=['POST'])
+        def create_subtask() -> Dict[str, Any]:
+            try:
+                data = request.get_json()
+
+                subtask = SubTask(
+                    parent_id=data.get('parent_id'),
+                    child_id=data.get('child_id')
+                )
+
+                self.db.session.add(subtask)
+                self.db.session.commit()
+
+                return jsonify(subtask.to_json()), 201
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        # Events endpoints
+        @self.app.route('/events', methods=['GET'])
+        def get_events() -> Dict[str, Any]:
+            try:
+                start_date = request.args.get('start')
+                end_date = request.args.get('end')
+
+                query = self.db.session.query(Event)
+
+                # If no dates provided, default to current week
+                if not start_date and not end_date:
+                    from datetime import datetime, timedelta
+                    today = datetime.now()
+                    # Get Monday of current week
+                    days_since_monday = today.weekday()
+                    monday = today - timedelta(days=days_since_monday)
+                    start_date = monday.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+                    # Get Sunday of current week
+                    sunday = monday + timedelta(days=6)
+                    end_date = sunday.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+
+                if start_date and end_date:
+                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                    query = query.filter(
+                        Event.datetime_start >= start_dt,
+                        Event.datetime_end <= end_dt
+                    )
+
+                events = query.all()
+                return jsonify([event.to_json() for event in events])
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/events', methods=['POST'])
+        def create_event() -> Dict[str, Any]:
+            try:
+                data = request.get_json()
+
+                event = Event(
+                    title=data.get('title'),
+                    description=data.get('description'),
+                    datetime_start=datetime.fromisoformat(data.get('datetime_start').replace('Z', '+00:00')),
+                    datetime_end=datetime.fromisoformat(data.get('datetime_end').replace('Z', '+00:00')),
+                    location=data.get('location'),
+                    color=data.get('color', '#3182CE'),
+                    kind=data.get('kind', 1),
+                    done=data.get('done', False),
+                    price_budget=data.get('price_budget'),
+                    price_real=data.get('price_real'),
+                    people_count=data.get('people_count'),
+                    active=data.get('active', True)
+                )
+
+                self.db.session.add(event)
+                self.db.session.commit()
+
+                return jsonify(event.to_json()), 201
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/events/<int:event_id>', methods=['GET'])
+        def get_event(event_id: int) -> Dict[str, Any]:
+            try:
+                event = self.db.session.query(Event).get(event_id)
+                if event:
+                    return jsonify(event.to_json())
+                else:
+                    return jsonify({"error": "Event not found"}), 404
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/events/<int:event_id>', methods=['PUT'])
+        def update_event(event_id: int) -> Dict[str, Any]:
+            try:
+                event = self.db.session.query(Event).get(event_id)
+                if not event:
+                    return jsonify({"error": "Event not found"}), 404
+
+                data = request.get_json()
+
+                event.title = data.get('title', event.title)
+                event.description = data.get('description', event.description)
+                if data.get('datetime_start'):
+                    event.datetime_start = datetime.fromisoformat(data.get('datetime_start').replace('Z', '+00:00'))
+                if data.get('datetime_end'):
+                    event.datetime_end = datetime.fromisoformat(data.get('datetime_end').replace('Z', '+00:00'))
+                event.location = data.get('location', event.location)
+                event.color = data.get('color', event.color)
+                event.kind = data.get('kind', event.kind)
+                event.done = data.get('done', event.done)
+                event.price_budget = data.get('price_budget', event.price_budget)
+                event.price_real = data.get('price_real', event.price_real)
+                event.people_count = data.get('people_count', event.people_count)
+                event.active = data.get('active', event.active)
+
+                self.db.session.commit()
+
+                return jsonify(event.to_json())
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/events/<int:event_id>', methods=['DELETE'])
+        def delete_event(event_id: int) -> Dict[str, Any]:
+            try:
+                event = self.db.session.query(Event).get(event_id)
+                if not event:
+                    return jsonify({"error": "Event not found"}), 404
+
+                self.db.session.delete(event)
+                self.db.session.commit()
+
+                return jsonify({"message": "Event deleted successfully"})
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route('/recipes', methods=['GET'])
         def get_recipes() -> Dict[str, Any]:
@@ -448,7 +677,7 @@ class RecipeApp:
 
                 if os.path.exists(original_path):
                     os.rename(original_path, original_path + '.old')
-                
+
                 file.save(original_path)
             # ---
 
@@ -457,9 +686,9 @@ class RecipeApp:
                 image = Image.open(file.stream)
 
                 path = centercrop_resize_image(
-                    self.app.config['UPLOAD_FOLDER'], 
-                    image, 
-                    namespace, 
+                    self.app.config['UPLOAD_FOLDER'],
+                    image,
+                    namespace,
                     extension
                 )
 
@@ -501,7 +730,7 @@ class RecipeApp:
                     save_original_image(file, filename)
 
                     filename = save_production_image(file, namespace, file_extension)
-                
+
                     # Return the file URL
                     file_url = f"/uploads/{filename}"
 

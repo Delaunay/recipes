@@ -75,6 +75,50 @@ interface UnitConversionResult {
   original_unit: string;
 }
 
+interface Task {
+  id?: number;
+  title: string;
+  description?: string;
+  datetime_deadline?: string;
+  done: boolean;
+  price_budget?: number;
+  price_real?: number;
+  people_count?: number;
+  template: boolean;
+  recuring: boolean;
+  active: boolean;
+  extension?: any;
+  parent_subtasks?: SubTask[];
+  child_subtasks?: SubTask[];
+}
+
+interface SubTask {
+  id?: number;
+  parent_id: number;
+  child_id: number;
+  parent?: Task;
+  child?: Task;
+}
+
+interface Event {
+  id?: number;
+  title: string;
+  description?: string;
+  datetime_start: string;
+  datetime_end: string;
+  location?: string;
+  color?: string;
+  kind?: number;
+  done: boolean;
+  price_budget?: number;
+  price_real?: number;
+  people_count?: number;
+  template: boolean;
+  recuring: boolean;
+  active: boolean;
+  extension?: any;
+}
+
 class RecipeAPI {
   private async requestStatic<T>(endpoint: string): Promise<T> {
     // Convert endpoint to static JSON file path
@@ -354,9 +398,104 @@ class RecipeAPI {
   isStaticMode(): boolean {
     return isStaticMode();
   }
+
+  // Task methods
+  async getTasks(): Promise<Task[]> {
+    return this.request<Task[]>('/tasks');
+  }
+
+  async getTask(id: number): Promise<Task> {
+    return this.request<Task>(`/tasks/${id}`);
+  }
+
+  async createTask(task: Omit<Task, 'id'>): Promise<Task> {
+    if (isStaticMode()) {
+      throw new Error('Creating tasks is not supported in static mode');
+    }
+    return this.request<Task>('/tasks', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    });
+  }
+
+  async updateTask(id: number, task: Partial<Task>): Promise<Task> {
+    if (isStaticMode()) {
+      throw new Error('Updating tasks is not supported in static mode');
+    }
+    return this.request<Task>(`/tasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(task),
+    });
+  }
+
+  async deleteTask(id: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting tasks is not supported in static mode');
+    }
+    return this.request<{ message: string }>(`/tasks/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // SubTask methods
+  async getSubtasks(): Promise<SubTask[]> {
+    return this.request<SubTask[]>('/subtasks');
+  }
+
+  async createSubtask(subtask: Omit<SubTask, 'id'>): Promise<SubTask> {
+    if (isStaticMode()) {
+      throw new Error('Creating subtasks is not supported in static mode');
+    }
+    return this.request<SubTask>('/subtasks', {
+      method: 'POST',
+      body: JSON.stringify(subtask),
+    });
+  }
+
+  // Event methods
+  async getEvents(startDate?: string, endDate?: string): Promise<Event[]> {
+    let endpoint = '/events';
+    if (startDate && endDate) {
+      endpoint += `?start=${startDate}&end=${endDate}`;
+    }
+    return this.request<Event[]>(endpoint);
+  }
+
+  async getEvent(id: number): Promise<Event> {
+    return this.request<Event>(`/events/${id}`);
+  }
+
+  async createEvent(event: Omit<Event, 'id'>): Promise<Event> {
+    if (isStaticMode()) {
+      throw new Error('Creating events is not supported in static mode');
+    }
+    return this.request<Event>('/events', {
+      method: 'POST',
+      body: JSON.stringify(event),
+    });
+  }
+
+  async updateEvent(id: number, event: Partial<Event>): Promise<Event> {
+    if (isStaticMode()) {
+      throw new Error('Updating events is not supported in static mode');
+    }
+    return this.request<Event>(`/events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(event),
+    });
+  }
+
+  async deleteEvent(id: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting events is not supported in static mode');
+    }
+    return this.request<{ message: string }>(`/events/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
 export { imagePath };
-export type { RecipeData, Ingredient, Category, Instruction, UnitConversion, UnitConversionResult };
+export type { RecipeData, Ingredient, Category, Instruction, UnitConversion, UnitConversionResult, Task, SubTask, Event };

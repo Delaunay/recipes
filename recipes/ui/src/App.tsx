@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter  as Router, Routes, Route } from 'react-router-dom';
 import {
   ChakraProvider,
   createSystem,
@@ -12,6 +12,8 @@ import CreateRecipe from './components/CreateRecipe';
 import Ingredients from './components/Ingredients';
 import IngredientDetail from './components/IngredientDetail';
 import UnitConversions from './components/UnitConversions';
+import Events from './components/Events';
+import Tasks from './components/Tasks';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -32,6 +34,8 @@ function App() {
             <Route path="/my-recipes" element={<div>My Recipes - Coming Soon!</div>} />
             <Route path="/settings" element={<div>Settings - Coming Soon!</div>} />
             <Route path="/planning" element={<div>Planning - Coming Soon!</div>} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/tasks" element={<Tasks />} />
             <Route path="/ingredients" element={<Ingredients />} />
             <Route path="/ingredients/:identifier" element={<IngredientDetail />} />
             <Route path="/conversions" element={<UnitConversions />} />
