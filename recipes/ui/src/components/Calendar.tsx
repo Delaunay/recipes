@@ -337,7 +337,6 @@ const WeeklyCalendar: React.FC = () => {
                 templateColumns="80px repeat(7, 1fr)"
                 templateRows="50px 1fr"
                 gap={1}
-                border="2px solid"
                 borderColor="gray.300"
                 borderRadius="md"
                 bg="white"
@@ -373,7 +372,9 @@ const WeeklyCalendar: React.FC = () => {
 
                 {/* Time labels column */}
                 <GridItem
-                    border="1px solid"
+                    borderTop="1px solid"
+                    borderLeft="1px solid"
+                    borderRight="1px solid"
                     borderColor="gray.200"
                     bg="gray.50"
                     display="flex"
@@ -400,8 +401,7 @@ const WeeklyCalendar: React.FC = () => {
                 {/* One massive content area spanning all 7 days and all hours */}
                 <GridItem
                     colSpan={7}
-                    border="1px solid"
-                    borderColor="gray.200"
+
                     bg="white"
                     _hover={{ bg: "gray.50" }}
                     position="relative"
