@@ -81,4 +81,4 @@ local-deploy:
 
 	
 preprocess-images:
-		(. website/.venv/bin/activate; VITE_USE_STATIC_MODE=true FLASK_STATIC=website python scripts/static_generator.py)
+	(. website/.venv/bin/activate; VITE_USE_STATIC_MODE=true FLASK_STATIC=website python scripts/static_generator.py)

@@ -3,7 +3,8 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+import traceback
 
 from PIL import Image
 from flask import Flask, jsonify, request, send_from_directory
@@ -197,7 +198,6 @@ class RecipeApp:
 
                 # If no dates provided, default to current week
                 if not start_date and not end_date:
-                    from datetime import datetime, timedelta
                     today = datetime.now()
                     # Get Monday of current week
                     days_since_monday = today.weekday()
@@ -245,6 +245,7 @@ class RecipeApp:
 
                 return jsonify(event.to_json()), 201
             except Exception as e:
+                traceback.print_exc()
                 return jsonify({"error": str(e)}), 500
 
         @self.app.route('/events/<int:event_id>', methods=['GET'])
