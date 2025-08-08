@@ -17,6 +17,82 @@ import {
 } from '@chakra-ui/react';
 import { recipeAPI, Event } from '../services/api';
 
+// Individual Event Component
+interface CalendarEventProps {
+    event: Event;
+    position: { top: number; height: number };
+    onClick?: (event: Event) => void;
+    onEdit?: (event: Event) => void;
+    onDelete?: (event: Event) => void;
+}
+
+const CalendarEvent: React.FC<CalendarEventProps> = ({
+    event,
+    position,
+    onClick,
+    onEdit,
+    onDelete
+}) => {
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent day click when clicking on event
+        if (onClick) {
+            onClick(event);
+        }
+    };
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onEdit) {
+            onEdit(event);
+        }
+    };
+
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onDelete) {
+            onDelete(event);
+        }
+    };
+
+    return (
+        <Box
+            position="absolute"
+            top={`${position.top}px`}
+            left="0"
+            right="0"
+            height={`${position.height}px`}
+            bg={event.color || "blue.500"}
+            color="white"
+            p={1}
+            borderRadius="sm"
+            fontSize="xs"
+            overflow="hidden"
+            cursor="pointer"
+            _hover={{
+                opacity: 0.9,
+                transform: "scale(1.02)",
+                transition: "all 0.2s"
+            }}
+            title={`${event.title} - ${new Date(event.datetime_start).toLocaleTimeString()} to ${new Date(event.datetime_end).toLocaleTimeString()}`}
+            onClick={handleClick}
+            display="flex"
+            flexDirection="column"
+            justifyContent="space-between"
+        >
+            <Box flex="1" overflow="hidden">
+                <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                    {event.title}
+                </Text>
+                {event.description && position.height > 30 && (
+                    <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="xs" opacity={0.9}>
+                        {event.description}
+                    </Text>
+                )}
+            </Box>
+        </Box>
+    );
+};
+
 // Hook to measure container and calculate time slot heights
 const useCalendarSizing = () => {
     const [timeSlotHeight, setTimeSlotHeight] = useState(33);
@@ -75,7 +151,7 @@ class DayAxis {
 
     constructor(startHour: number, endHour: number, dayHeight: number) {
         this.startHour = startHour;
-        this.endHour = endHour;
+        this.endHour = endHour + 1;
         this.dayHeight = dayHeight;
     }
 
@@ -96,9 +172,10 @@ class DayAxis {
 
         // Convert to pixel positions
         const top = Math.max(0, relativeStart * this.dayHeight);
-        const height = Math.min(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
+        const h = Math.min(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
 
-        console.log(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
+        // If end time is tomorrow the height will be negative
+        const height = h > 0 ? h : this.dayHeight - top;
         return { top, height };
     }
 
@@ -141,6 +218,27 @@ const WeeklyCalendar: React.FC = () => {
     const [dayAxis, setDayAxis] = useState<DayAxis | null>(null);
     const calendarContentRef = useRef<HTMLDivElement>(null);
 
+    // Event handlers
+    const handleEventClick = (event: Event) => {
+        console.log('Event clicked:', event);
+        // You can add more functionality here like opening a modal, editing, etc.
+    };
+
+    const handleEventEdit = (event: Event) => {
+        console.log('Edit event:', event);
+        // Add edit functionality here
+    };
+
+    const handleEventDelete = (event: Event) => {
+        console.log('Delete event:', event);
+        // Add delete functionality here
+    };
+
+    const handleDayClick = (dayName: string) => {
+        console.log('Day clicked:', dayName);
+        // You can add functionality for creating new events on day click
+    };
+
     const fetchEvents = async () => {
         try {
             const startOfWeek = getStartOfWeek(currentWeek);
@@ -148,7 +246,7 @@ const WeeklyCalendar: React.FC = () => {
 
             const data = await recipeAPI.getEvents(startOfWeek.toISOString(), endOfWeek.toISOString());
 
-            
+            // WHAT IF END TIME IS TOMORROW ?
             const data2: Event[] = [
                 {
                     id: 1,
@@ -169,6 +267,19 @@ const WeeklyCalendar: React.FC = () => {
                     description: 'Daily standup with the team',
                     datetime_start: new Date(getToday().getTime() + 25 * 60 * 60 * 1000).toISOString(),
                     datetime_end: new Date(getToday().getTime() + 26 * 60 * 60 * 1000).toISOString(),
+                    color: '#3182CE',
+                    kind: 1,
+                    done: false,
+                    template: false,
+                    recuring: false,
+                    active: true,
+                },
+                {
+                    id: 2,
+                    title: 'Morning Meeting',
+                    description: 'Daily standup with the team',
+                    datetime_start: new Date(getToday().getTime() + (25 + 16) * 60 * 60 * 1000).toISOString(),
+                    datetime_end: new Date(getToday().getTime() + (26 + 16) * 60 * 60 * 1000).toISOString(),
                     color: '#3182CE',
                     kind: 1,
                     done: false,
@@ -203,9 +314,11 @@ const WeeklyCalendar: React.FC = () => {
 
     // Create DayAxis when calendar content is available
     useEffect(() => {
-        const newDayAxis = new DayAxis(6, 23, totalCalendarHeight);
+        // Use timeSlotHeight * hoursCount for consistent positioning
+        const dayHeight = timeSlotHeight * hours.length;
+        const newDayAxis = new DayAxis(6, 23, dayHeight);
         setDayAxis(newDayAxis);
-    }, [totalCalendarHeight]);
+    }, [timeSlotHeight]);
 
     // Fetch events when component mounts or week changes
     useEffect(() => {
@@ -265,7 +378,7 @@ const WeeklyCalendar: React.FC = () => {
                     bg="gray.50"
                     display="flex"
                     flexDirection="column"
-                    height={`${totalCalendarHeight}px`}
+                    height={`${timeSlotHeight * hours.length}px`}
                 >
                     {hours.map((hour) => (
                         <Box
@@ -298,7 +411,7 @@ const WeeklyCalendar: React.FC = () => {
                     ref={calendarContentRef}
                     flex="1"
                     minH="0"
-                    height={`${totalCalendarHeight}px`}
+                    height={`${timeSlotHeight * hours.length}px`}
                 >
                     {/* Day columns inside the content area */}
                     <Grid
@@ -319,37 +432,21 @@ const WeeklyCalendar: React.FC = () => {
                                 id={`calendar-${day}`}
                                 position="relative"
                                 height="100%"
+                                cursor="pointer"
+                                onClick={() => handleDayClick(day)}
                             >
                                 {/* Render events for this day */}
                                 {dayAxis && getEventsForDay(day).map((event) => {
                                     const position = dayAxis.getEventPosition(event);
                                     return (
-                                        <Box
+                                        <CalendarEvent
                                             key={event.id}
-                                            position="absolute"
-                                            top={`${position.top}px`}
-                                            left="0"
-                                            right="0"
-                                            height={`${position.height}px`}
-                                            bg={event.color || "blue.500"}
-                                            color="white"
-                                            p={1}
-                                            borderRadius="sm"
-                                            fontSize="xs"
-                                            overflow="hidden"
-                                            cursor="pointer"
-                                            _hover={{ opacity: 0.8 }}
-                                            title={`${event.title} - ${new Date(event.datetime_start).toLocaleTimeString()} to ${new Date(event.datetime_end).toLocaleTimeString()}`}
-                                        >
-                                            <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                                                {event.title}
-                                            </Text>
-                                            {event.description && (
-                                                <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="xs">
-                                                    {event.description}
-                                                </Text>
-                                            )}
-                                        </Box>
+                                            event={event}
+                                            position={position}
+                                            onClick={handleEventClick}
+                                            onEdit={handleEventEdit}
+                                            onDelete={handleEventDelete}
+                                        />
                                     );
                                 })}
                             </GridItem>
