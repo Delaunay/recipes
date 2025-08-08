@@ -13,13 +13,12 @@ import {
     Spacer,
 } from '@chakra-ui/react';
 import { recipeAPI, Event } from '../services/api';
+import WeeklyCalendar from './Calendar';
 
-interface TimeSlot {
-    time: string;
-    events: Event[];
-}
 
 const Events: React.FC = () => {
+    return <WeeklyCalendar />;
+
     const [events, setEvents] = useState<Event[]>([]);
     const [currentWeek, setCurrentWeek] = useState<Date>(new Date());
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -154,6 +153,25 @@ const Events: React.FC = () => {
         return today.toDateString() === dayDate.toDateString();
     };
 
+    const getEventsForDay = (dayIndex: number): Event[] => {
+        const dayDate = new Date(getStartOfWeek(currentWeek));
+        dayDate.setDate(dayDate.getDate() + dayIndex);
+        
+        const dayStart = new Date(dayDate);
+        dayStart.setHours(0, 0, 0, 0);
+        
+        const dayEnd = new Date(dayDate);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        return events.filter(event => {
+            const eventStart = new Date(event.datetime_start);
+            const eventEnd = new Date(event.datetime_end);
+
+            // Check if event is on this day
+            return eventStart < dayEnd && eventEnd > dayStart;
+        });
+    };
+
     const getEventsForTimeSlot = (timeSlot: string, dayIndex: number): Event[] => {
         const dayDate = new Date(getStartOfWeek(currentWeek));
         dayDate.setDate(dayDate.getDate() + dayIndex);
@@ -172,6 +190,82 @@ const Events: React.FC = () => {
             // Check if event overlaps with this time slot
             return eventStart < slotEnd && eventEnd > slotStart;
         });
+    };
+
+    interface EventLayout {
+        event: Event;
+        top: number;
+        height: number;
+        left: number;
+        width: number;
+    }
+
+    const calculateEventLayout = (dayIndex: number): EventLayout[] => {
+        const dayEvents = getEventsForDay(dayIndex);
+        const layouts: EventLayout[] = [];
+        const SLOT_HEIGHT = 60; // 60px per hour slot
+        const CALENDAR_START_HOUR = 6; // Calendar starts at 6:00
+
+        // Sort events by start time
+        dayEvents.sort((a, b) => new Date(a.datetime_start).getTime() - new Date(b.datetime_start).getTime());
+
+        // Group overlapping events
+        const eventGroups: Event[][] = [];
+        
+        for (const event of dayEvents) {
+            const eventStart = new Date(event.datetime_start);
+            const eventEnd = new Date(event.datetime_end);
+            
+            // Find a group this event can join (overlaps with any event in the group)
+            let joinedGroup = false;
+            for (const group of eventGroups) {
+                const overlapsWithGroup = group.some(groupEvent => {
+                    const groupStart = new Date(groupEvent.datetime_start);
+                    const groupEnd = new Date(groupEvent.datetime_end);
+                    return eventStart < groupEnd && eventEnd > groupStart;
+                });
+                
+                if (overlapsWithGroup) {
+                    group.push(event);
+                    joinedGroup = true;
+                    break;
+                }
+            }
+            
+            if (!joinedGroup) {
+                eventGroups.push([event]);
+            }
+        }
+
+        // Calculate layout for each group
+        for (const group of eventGroups) {
+            const groupWidth = 100 / group.length; // Equal width for each event in the group
+            
+            group.forEach((event, index) => {
+                const eventStart = new Date(event.datetime_start);
+                const eventEnd = new Date(event.datetime_end);
+                
+                // Calculate position from calendar start (6:00)
+                const startHour = eventStart.getHours() + eventStart.getMinutes() / 60;
+                const endHour = eventEnd.getHours() + eventEnd.getMinutes() / 60;
+                
+                // Position relative to calendar start
+                const top = (startHour - CALENDAR_START_HOUR) * SLOT_HEIGHT;
+                const height = (endHour - startHour) * SLOT_HEIGHT;
+                const left = index * groupWidth;
+                const width = groupWidth;
+
+                layouts.push({
+                    event,
+                    top,
+                    height,
+                    left,
+                    width
+                });
+            });
+        }
+
+        return layouts;
     };
 
     const getWeekNumber = (date: Date): number => {
@@ -436,7 +530,7 @@ const Events: React.FC = () => {
                 </Box>
             )}
 
-            <Box overflowX="auto">
+            <Box overflowX="auto" position="relative">
                 <Grid
                     templateColumns="80px repeat(7, 1fr)"
                     gap={1}
@@ -500,44 +594,8 @@ const Events: React.FC = () => {
                                             }
                                         }}
                                     >
-                                        {slotEvents.map((event) => (
-                                            <Box
-                                                key={event.id}
-                                                p={1}
-                                                mb={1}
-                                                bg={event.color || '#3182CE'}
-                                                color="white"
-                                                borderRadius="sm"
-                                                fontSize="xs"
-                                                cursor="pointer"
-                                                onClick={(e) => {
-                                                    e.stopPropagation(); // Prevent triggering the slot click
-                                                    handleEventClick(event);
-                                                }}
-                                                style={{
-                                                    transition: 'opacity 0.2s',
-                                                    opacity: 1
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.opacity = '0.8';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.opacity = '1';
-                                                }}
-                                                maxW="100%"
-                                                overflow="hidden"
-                                            >
-                                                <Text fontWeight="medium" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {event.title}
-                                                </Text>
-                                                {event.location && (
-                                                    <Text fontSize="xs" opacity={0.8} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                        📍 {event.location}
-                                                    </Text>
-                                                )}
-                                            </Box>
-                                        ))}
-                                        {slotEvents.length === 0 && (
+                                        {/* Show + icon only in first time slot of each day if no events in this slot */}
+                                        {timeSlot === '06:00' && slotEvents.length === 0 && (
                                             <Box
                                                 h="100%"
                                                 display="flex"
@@ -561,6 +619,125 @@ const Events: React.FC = () => {
                         </React.Fragment>
                     ))}
                 </Grid>
+                
+                {/* Events overlay - positioned absolutely over the grid */}
+                <Box 
+                    position="absolute" 
+                    top="0"
+                    left="0"
+                    right="0"
+                    bottom="0"
+                    pointerEvents="none"
+                    overflow="hidden"
+                >
+                    <Grid
+                        templateColumns="80px repeat(7, 1fr)"
+                        gap={1}
+                        h="100%"
+                        position="relative"
+                        top="60px" // Account for header row
+                    >
+                        {/* Empty cell for time column */}
+                        <GridItem />
+                        
+                        {/* Day columns for events */}
+                        {daysOfWeek.map((_, dayIndex) => {
+                            const eventLayouts = calculateEventLayout(dayIndex);
+                            
+                            return (
+                                <GridItem
+                                    key={`events-day-${dayIndex}`}
+                                    position="relative"
+                                    pointerEvents="auto"
+                                    height={`${timeSlots.length * 60}px`}
+                                >
+                                    {eventLayouts.map((layout) => (
+                                        <Box
+                                            key={layout.event.id}
+                                            position="absolute"
+                                            top={`${layout.top}px`}
+                                            left={`${layout.left}%`}
+                                            width={`${layout.width}%`}
+                                            height={`${layout.height}px`}
+                                            p={1}
+                                            bg={layout.event.color || '#3182CE'}
+                                            color="white"
+                                            borderRadius="sm"
+                                            fontSize="xs"
+                                            cursor="pointer"
+                                            border="1px solid rgba(255,255,255,0.2)"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEventClick(layout.event);
+                                            }}
+                                            style={{
+                                                transition: 'opacity 0.2s, transform 0.2s',
+                                                opacity: 0.9,
+                                                boxSizing: 'border-box',
+                                                zIndex: 10
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.opacity = '1';
+                                                e.currentTarget.style.transform = 'scale(1.02)';
+                                                e.currentTarget.style.zIndex = '20';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.opacity = '0.9';
+                                                e.currentTarget.style.transform = 'scale(1)';
+                                                e.currentTarget.style.zIndex = '10';
+                                            }}
+                                            overflow="hidden"
+                                        >
+                                            <Text 
+                                                fontWeight="medium" 
+                                                style={{ 
+                                                    overflow: 'hidden', 
+                                                    textOverflow: 'ellipsis', 
+                                                    whiteSpace: 'nowrap',
+                                                    fontSize: layout.height > 30 ? '12px' : '10px'
+                                                }}
+                                            >
+                                                {layout.event.title}
+                                            </Text>
+                                            {layout.event.location && layout.height > 40 && (
+                                                <Text 
+                                                    fontSize="10px" 
+                                                    opacity={0.8} 
+                                                    style={{ 
+                                                        overflow: 'hidden', 
+                                                        textOverflow: 'ellipsis', 
+                                                        whiteSpace: 'nowrap' 
+                                                    }}
+                                                >
+                                                    📍 {layout.event.location}
+                                                </Text>
+                                            )}
+                                            {layout.height > 50 && (
+                                                <Text 
+                                                    fontSize="9px" 
+                                                    opacity={0.7} 
+                                                    mt={1}
+                                                >
+                                                    {new Date(layout.event.datetime_start).toLocaleTimeString('en-US', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    })}
+                                                    {' - '}
+                                                    {new Date(layout.event.datetime_end).toLocaleTimeString('en-US', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    })}
+                                                </Text>
+                                            )}
+                                        </Box>
+                                    ))}
+                                </GridItem>
+                            );
+                        })}
+                    </Grid>
+                </Box>
             </Box>
         </Box>
     );
