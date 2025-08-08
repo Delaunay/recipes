@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Grid,
@@ -17,6 +17,8 @@ import WeeklyCalendar from './Calendar';
 
 
 const Events: React.FC = () => {
+
+
     return <WeeklyCalendar />;
 
     const [events, setEvents] = useState<Event[]>([]);
@@ -156,10 +158,10 @@ const Events: React.FC = () => {
     const getEventsForDay = (dayIndex: number): Event[] => {
         const dayDate = new Date(getStartOfWeek(currentWeek));
         dayDate.setDate(dayDate.getDate() + dayIndex);
-        
+
         const dayStart = new Date(dayDate);
         dayStart.setHours(0, 0, 0, 0);
-        
+
         const dayEnd = new Date(dayDate);
         dayEnd.setHours(23, 59, 59, 999);
 
@@ -211,11 +213,11 @@ const Events: React.FC = () => {
 
         // Group overlapping events
         const eventGroups: Event[][] = [];
-        
+
         for (const event of dayEvents) {
             const eventStart = new Date(event.datetime_start);
             const eventEnd = new Date(event.datetime_end);
-            
+
             // Find a group this event can join (overlaps with any event in the group)
             let joinedGroup = false;
             for (const group of eventGroups) {
@@ -224,14 +226,14 @@ const Events: React.FC = () => {
                     const groupEnd = new Date(groupEvent.datetime_end);
                     return eventStart < groupEnd && eventEnd > groupStart;
                 });
-                
+
                 if (overlapsWithGroup) {
                     group.push(event);
                     joinedGroup = true;
                     break;
                 }
             }
-            
+
             if (!joinedGroup) {
                 eventGroups.push([event]);
             }
@@ -240,15 +242,15 @@ const Events: React.FC = () => {
         // Calculate layout for each group
         for (const group of eventGroups) {
             const groupWidth = 100 / group.length; // Equal width for each event in the group
-            
+
             group.forEach((event, index) => {
                 const eventStart = new Date(event.datetime_start);
                 const eventEnd = new Date(event.datetime_end);
-                
+
                 // Calculate position from calendar start (6:00)
                 const startHour = eventStart.getHours() + eventStart.getMinutes() / 60;
                 const endHour = eventEnd.getHours() + eventEnd.getMinutes() / 60;
-                
+
                 // Position relative to calendar start
                 const top = (startHour - CALENDAR_START_HOUR) * SLOT_HEIGHT;
                 const height = (endHour - startHour) * SLOT_HEIGHT;
@@ -619,10 +621,10 @@ const Events: React.FC = () => {
                         </React.Fragment>
                     ))}
                 </Grid>
-                
+
                 {/* Events overlay - positioned absolutely over the grid */}
-                <Box 
-                    position="absolute" 
+                <Box
+                    position="absolute"
                     top="0"
                     left="0"
                     right="0"
@@ -639,11 +641,11 @@ const Events: React.FC = () => {
                     >
                         {/* Empty cell for time column */}
                         <GridItem />
-                        
+
                         {/* Day columns for events */}
                         {daysOfWeek.map((_, dayIndex) => {
                             const eventLayouts = calculateEventLayout(dayIndex);
-                            
+
                             return (
                                 <GridItem
                                     key={`events-day-${dayIndex}`}
@@ -688,11 +690,11 @@ const Events: React.FC = () => {
                                             }}
                                             overflow="hidden"
                                         >
-                                            <Text 
-                                                fontWeight="medium" 
-                                                style={{ 
-                                                    overflow: 'hidden', 
-                                                    textOverflow: 'ellipsis', 
+                                            <Text
+                                                fontWeight="medium"
+                                                style={{
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
                                                     whiteSpace: 'nowrap',
                                                     fontSize: layout.height > 30 ? '12px' : '10px'
                                                 }}
@@ -700,22 +702,22 @@ const Events: React.FC = () => {
                                                 {layout.event.title}
                                             </Text>
                                             {layout.event.location && layout.height > 40 && (
-                                                <Text 
-                                                    fontSize="10px" 
-                                                    opacity={0.8} 
-                                                    style={{ 
-                                                        overflow: 'hidden', 
-                                                        textOverflow: 'ellipsis', 
-                                                        whiteSpace: 'nowrap' 
+                                                <Text
+                                                    fontSize="10px"
+                                                    opacity={0.8}
+                                                    style={{
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap'
                                                     }}
                                                 >
                                                     📍 {layout.event.location}
                                                 </Text>
                                             )}
                                             {layout.height > 50 && (
-                                                <Text 
-                                                    fontSize="9px" 
-                                                    opacity={0.7} 
+                                                <Text
+                                                    fontSize="9px"
+                                                    opacity={0.7}
                                                     mt={1}
                                                 >
                                                     {new Date(layout.event.datetime_start).toLocaleTimeString('en-US', {

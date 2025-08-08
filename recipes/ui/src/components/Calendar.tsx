@@ -17,6 +17,56 @@ import {
 } from '@chakra-ui/react';
 import { recipeAPI, Event } from '../services/api';
 
+// Hook to measure container and calculate time slot heights
+const useCalendarSizing = () => {
+    const [timeSlotHeight, setTimeSlotHeight] = useState(33);
+    const [totalCalendarHeight, setTotalCalendarHeight] = useState(600);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const element = containerRef.current;
+        if (!element) return;
+
+        const calculateSizing = () => {
+            const rect = element.getBoundingClientRect();
+            const containerHeight = rect.height;
+
+            // Account for day header (50px) and padding
+            const headerHeight = 50;
+            const padding = 32; // Account for container padding
+            const availableHeight = containerHeight - headerHeight - padding;
+
+            // We have 18 hours (6 to 23)
+            const hoursCount = 18;
+
+            // Calculate optimal time slot height
+            const calculatedHeight = availableHeight / hoursCount;
+
+            // Set minimum and maximum constraints
+            const minSlotHeight = 25;
+            const maxSlotHeight = 80;
+
+            const optimalHeight = Math.max(minSlotHeight, Math.min(maxSlotHeight, calculatedHeight));
+
+            setTimeSlotHeight(optimalHeight);
+            setTotalCalendarHeight(optimalHeight * hoursCount);
+        };
+
+        // Initial calculation
+        calculateSizing();
+
+        // Create ResizeObserver for dynamic updates
+        const resizeObserver = new ResizeObserver(calculateSizing);
+        resizeObserver.observe(element);
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, []);
+
+    return { containerRef, timeSlotHeight, totalCalendarHeight };
+};
+
 // Axis class for positioning events within a day column
 class DayAxis {
     private startHour: number;
@@ -33,21 +83,22 @@ class DayAxis {
     getEventPosition(event: Event): { top: number; height: number } {
         const eventStart = new Date(event.datetime_start);
         const eventEnd = new Date(event.datetime_end);
-        
+
         // Convert hours to minutes for more precise positioning
         const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
         const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
         const dayStartMinutes = this.startHour * 60;
         const dayEndMinutes = this.endHour * 60;
-        
+
         // Calculate relative positions
         const relativeStart = (startMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
         const relativeEnd = (endMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
-        
+
         // Convert to pixel positions
         const top = Math.max(0, relativeStart * this.dayHeight);
         const height = Math.min(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
-        
+
+        console.log(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
         return { top, height };
     }
 
@@ -82,6 +133,9 @@ const WeeklyCalendar: React.FC = () => {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6 to 23
 
+    // Use the sizing hook
+    const { containerRef, timeSlotHeight, totalCalendarHeight } = useCalendarSizing();
+
     const [events, setEvents] = useState<Event[]>([]);
     const [currentWeek, setCurrentWeek] = useState<Date>(new Date());
     const [dayAxis, setDayAxis] = useState<DayAxis | null>(null);
@@ -94,6 +148,7 @@ const WeeklyCalendar: React.FC = () => {
 
             const data = await recipeAPI.getEvents(startOfWeek.toISOString(), endOfWeek.toISOString());
 
+            
             const data2: Event[] = [
                 {
                     id: 1,
@@ -108,7 +163,20 @@ const WeeklyCalendar: React.FC = () => {
                     recuring: false,
                     active: true,
                 },
-                
+                {
+                    id: 2,
+                    title: 'Morning Meeting',
+                    description: 'Daily standup with the team',
+                    datetime_start: new Date(getToday().getTime() + 25 * 60 * 60 * 1000).toISOString(),
+                    datetime_end: new Date(getToday().getTime() + 26 * 60 * 60 * 1000).toISOString(),
+                    color: '#3182CE',
+                    kind: 1,
+                    done: false,
+                    template: false,
+                    recuring: false,
+                    active: true,
+                },
+
             ]
             setEvents(data2);
         } catch (error) {
@@ -122,11 +190,11 @@ const WeeklyCalendar: React.FC = () => {
     const getEventsForDay = (dayName: string): Event[] => {
         const dayIndex = days.indexOf(dayName);
         if (dayIndex === -1) return [];
-        
+
         const startOfWeek = getStartOfWeek(currentWeek);
         const targetDate = new Date(startOfWeek);
         targetDate.setDate(startOfWeek.getDate() + dayIndex);
-        
+
         return events.filter(event => {
             const eventDate = new Date(event.datetime_start);
             return eventDate.toDateString() === targetDate.toDateString();
@@ -135,12 +203,9 @@ const WeeklyCalendar: React.FC = () => {
 
     // Create DayAxis when calendar content is available
     useEffect(() => {
-        if (calendarContentRef.current) {
-            const contentHeight = calendarContentRef.current.clientHeight;
-            const newDayAxis = new DayAxis(6, 23, contentHeight);
-            setDayAxis(newDayAxis);
-        }
-    }, []);
+        const newDayAxis = new DayAxis(6, 23, totalCalendarHeight);
+        setDayAxis(newDayAxis);
+    }, [totalCalendarHeight]);
 
     // Fetch events when component mounts or week changes
     useEffect(() => {
@@ -148,7 +213,13 @@ const WeeklyCalendar: React.FC = () => {
     }, [currentWeek]);
 
     return (
-        <Box p={4} maxW="100%" overflowX="auto">
+        <div
+            className="cls-calendar"
+            ref={containerRef}
+            style={{
+                minHeight: "calc(100vh - 6rem)"
+            }}
+        >
             <Grid
                 templateColumns="80px repeat(7, 1fr)"
                 templateRows="50px 1fr"
@@ -158,14 +229,18 @@ const WeeklyCalendar: React.FC = () => {
                 borderRadius="md"
                 bg="white"
                 minH="600px"
+                className="class-grid"
+                flex="1"
+                width="100%"
+                height="100%"
             >
                 {/* Empty top-left corner */}
-                <GridItem 
-                    border="1px solid" 
-                    borderColor="gray.200" 
+                <GridItem
+                    border="1px solid"
+                    borderColor="gray.200"
                     bg="gray.50"
                 />
-                
+
                 {/* Day headers */}
                 {days.map((day) => (
                     <GridItem
@@ -190,11 +265,12 @@ const WeeklyCalendar: React.FC = () => {
                     bg="gray.50"
                     display="flex"
                     flexDirection="column"
+                    height={`${totalCalendarHeight}px`}
                 >
                     {hours.map((hour) => (
                         <Box
                             key={hour}
-                            flex="1"
+                            height={`${timeSlotHeight}px`}
                             display="flex"
                             alignItems="center"
                             justifyContent="center"
@@ -202,13 +278,12 @@ const WeeklyCalendar: React.FC = () => {
                             borderColor="gray.200"
                             fontSize="sm"
                             fontWeight="medium"
-                            minH="33px"
                         >
                             <Text>{hour}:00</Text>
                         </Box>
                     ))}
                 </GridItem>
-                
+
                 {/* One massive content area spanning all 7 days and all hours */}
                 <GridItem
                     colSpan={7}
@@ -221,12 +296,16 @@ const WeeklyCalendar: React.FC = () => {
                     flexDirection="column"
                     id="calendar-content"
                     ref={calendarContentRef}
+                    flex="1"
+                    minH="0"
+                    height={`${totalCalendarHeight}px`}
                 >
                     {/* Day columns inside the content area */}
                     <Grid
                         templateColumns="repeat(7, 1fr)"
                         gap={1}
                         flex="1"
+                        minH="0"
                     >
                         {days.map((day) => (
                             <GridItem
@@ -239,6 +318,7 @@ const WeeklyCalendar: React.FC = () => {
                                 minH="200px"
                                 id={`calendar-${day}`}
                                 position="relative"
+                                height="100%"
                             >
                                 {/* Render events for this day */}
                                 {dayAxis && getEventsForDay(day).map((event) => {
@@ -277,7 +357,7 @@ const WeeklyCalendar: React.FC = () => {
                     </Grid>
                 </GridItem>
             </Grid>
-        </Box>
+        </div>
     );
 };
 
