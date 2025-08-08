@@ -265,7 +265,7 @@ const WeeklyCalendar: React.FC = () => {
                     id: 2,
                     title: 'Morning Meeting',
                     description: 'Daily standup with the team',
-                    datetime_start: new Date(getToday().getTime() + 25 * 60 * 60 * 1000).toISOString(),
+                    datetime_start: new Date(getToday().getTime() + 24.5 * 60 * 60 * 1000).toISOString(),
                     datetime_end: new Date(getToday().getTime() + 26 * 60 * 60 * 1000).toISOString(),
                     color: '#3182CE',
                     kind: 1,
@@ -401,7 +401,6 @@ const WeeklyCalendar: React.FC = () => {
                 {/* One massive content area spanning all 7 days and all hours */}
                 <GridItem
                     colSpan={7}
-
                     bg="white"
                     _hover={{ bg: "gray.50" }}
                     position="relative"
@@ -423,11 +422,12 @@ const WeeklyCalendar: React.FC = () => {
                         {days.map((day) => (
                             <GridItem
                                 key={day}
-                                border="1px solid"
+                                borderTop="1px solid"
+                                borderLeft="1px solid"
+                                borderRight="1px solid"
                                 borderColor="gray.200"
                                 bg="white"
                                 _hover={{ bg: "gray.50" }}
-                                p={2}
                                 minH="200px"
                                 id={`calendar-${day}`}
                                 position="relative"
@@ -435,6 +435,21 @@ const WeeklyCalendar: React.FC = () => {
                                 cursor="pointer"
                                 onClick={() => handleDayClick(day)}
                             >
+                                {hours.map((hour) => (
+                                    <Box
+                                        key={hour}
+                                        height={`${timeSlotHeight}px`}
+                                        display="flex"
+                                        alignItems="center"
+                                        justifyContent="center"
+                                        borderBottom="1px solid"
+                                        borderColor="gray.200"
+                                        fontSize="sm"
+                                        fontWeight="medium"
+                                    >
+                                    </Box>
+                                ))}
+
                                 {/* Render events for this day */}
                                 {dayAxis && getEventsForDay(day).map((event) => {
                                     const position = dayAxis.getEventPosition(event);
