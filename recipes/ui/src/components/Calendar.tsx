@@ -24,6 +24,8 @@ interface CalendarEventProps {
     onClick?: (event: Event) => void;
     onEdit?: (event: Event) => void;
     onDelete?: (event: Event) => void;
+    onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void;
+    timeSlotHeight: number;
 }
 
 const CalendarEvent: React.FC<CalendarEventProps> = ({
@@ -31,8 +33,17 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
     position,
     onClick,
     onEdit,
-    onDelete
+    onDelete,
+    onTimeChange,
+    timeSlotHeight
 }) => {
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+    const [originalPosition, setOriginalPosition] = useState({ top: 0, left: 0 });
+    const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+    const [currentTime, setCurrentTime] = useState("");
+    const [currentDay, setCurrentDay] = useState("");
+
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent day click when clicking on event
         if (onClick) {
@@ -54,41 +65,181 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
         }
     };
 
+    const handleMouseDown = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsDragging(true);
+        setOriginalPosition({ top: position.top, left: 0 });
+        setDragPosition({ x: e.clientX, y: e.clientY });
+        setCursorPosition({ x: e.clientX, y: e.clientY });
+    };
+
+    const getDayFromPosition = (x: number): string => {
+        // Find which day column the cursor is over using a more reliable method
+        const dayColumns = document.querySelectorAll('[id^="calendar-"]');
+
+        for (const column of dayColumns) {
+            const rect = column.getBoundingClientRect();
+            if (x >= rect.left && x <= rect.right) {
+                const dayName = column.id.replace('calendar-', '');
+                return dayName;
+            }
+        }
+
+        return "";
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!isDragging) return;
+
+        // Update cursor position for badge
+        setCursorPosition({ x: e.clientX, y: e.clientY });
+
+        // Determine which day we're over
+        const dayName = getDayFromPosition(e.clientX);
+
+        const deltaY = e.clientY - dragPosition.y;
+        const newTop = originalPosition.top + deltaY;
+
+        // Snap to 5-minute intervals
+        const snapInterval = timeSlotHeight / 12; // 5 minutes = 1/12 of an hour
+        const snappedTop = Math.round(newTop / snapInterval) * snapInterval;
+
+        // Update the event position
+        const newHour = Math.floor(snappedTop / timeSlotHeight) + 6;
+        const newMinutes = Math.floor((snappedTop % timeSlotHeight) / timeSlotHeight * 60);
+
+        // Ensure minutes are snapped to 5-minute intervals
+        const snappedMinutes = Math.round(newMinutes / 5) * 5;
+
+        // Format time for badge
+        const timeString = `${newHour.toString().padStart(2, '0')}:${snappedMinutes.toString().padStart(2, '0')}`;
+        const dayString = dayName ? ` - ${dayName}` : "";
+
+        // Calculate new start time
+        const originalStart = new Date(event.datetime_start);
+        const originalEnd = new Date(event.datetime_end);
+        const durationMs = originalEnd.getTime() - originalStart.getTime();
+
+        const newStartTime = new Date(originalStart);
+        newStartTime.setHours(newHour, snappedMinutes, 0, 0);
+
+        console.log(dayName)
+        // Update the date if we're over a different day
+        if (dayName) {
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const dayIndex = days.indexOf(dayName);
+            if (dayIndex !== -1) {
+                const startOfWeek = getStartOfWeek(new Date());
+                newStartTime.setDate(startOfWeek.getDate() + dayIndex);
+            }
+        }
+
+        const newEndTime = new Date(newStartTime.getTime() + durationMs);
+
+        if (onTimeChange) {
+            onTimeChange(event, newStartTime, newEndTime);
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+        setCurrentTime("");
+        setCurrentDay("");
+    };
+
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+
+            return () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            };
+        }
+    }, [isDragging, dragPosition, originalPosition, timeSlotHeight]);
+
+    return (
+        <>
+            <Box
+                position="absolute"
+                top={`${position.top}px`}
+                left="0"
+                right="0"
+                height={`${position.height}px`}
+                bg={event.color || "blue.500"}
+                color="white"
+                p={1}
+                borderRadius="sm"
+                fontSize="xs"
+                overflow="hidden"
+                cursor={isDragging ? "grabbing" : "grab"}
+                _hover={{
+                    opacity: 0.9,
+                    transform: isDragging ? "scale(1.05)" : "scale(1.02)",
+                    transition: "all 0.2s"
+                }}
+                title={`${event.title} - ${new Date(event.datetime_start).toLocaleTimeString()} to ${new Date(event.datetime_end).toLocaleTimeString()}`}
+                onClick={handleClick}
+                display="flex"
+                flexDirection="column"
+                justifyContent="space-between"
+                onMouseDown={handleMouseDown}
+                opacity={isDragging ? 0.8 : 1}
+                zIndex={isDragging ? 1000 : 1}
+                userSelect="none"
+            >
+                <Box flex="1" overflow="hidden">
+                    <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                        {event.title}
+                    </Text>
+                    {event.description && position.height > 30 && (
+                        <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="xs" opacity={0.9}>
+                            {event.description}
+                        </Text>
+                    )}
+                </Box>
+            </Box>
+
+            {/* Cursor Badge */}
+            <CursorBadge
+                time={currentTime}
+                isVisible={isDragging}
+                position={cursorPosition}
+            />
+        </>
+    );
+};
+
+// Cursor Badge Component
+interface CursorBadgeProps {
+    time: string;
+    isVisible: boolean;
+    position: { x: number; y: number };
+}
+
+const CursorBadge: React.FC<CursorBadgeProps> = ({ time, isVisible, position }) => {
+    if (!isVisible) return null;
+
     return (
         <Box
-            position="absolute"
-            top={`${position.top}px`}
-            left="0"
-            right="0"
-            height={`${position.height}px`}
-            bg={event.color || "blue.500"}
+            position="fixed"
+            left={`${position.x + 10}px`}
+            top={`${position.y - 40}px`}
+            bg="blue.500"
             color="white"
-            p={1}
-            borderRadius="sm"
-            fontSize="xs"
-            overflow="hidden"
-            cursor="pointer"
-            _hover={{
-                opacity: 0.9,
-                transform: "scale(1.02)",
-                transition: "all 0.2s"
-            }}
-            title={`${event.title} - ${new Date(event.datetime_start).toLocaleTimeString()} to ${new Date(event.datetime_end).toLocaleTimeString()}`}
-            onClick={handleClick}
-            display="flex"
-            flexDirection="column"
-            justifyContent="space-between"
+            px={2}
+            py={1}
+            borderRadius="md"
+            fontSize="sm"
+            fontWeight="bold"
+            zIndex={10000}
+            pointerEvents="none"
+            boxShadow="lg"
+            border="1px solid"
+            borderColor="blue.600"
         >
-            <Box flex="1" overflow="hidden">
-                <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                    {event.title}
-                </Text>
-                {event.description && position.height > 30 && (
-                    <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="xs" opacity={0.9}>
-                        {event.description}
-                    </Text>
-                )}
-            </Box>
+            {time}
         </Box>
     );
 };
@@ -239,6 +390,23 @@ const WeeklyCalendar: React.FC = () => {
         // You can add functionality for creating new events on day click
     };
 
+    const handleEventTimeChange = (event: Event, newStartTime: Date, newEndTime: Date) => {
+        // console.log('Event time changed:', event, newStartTime, newEndTime);
+
+        // Update the event in the events array
+        setEvents(prevEvents =>
+            prevEvents.map(e =>
+                e.id === event.id
+                    ? {
+                        ...e,
+                        datetime_start: newStartTime.toISOString(),
+                        datetime_end: newEndTime.toISOString()
+                    }
+                    : e
+            )
+        );
+    };
+
     const fetchEvents = async () => {
         try {
             const startOfWeek = getStartOfWeek(currentWeek);
@@ -314,11 +482,9 @@ const WeeklyCalendar: React.FC = () => {
 
     // Create DayAxis when calendar content is available
     useEffect(() => {
-        // Use timeSlotHeight * hoursCount for consistent positioning
-        const dayHeight = timeSlotHeight * hours.length;
-        const newDayAxis = new DayAxis(6, 23, dayHeight);
+        const newDayAxis = new DayAxis(6, 23, totalCalendarHeight);
         setDayAxis(newDayAxis);
-    }, [timeSlotHeight]);
+    }, [totalCalendarHeight]);
 
     // Fetch events when component mounts or week changes
     useEffect(() => {
@@ -461,6 +627,8 @@ const WeeklyCalendar: React.FC = () => {
                                             onClick={handleEventClick}
                                             onEdit={handleEventEdit}
                                             onDelete={handleEventDelete}
+                                            onTimeChange={handleEventTimeChange}
+                                            timeSlotHeight={timeSlotHeight}
                                         />
                                     );
                                 })}
