@@ -7,13 +7,6 @@ import {
     Grid,
     GridItem,
     Text,
-    VStack,
-    HStack,
-    Button,
-    Input,
-    Textarea,
-    Flex,
-    Spacer,
 } from '@chakra-ui/react';
 import { recipeAPI, Event } from '../services/api';
 
@@ -25,24 +18,102 @@ interface CalendarEventProps {
     onEdit?: (event: Event) => void;
     onDelete?: (event: Event) => void;
     onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void;
+    onDragStart?: (event: Event, position: { top: number; height: number }) => void;
     timeSlotHeight: number;
+    snapInterval: number;
+    gridWeek: GridWeek;
+    dayIndex: number;
+    isMock?: boolean;
+    isDragging?: boolean;
+    draggedEventData?: Event | null;
+    mockPosition?: { top: number; height: number; dayIndex?: number } | null;
 }
 
 const CalendarEvent: React.FC<CalendarEventProps> = ({
     event,
     position,
     onClick,
-    onEdit,
-    onDelete,
+    onEdit: _onEdit,
+    onDelete: _onDelete,
     onTimeChange,
-    timeSlotHeight
+    onDragStart,
+    timeSlotHeight,
+    snapInterval,
+    gridWeek,
+    dayIndex,
+    isMock,
+    isDragging,
+    draggedEventData,
+    mockPosition
 }) => {
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
-    const [originalPosition, setOriginalPosition] = useState({ top: 0, left: 0 });
-    const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+    const [isDraggingState, setIsDraggingState] = useState(false);
+    const dragOperationRef = useRef<DragOperation | null>(null);
+    const eventRef = useRef<HTMLDivElement>(null);
     const [currentTime, setCurrentTime] = useState("");
-    const [currentDay, setCurrentDay] = useState("");
+    const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+
+    // For mock events, use the provided position and don't handle interactions
+    if (isMock) {
+        // Calculate which day column this mock event should be in based on drag position
+        const dayWidth = gridWeek.getWeekWidth() / 7; // 7 days
+        let dayIndex = 0;
+
+        if (mockPosition && draggedEventData) {
+            // Use the dayIndex from the drag position if available
+            dayIndex = mockPosition.dayIndex !== undefined ? mockPosition.dayIndex : 0;
+        }
+
+        const leftPosition = dayIndex * dayWidth;
+
+        // Use the dragged event data for the mock display, or fallback to the passed event
+        const displayEvent = draggedEventData || event;
+
+        return (
+            <Box
+                ref={eventRef}
+                position="absolute"
+                top={`${mockPosition?.top || 0}px`}
+                left={`${leftPosition}px`}
+                width={`${dayWidth}px`}
+                height={`${mockPosition?.height || 30}px`}
+                bg={displayEvent.color || "blue.500"}
+                color="white"
+                p={2}
+                py={1}
+                borderRadius="md"
+                fontSize="sm"
+                fontWeight="bold"
+                zIndex={1000}
+                boxShadow="lg"
+                border="1px solid"
+                borderColor="blue.600"
+                display="flex"
+                flexDirection="column"
+                justifyContent="space-between"
+                opacity={0.8}
+                userSelect="none"
+                pointerEvents="none"
+                style={{
+                    display: isDragging && draggedEventData ? 'flex' : 'none'
+                }}
+                data-day-index={dayIndex}
+            >
+                <Box flex="1" overflow="hidden">
+                    <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                        {displayEvent.title}
+                    </Text>
+                    {displayEvent.description && (mockPosition?.height || 30) > 30 && (
+                        <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="xs" opacity={0.9}>
+                            {displayEvent.description}
+                        </Text>
+                    )}
+                </Box>
+            </Box>
+        );
+    }
+
+    // If the original event is being dragged, hide it but keep it in DOM
+    const shouldHide = isDragging;
 
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent day click when clicking on event
@@ -51,104 +122,81 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
         }
     };
 
-    const handleEdit = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (onEdit) {
-            onEdit(event);
-        }
-    };
 
-    const handleDelete = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (onDelete) {
-            onDelete(event);
-        }
-    };
 
     const handleMouseDown = (e: React.MouseEvent) => {
         e.stopPropagation();
-        setIsDragging(true);
-        setOriginalPosition({ top: position.top, left: 0 });
-        setDragPosition({ x: e.clientX, y: e.clientY });
-        setCursorPosition({ x: e.clientX, y: e.clientY });
-    };
 
-    const getDayFromPosition = (x: number): string => {
-        // Find which day column the cursor is over using a more reliable method
-        const dayColumns = document.querySelectorAll('[id^="calendar-"]');
+        // Get the calendar container
+        const calendarContainer = document.querySelector('.class-grid') as HTMLElement;
+        if (!calendarContainer || !eventRef.current) return;
 
-        for (const column of dayColumns) {
-            const rect = column.getBoundingClientRect();
-            if (x >= rect.left && x <= rect.right) {
-                const dayName = column.id.replace('calendar-', '');
-                return dayName;
-            }
+        // Find the mock event element
+        const mockEvent = document.querySelector('[data-mock-event="true"]') as HTMLDivElement;
+        if (!mockEvent) return;
+
+        // Use the dayIndex passed from the parent component (already correct for the day column)
+
+        // Get container rect for mouse offset calculation
+        const containerRect = calendarContainer.getBoundingClientRect();
+
+        // Create drag operation
+        dragOperationRef.current = new DragOperation(
+            mockEvent,
+            gridWeek,
+            eventRef.current,
+            event,
+            { top: position.top, height: position.height, dayIndex },
+            timeSlotHeight,
+            { x: e.clientX, y: e.clientY },
+            containerRect,
+            onTimeChange
+        );
+
+        // Start drag operation
+        dragOperationRef.current.onDragStart();
+        setIsDraggingState(true);
+
+        // Notify parent component about drag start
+        if (onDragStart) {
+            onDragStart(event, position);
         }
-
-        return "";
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-        if (!isDragging) return;
+        if (!isDraggingState || !dragOperationRef.current) return;
 
         // Update cursor position for badge
         setCursorPosition({ x: e.clientX, y: e.clientY });
 
-        // Determine which day we're over
-        const dayName = getDayFromPosition(e.clientX);
+        // Get the calendar container
+        const calendarContainer = document.querySelector('.class-grid') as HTMLElement;
+        if (!calendarContainer) return;
 
-        const deltaY = e.clientY - dragPosition.y;
-        const newTop = originalPosition.top + deltaY;
+        const containerRect = calendarContainer.getBoundingClientRect();
 
-        // Snap to 5-minute intervals
-        const snapInterval = timeSlotHeight / 12; // 5 minutes = 1/12 of an hour
-        const snappedTop = Math.round(newTop / snapInterval) * snapInterval;
-
-        // Update the event position
-        const newHour = Math.floor(snappedTop / timeSlotHeight) + 6;
-        const newMinutes = Math.floor((snappedTop % timeSlotHeight) / timeSlotHeight * 60);
-
-        // Ensure minutes are snapped to 5-minute intervals
-        const snappedMinutes = Math.round(newMinutes / 5) * 5;
-
-        // Format time for badge
-        const timeString = `${newHour.toString().padStart(2, '0')}:${snappedMinutes.toString().padStart(2, '0')}`;
-        const dayString = dayName ? ` - ${dayName}` : "";
-
-        // Calculate new start time
-        const originalStart = new Date(event.datetime_start);
-        const originalEnd = new Date(event.datetime_end);
-        const durationMs = originalEnd.getTime() - originalStart.getTime();
-
-        const newStartTime = new Date(originalStart);
-        newStartTime.setHours(newHour, snappedMinutes, 0, 0);
-
-        console.log(dayName)
-        // Update the date if we're over a different day
-        if (dayName) {
-            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            const dayIndex = days.indexOf(dayName);
-            if (dayIndex !== -1) {
-                const startOfWeek = getStartOfWeek(new Date());
-                newStartTime.setDate(startOfWeek.getDate() + dayIndex);
-            }
-        }
-
-        const newEndTime = new Date(newStartTime.getTime() + durationMs);
-
-        if (onTimeChange) {
-            onTimeChange(event, newStartTime, newEndTime);
+        // Update drag operation
+        const result = dragOperationRef.current.onDragMove(e.clientX, e.clientY, containerRect);
+        if (result) {
+            setCurrentTime(result.time);
         }
     };
 
     const handleMouseUp = () => {
-        setIsDragging(false);
+        if (!isDraggingState || !dragOperationRef.current) return;
+
+        // Complete drag operation
+        dragOperationRef.current.onDrop();
+
+        setIsDraggingState(false);
         setCurrentTime("");
-        setCurrentDay("");
+        dragOperationRef.current = null;
+
+        // Drag operation completed
     };
 
     useEffect(() => {
-        if (isDragging) {
+        if (isDraggingState) {
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
 
@@ -157,11 +205,12 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
                 document.removeEventListener('mouseup', handleMouseUp);
             };
         }
-    }, [isDragging, dragPosition, originalPosition, timeSlotHeight]);
+    }, [isDraggingState, timeSlotHeight, snapInterval]);
 
     return (
         <>
             <Box
+                ref={eventRef}
                 position="absolute"
                 top={`${position.top}px`}
                 left="0"
@@ -169,25 +218,31 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
                 height={`${position.height}px`}
                 bg={event.color || "blue.500"}
                 color="white"
-                p={1}
-                borderRadius="sm"
-                fontSize="xs"
-                overflow="hidden"
-                cursor={isDragging ? "grabbing" : "grab"}
-                _hover={{
-                    opacity: 0.9,
-                    transform: isDragging ? "scale(1.05)" : "scale(1.02)",
-                    transition: "all 0.2s"
-                }}
-                title={`${event.title} - ${new Date(event.datetime_start).toLocaleTimeString()} to ${new Date(event.datetime_end).toLocaleTimeString()}`}
+                p={2}
+                py={1}
+                borderRadius="md"
+                fontSize="sm"
+                fontWeight="bold"
+                zIndex={isDraggingState ? 1000 : 1}
+                cursor={isDraggingState ? "grabbing" : "grab"}
+                boxShadow="lg"
+                border="1px solid"
+                borderColor="blue.600"
                 onClick={handleClick}
                 display="flex"
                 flexDirection="column"
                 justifyContent="space-between"
                 onMouseDown={handleMouseDown}
-                opacity={isDragging ? 0.8 : 1}
-                zIndex={isDragging ? 1000 : 1}
+                opacity={isDraggingState ? 0.8 : 1}
                 userSelect="none"
+                transition={isDraggingState ? "none" : "all 0.2s"}
+                _hover={{
+                    opacity: isDraggingState ? 0.8 : 0.9,
+                    transform: isDraggingState ? "scale(1.05)" : "scale(1.02)"
+                }}
+                style={{
+                    visibility: shouldHide ? 'hidden' : 'visible'
+                }}
             >
                 <Box flex="1" overflow="hidden">
                     <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
@@ -204,7 +259,7 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
             {/* Cursor Badge */}
             <CursorBadge
                 time={currentTime}
-                isVisible={isDragging}
+                isVisible={isDraggingState}
                 position={cursorPosition}
             />
         </>
@@ -248,6 +303,7 @@ const CursorBadge: React.FC<CursorBadgeProps> = ({ time, isVisible, position }) 
 const useCalendarSizing = () => {
     const [timeSlotHeight, setTimeSlotHeight] = useState(33);
     const [totalCalendarHeight, setTotalCalendarHeight] = useState(600);
+    const [weekWidth, setWeekWidth] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -257,6 +313,7 @@ const useCalendarSizing = () => {
         const calculateSizing = () => {
             const rect = element.getBoundingClientRect();
             const containerHeight = rect.height;
+            const containerWidth = rect.width;
 
             // Account for day header (50px) and padding
             const headerHeight = 50;
@@ -277,6 +334,7 @@ const useCalendarSizing = () => {
 
             setTimeSlotHeight(optimalHeight);
             setTotalCalendarHeight(optimalHeight * hoursCount);
+            setWeekWidth(containerWidth);
         };
 
         // Initial calculation
@@ -291,19 +349,23 @@ const useCalendarSizing = () => {
         };
     }, []);
 
-    return { containerRef, timeSlotHeight, totalCalendarHeight };
+    return { containerRef, timeSlotHeight, totalCalendarHeight, weekWidth };
 };
 
-// Axis class for positioning events within a day column
-class DayAxis {
+// Grid class for positioning events within a week grid
+class GridWeek {
     private startHour: number;
     private endHour: number;
     private dayHeight: number;
+    private timeSlotHeight: number;
+    private weekWidth: number;
 
-    constructor(startHour: number, endHour: number, dayHeight: number) {
+    constructor(startHour: number, endHour: number, dayHeight: number, timeSlotHeight: number, weekWidth: number) {
         this.startHour = startHour;
         this.endHour = endHour + 1;
         this.dayHeight = dayHeight;
+        this.timeSlotHeight = timeSlotHeight;
+        this.weekWidth = weekWidth;
     }
 
     // Get the relative position (0-1) of an event within the day
@@ -330,9 +392,53 @@ class DayAxis {
         return { top, height };
     }
 
+    // Get the snapped position (0-1) of an event within the day
+    getEventPositionSnapped(event: Event): { top: number; height: number } {
+        // Get the precise position first
+        const position = this.getEventPosition(event);
+
+        // Snap the top position to 5-minute intervals
+        const snapInterval = this.timeSlotHeight / 12; // 5 minutes = 1/12 of an hour
+        const snappedTop = Math.round(position.top / snapInterval) * snapInterval;
+
+        // Return the snapped position with the same height
+        return { top: snappedTop, height: position.height };
+    }
+
+    // Convert width position to day index (0-6 for Monday-Sunday)
+    getDayIndexFromWidth(x: number): number {
+        const dayWidth = this.weekWidth / 7; // 7 days
+        const dayIndex = Math.trunc((x) / dayWidth);
+        return Math.max(0, Math.min(6, dayIndex)); // Clamp to 0-6
+    }
+
+    // Convert width position to day name
+    getDayNameFromWidth(widthPosition: number): string {
+        const dayIndex = this.getDayIndexFromWidth(widthPosition);
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        return days[dayIndex];
+    }
+
+    // Snap width position to the start of a day column
+    snapWidthToDayStart(widthPosition: number): number {
+        const dayWidth = this.weekWidth / 7; // 7 days
+        const dayIndex = this.getDayIndexFromWidth(widthPosition);
+        return dayIndex * dayWidth;
+    }
+
     // Get the total time span of the day in minutes
     getDaySpan(): number {
         return (this.endHour - this.startHour) * 60;
+    }
+
+    // Get the snap interval in pixels
+    getSnapInterval(): number {
+        return this.timeSlotHeight / 12; // 5 minutes
+    }
+
+    // Get the week width
+    getWeekWidth(): number {
+        return this.weekWidth;
     }
 }
 
@@ -357,17 +463,204 @@ const getToday = (): Date => {
 };
 
 
+class DragOperation {
+    // The Mock event we move to visualize the drag and drop operation
+    dragOperationVisual: HTMLDivElement;
+
+    // The Grid we use to snap the mock event
+    grid: GridWeek;
+
+    // The Original event we will update on drop
+    originalEvent: HTMLDivElement;
+
+    // Store the original event data and position
+    private originalEventData: Event;
+    private originalPosition: { top: number; height: number; dayIndex: number };
+    private isDragging: boolean = false;
+    private timeSlotHeight: number;
+    private onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void;
+    private mouseOffset: { x: number; y: number } = { x: 0, y: 0 };
+
+    constructor(
+        dragOperationVisual: HTMLDivElement,
+        grid: GridWeek,
+        originalEvent: HTMLDivElement,
+        eventData: Event,
+        position: { top: number; height: number; dayIndex: number },
+        timeSlotHeight: number,
+        initialMousePos: { x: number; y: number },
+        containerRect: DOMRect,
+        onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void
+    ) {
+        this.dragOperationVisual = dragOperationVisual;
+        this.grid = grid;
+        this.originalEvent = originalEvent;
+        this.originalEventData = eventData;
+        this.originalPosition = position;
+        this.timeSlotHeight = timeSlotHeight;
+        this.onTimeChange = onTimeChange;
+
+        // Calculate mouse offset from the top-left of the event
+        const relativeMouseY = initialMousePos.y - containerRect.top;
+        this.mouseOffset = {
+            x: 0, // We'll handle day switching separately
+            y: relativeMouseY - position.top
+        };
+    }
+
+    onDragStart() {
+        // Copy the information of the original event to make the `dragOperationVisual`
+        // to make `dragOperationVisual` look exactly like the event we drop over
+        // also make `originalEvent` invisible for the duration of the drag and drop
+
+        this.isDragging = true;
+
+        // Make original event invisible
+        this.originalEvent.style.visibility = 'hidden';
+
+        // Position the drag visual at the original location with correct height
+        this.updateDragVisualPosition(this.originalPosition.top, this.originalPosition.dayIndex, this.originalPosition.height);
+
+        // Make drag visual visible
+        this.dragOperationVisual.style.display = 'flex';
+        this.dragOperationVisual.style.opacity = '0.8';
+    }
+
+    onDragMove(mouseX: number, mouseY: number, containerRect: DOMRect) {
+        // Update the position of dragOperationVisual
+        if (!this.isDragging) return;
+
+        const relativeX = mouseX - containerRect.left;
+        const dayIndex = this.grid.getDayIndexFromWidth(relativeX);
+
+        // Calculate new top position based on mouse Y, accounting for mouse offset
+        const relativeMouseY = mouseY - containerRect.top;
+        const newTop = Math.max(0, relativeMouseY - this.mouseOffset.y);
+
+        // Snap to grid
+        const snapInterval = this.grid.getSnapInterval();
+        const snappedTop = Math.round(newTop / snapInterval) * snapInterval;
+
+        this.updateDragVisualPosition(snappedTop, dayIndex);
+
+        // Return current time and day for cursor badge
+        return this.calculateCurrentTimeAndDay(snappedTop, dayIndex);
+    }
+
+    onDrop() {
+        // Update `originalEvent` position to match dragOperationVisual
+        // Make dragOperationVisual disappear
+        // Update `originalEvent` start and end date
+
+        if (!this.isDragging) return;
+
+        this.isDragging = false;
+
+        // Get final position from drag visual
+        const finalTop = parseInt(this.dragOperationVisual.style.top);
+        const finalDayIndex = parseInt(this.dragOperationVisual.dataset.dayIndex || '0');
+
+
+        // Update the event if onTimeChange callback is provided
+        if (this.onTimeChange) {
+            this.updateEventTime(finalTop, finalDayIndex);
+        }
+        // Hide drag visual
+        this.dragOperationVisual.style.display = 'none';
+
+        // Show original event
+        this.originalEvent.style.visibility = 'visible';
+
+        // Return the new position data for the parent component to handle
+        return {
+            top: finalTop,
+            dayIndex: finalDayIndex,
+            event: this.originalEventData
+        };
+    }
+
+    private updateDragVisualPosition(top: number, dayIndex: number, height?: number) {
+        const dayWidth = this.grid.getWeekWidth() / 7;
+        const leftPosition = dayIndex * dayWidth;
+
+        this.dragOperationVisual.style.top = `${top}px`;
+        this.dragOperationVisual.style.left = `${leftPosition}px`;
+        this.dragOperationVisual.style.width = `${dayWidth}px`;
+        if (height !== undefined) {
+            this.dragOperationVisual.style.height = `${height}px`;
+        }
+        this.dragOperationVisual.dataset.dayIndex = dayIndex.toString();
+    }
+
+    private calculateCurrentTimeAndDay(top: number, dayIndex: number) {
+        const newHour = Math.floor(top / this.timeSlotHeight) + 6;
+        const newMinutes = Math.floor((top % this.timeSlotHeight) / this.timeSlotHeight * 60);
+        const snappedMinutes = Math.round(newMinutes / 5) * 5;
+
+        const timeString = `${newHour.toString().padStart(2, '0')}:${snappedMinutes.toString().padStart(2, '0')}`;
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const dayString = days[dayIndex] ? ` - ${days[dayIndex]}` : "";
+
+        return {
+            time: timeString + dayString,
+            dayIndex: dayIndex
+        };
+    }
+
+    private updateEventTime(top: number, dayIndex: number) {
+        if (!this.onTimeChange) return;
+
+        // Calculate new start time based on final position
+        const newHour = Math.floor(top / this.timeSlotHeight) + 6;
+        const newMinutes = Math.floor((top % this.timeSlotHeight) / this.timeSlotHeight * 60);
+        const snappedMinutes = Math.round(newMinutes / 5) * 5;
+
+        const originalStart = new Date(this.originalEventData.datetime_start);
+        const originalEnd = new Date(this.originalEventData.datetime_end);
+        const durationMs = originalEnd.getTime() - originalStart.getTime();
+
+        const newStartTime = new Date(originalStart);
+        newStartTime.setHours(newHour, snappedMinutes, 0, 0);
+
+        // Update the date using the final day index
+        if (dayIndex >= 0 && dayIndex < 7) {
+            const startOfWeek = getStartOfWeek(new Date());
+            newStartTime.setDate(startOfWeek.getDate() + dayIndex);
+        }
+
+        const newEndTime = new Date(newStartTime.getTime() + durationMs);
+
+        // Apply the change
+        this.onTimeChange(this.originalEventData, newStartTime, newEndTime);
+    }
+
+    cancel() {
+        // Cancel the drag operation and restore original state
+        this.isDragging = false;
+        this.originalEvent.style.visibility = 'visible';
+        this.dragOperationVisual.style.display = 'none';
+    }
+
+    getIsDragging(): boolean {
+        return this.isDragging;
+    }
+}
+
 const WeeklyCalendar: React.FC = () => {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6 to 23
+    const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6 s 23
 
     // Use the sizing hook
-    const { containerRef, timeSlotHeight, totalCalendarHeight } = useCalendarSizing();
+    const { containerRef, timeSlotHeight, totalCalendarHeight, weekWidth } = useCalendarSizing();
 
     const [events, setEvents] = useState<Event[]>([]);
-    const [currentWeek, setCurrentWeek] = useState<Date>(new Date());
-    const [dayAxis, setDayAxis] = useState<DayAxis | null>(null);
+    const [currentWeek] = useState<Date>(new Date());
+    const [dayAxis, setDayAxis] = useState<GridWeek | null>(null);
     const calendarContentRef = useRef<HTMLDivElement>(null);
+
+    // Drag and drop state
+    const [draggedEvent, setDraggedEvent] = useState<Event | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     // Event handlers
     const handleEventClick = (event: Event) => {
@@ -405,14 +698,27 @@ const WeeklyCalendar: React.FC = () => {
                     : e
             )
         );
+
+        // Clear drag state
+        setIsDragging(false);
+        setDraggedEvent(null);
     };
+
+    // Handle drag start
+    const handleDragStart = (event: Event, _position: { top: number; height: number }) => {
+        // Set the dragged event and start dragging state
+        setDraggedEvent(event);
+        setIsDragging(true);
+    };
+
+
 
     const fetchEvents = async () => {
         try {
             const startOfWeek = getStartOfWeek(currentWeek);
             const endOfWeek = getEndOfWeek(currentWeek);
 
-            const data = await recipeAPI.getEvents(startOfWeek.toISOString(), endOfWeek.toISOString());
+            await recipeAPI.getEvents(startOfWeek.toISOString(), endOfWeek.toISOString());
 
             // WHAT IF END TIME IS TOMORROW ?
             const data2: Event[] = [
@@ -443,7 +749,7 @@ const WeeklyCalendar: React.FC = () => {
                     active: true,
                 },
                 {
-                    id: 2,
+                    id: 3,
                     title: 'Morning Meeting',
                     description: 'Daily standup with the team',
                     datetime_start: new Date(getToday().getTime() + (25 + 16) * 60 * 60 * 1000).toISOString(),
@@ -482,9 +788,9 @@ const WeeklyCalendar: React.FC = () => {
 
     // Create DayAxis when calendar content is available
     useEffect(() => {
-        const newDayAxis = new DayAxis(6, 23, totalCalendarHeight);
+        const newDayAxis = new GridWeek(6, 23, totalCalendarHeight, timeSlotHeight, weekWidth); // Placeholder for weekWidth
         setDayAxis(newDayAxis);
-    }, [totalCalendarHeight]);
+    }, [totalCalendarHeight, timeSlotHeight, weekWidth]);
 
     // Fetch events when component mounts or week changes
     useEffect(() => {
@@ -578,6 +884,47 @@ const WeeklyCalendar: React.FC = () => {
                     minH="0"
                     height={`${timeSlotHeight * hours.length}px`}
                 >
+                    {/* Mock event for drag preview - always rendered but controlled by CSS */}
+                    <Box
+                        data-mock-event="true"
+                        position="absolute"
+                        top="0px"
+                        left="0"
+                        width="100%"
+                        height="30px"
+                        bg={draggedEvent?.color || "blue.500"}
+                        color="white"
+                        p={2}
+                        py={1}
+                        borderRadius="md"
+                        fontSize="sm"
+                        fontWeight="bold"
+                        zIndex={1000}
+                        boxShadow="lg"
+                        border="1px solid"
+                        borderColor="blue.600"
+                        display="none"
+                        opacity={0.8}
+                        userSelect="none"
+                        pointerEvents="none"
+                        style={{
+                            display: isDragging && draggedEvent ? 'flex' : 'none'
+                        }}
+                    >
+                        {draggedEvent && (
+                            <>
+                                <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                                    {draggedEvent.title}
+                                </Text>
+                                {draggedEvent.description && (
+                                    <Text overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" fontSize="xs" opacity={0.9}>
+                                        {draggedEvent.description}
+                                    </Text>
+                                )}
+                            </>
+                        )}
+                    </Box>
+
                     {/* Day columns inside the content area */}
                     <Grid
                         templateColumns="repeat(7, 1fr)"
@@ -619,6 +966,7 @@ const WeeklyCalendar: React.FC = () => {
                                 {/* Render events for this day */}
                                 {dayAxis && getEventsForDay(day).map((event) => {
                                     const position = dayAxis.getEventPosition(event);
+                                    const dayIndex = days.indexOf(day);
                                     return (
                                         <CalendarEvent
                                             key={event.id}
@@ -629,6 +977,11 @@ const WeeklyCalendar: React.FC = () => {
                                             onDelete={handleEventDelete}
                                             onTimeChange={handleEventTimeChange}
                                             timeSlotHeight={timeSlotHeight}
+                                            snapInterval={dayAxis.getSnapInterval()}
+                                            gridWeek={dayAxis}
+                                            dayIndex={dayIndex}
+                                            isDragging={isDragging && draggedEvent?.id === event.id}
+                                            onDragStart={handleDragStart}
                                         />
                                     );
                                 })}
