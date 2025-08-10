@@ -9,17 +9,25 @@ import {
     Text,
     Button,
     HStack,
-    Heading,
-    IconButton,
 } from '@chakra-ui/react';
 import { recipeAPI, Event } from '../services/api';
-import EventCreateModal from './EventCreateModal';
+import EventModal from './EventModal';
+import {
+    toDateServer,
+    formatDateRangeForServer,
+    fromDateServer,
+    getStartOfWeek,
+    getEndOfWeek,
+    formatDateDisplay,
+    isToday,
+} from '../utils/dateUtils';
 
 // Individual Event Component
 interface CalendarEventProps {
     event: Event;
     position: { top: number; height: number };
     onClick?: (event: Event) => void;
+    onDoubleClick?: (event: Event) => void;
     onEdit?: (event: Event) => void;
     onDelete?: (event: Event) => void;
     onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void;
@@ -28,6 +36,7 @@ interface CalendarEventProps {
     snapInterval: number;
     gridWeek: GridWeek;
     dayIndex: number;
+    currentWeek: Date;
     isMock?: boolean;
     isDragging?: boolean;
     draggedEventData?: Event | null;
@@ -38,6 +47,7 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
     event,
     position,
     onClick,
+    onDoubleClick,
     onEdit: _onEdit,
     onDelete: _onDelete,
     onTimeChange,
@@ -46,6 +56,7 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
     snapInterval,
     gridWeek,
     dayIndex,
+    currentWeek,
     isMock,
     isDragging,
     draggedEventData,
@@ -127,11 +138,53 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
         }
     };
 
+    const handleDoubleClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent day click when double-clicking on event
+        e.preventDefault(); // Prevent any default behavior
 
+        // Cancel any pending drag operation
+        if (dragTimeout) {
+            clearTimeout(dragTimeout);
+            setDragTimeout(null);
+        }
+        setDragStartPos(null);
+
+        if (onDoubleClick) {
+            onDoubleClick(event);
+        }
+    };
+
+    const handleEventMouseUp = (e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        // Cancel drag timeout if mouse is released quickly (before drag starts)
+        if (dragTimeout) {
+            clearTimeout(dragTimeout);
+            setDragTimeout(null);
+        }
+        setDragStartPos(null);
+    };
+
+
+
+    const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+    const [dragTimeout, setDragTimeout] = useState<NodeJS.Timeout | null>(null);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         e.stopPropagation();
 
+        // Store the initial mouse position and set a timeout for drag start
+        setDragStartPos({ x: e.clientX, y: e.clientY });
+
+        // Set a timeout to start dragging after a short delay
+        const timeout = setTimeout(() => {
+            startDragOperation(e.clientX, e.clientY);
+        }, 150); // 150ms delay before drag starts
+
+        setDragTimeout(timeout);
+    };
+
+    const startDragOperation = (mouseX: number, mouseY: number) => {
         // Get the calendar container
         const calendarContainer = document.querySelector('.class-grid') as HTMLElement;
         if (!calendarContainer || !eventRef.current) return;
@@ -139,8 +192,6 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
         // Find the mock event element
         const mockEvent = document.querySelector('[data-mock-event="true"]') as HTMLDivElement;
         if (!mockEvent) return;
-
-        // Use the dayIndex passed from the parent component (already correct for the day column)
 
         // Get container rect for mouse offset calculation
         const containerRect = calendarContainer.getBoundingClientRect();
@@ -153,9 +204,10 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
             event,
             { top: position.top, height: position.height, dayIndex },
             timeSlotHeight,
-            { x: e.clientX, y: e.clientY },
+            { x: mouseX, y: mouseY },
             containerRect,
-            onTimeChange
+            onTimeChange,
+            currentWeek
         );
 
         // Start drag operation
@@ -234,6 +286,8 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
                 border="1px solid"
                 borderColor="blue.600"
                 onClick={handleClick}
+                onDoubleClick={handleDoubleClick}
+                onMouseUp={handleEventMouseUp}
                 display="flex"
                 flexDirection="column"
                 justifyContent="space-between"
@@ -375,8 +429,8 @@ class GridWeek {
 
     // Get the relative position (0-1) of an event within the day
     getEventPosition(event: Event): { top: number; height: number } {
-        const eventStart = new Date(event.datetime_start);
-        const eventEnd = new Date(event.datetime_end);
+        const eventStart = fromDateServer(event.datetime_start);
+        const eventEnd = fromDateServer(event.datetime_end);
 
         // Convert hours to minutes for more precise positioning
         const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
@@ -447,20 +501,6 @@ class GridWeek {
     }
 }
 
-const getStartOfWeek = (date: Date): Date => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
-    return new Date(d.setDate(diff));
-};
-
-const getEndOfWeek = (date: Date): Date => {
-    const start = getStartOfWeek(date);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    return end;
-};
-
 const getToday = (): Date => {
     const d = getStartOfWeek(new Date());
     d.setHours(6, 0, 0, 0);
@@ -485,6 +525,7 @@ class DragOperation {
     private timeSlotHeight: number;
     private onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void;
     private mouseOffset: { x: number; y: number } = { x: 0, y: 0 };
+    private currentWeek?: Date;
 
     constructor(
         dragOperationVisual: HTMLDivElement,
@@ -495,7 +536,8 @@ class DragOperation {
         timeSlotHeight: number,
         initialMousePos: { x: number; y: number },
         containerRect: DOMRect,
-        onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void
+        onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void,
+        currentWeek?: Date
     ) {
         this.dragOperationVisual = dragOperationVisual;
         this.grid = grid;
@@ -504,6 +546,7 @@ class DragOperation {
         this.originalPosition = position;
         this.timeSlotHeight = timeSlotHeight;
         this.onTimeChange = onTimeChange;
+        this.currentWeek = currentWeek;
 
         // Calculate mouse offset from the top-left of the event
         const relativeMouseY = initialMousePos.y - containerRect.top;
@@ -620,20 +663,26 @@ class DragOperation {
         const newMinutes = Math.floor((top % this.timeSlotHeight) / this.timeSlotHeight * 60);
         const snappedMinutes = Math.round(newMinutes / 5) * 5;
 
-        const originalStart = new Date(this.originalEventData.datetime_start);
-        const originalEnd = new Date(this.originalEventData.datetime_end);
+        // Use date utilities to properly handle server dates
+        const originalStart = fromDateServer(this.originalEventData.datetime_start);
+        const originalEnd = fromDateServer(this.originalEventData.datetime_end);
         const durationMs = originalEnd.getTime() - originalStart.getTime();
 
-        const newStartTime = new Date(originalStart);
+        // Create a new date based on the current week and day index
+        const currentWeekToUse = this.currentWeek || new Date();
+        const startOfWeek = getStartOfWeek(currentWeekToUse);
+
+        // Create the target date for the new day
+        const targetDate = new Date(startOfWeek);
+        targetDate.setDate(startOfWeek.getDate() + dayIndex);
+
+        // Set the new time on the target date
+        const newStartTime = new Date(targetDate);
         newStartTime.setHours(newHour, snappedMinutes, 0, 0);
 
-        // Update the date using the final day index
-        if (dayIndex >= 0 && dayIndex < 7) {
-            const startOfWeek = getStartOfWeek(new Date());
-            newStartTime.setDate(startOfWeek.getDate() + dayIndex);
-        }
-
         const newEndTime = new Date(newStartTime.getTime() + durationMs);
+
+
 
         // Apply the change
         this.onTimeChange(this.originalEventData, newStartTime, newEndTime);
@@ -671,15 +720,23 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
     const [draggedEvent, setDraggedEvent] = useState<Event | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    // Modal state
+    // Modal state (unified for both create and edit)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalInitialDate, setModalInitialDate] = useState<Date | undefined>();
     const [modalInitialTime, setModalInitialTime] = useState<string | undefined>();
+    const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
     // Event handlers
     const handleEventClick = (event: Event) => {
         console.log('Event clicked:', event);
-        // You can add more functionality here like opening a modal, editing, etc.
+        // Single click - could add quick actions here if needed
+    };
+
+    const handleEventDoubleClick = (event: Event) => {
+        setEditingEvent(event);
+        setModalInitialDate(undefined);
+        setModalInitialTime(undefined);
+        setIsModalOpen(true);
     };
 
     const handleEventEdit = (event: Event) => {
@@ -719,7 +776,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
         const clickedDate = new Date(startOfWeek);
         clickedDate.setDate(startOfWeek.getDate() + dayIndex);
 
-        // Set modal state and open it
+        // Set modal state and open it for creating a new event
+        setEditingEvent(null); // Clear any editing event
         setModalInitialDate(clickedDate);
         setModalInitialTime(`${clickedHour.toString().padStart(2, '0')}:${clickedMinutes.toString().padStart(2, '0')}`);
         setIsModalOpen(true);
@@ -729,10 +787,16 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
         try {
             // Only update if the event has an ID
             if (event.id !== undefined) {
+                // Convert dates to server format using utility function
+                const startTimeServer = toDateServer(newStartTime);
+                const endTimeServer = toDateServer(newEndTime);
+
+
+
                 // Update the event on the server
                 await recipeAPI.updateEvent(event.id, {
-                    datetime_start: newStartTime.toISOString(),
-                    datetime_end: newEndTime.toISOString()
+                    datetime_start: startTimeServer,
+                    datetime_end: endTimeServer
                 });
 
                 // Update the event in the local events array
@@ -741,8 +805,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                         e.id === event.id
                             ? {
                                 ...e,
-                                datetime_start: newStartTime.toISOString(),
-                                datetime_end: newEndTime.toISOString()
+                                datetime_start: startTimeServer,
+                                datetime_end: endTimeServer
                             }
                             : e
                     )
@@ -771,6 +835,30 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
         setEvents(prevEvents => [...prevEvents, newEvent]);
         // Close the modal
         setIsModalOpen(false);
+    };
+
+    // Handle event update
+    const handleEventUpdated = (updatedEvent: Event) => {
+        // Update the event in the events list
+        setEvents(prevEvents =>
+            prevEvents.map(e =>
+                e.id === updatedEvent.id ? updatedEvent : e
+            )
+        );
+        // Close the modal
+        setIsModalOpen(false);
+        setEditingEvent(null);
+    };
+
+    // Handle event deletion
+    const handleEventDeleted = (eventId: number) => {
+        // Remove the event from the events list
+        setEvents(prevEvents =>
+            prevEvents.filter(e => e.id !== eventId)
+        );
+        // Close the modal
+        setIsModalOpen(false);
+        setEditingEvent(null);
     };
 
     // Navigation functions
@@ -811,13 +899,12 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
     };
 
     // Check if a given day index is today
-    const isToday = (dayIndex: number) => {
+    const isDayToday = (dayIndex: number) => {
         const startOfWeek = getStartOfWeek(currentWeek);
         const dayDate = new Date(startOfWeek);
         dayDate.setDate(startOfWeek.getDate() + dayIndex);
 
-        const today = new Date();
-        return dayDate.toDateString() === today.toDateString();
+        return isToday(dayDate);
     };
 
     const fetchEvents = async () => {
@@ -825,28 +912,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
             const startOfWeek = getStartOfWeek(currentWeek);
             const endOfWeek = getEndOfWeek(currentWeek);
 
-            // Convert dates to "naive UTC" format to match how we store events
-            const formatAsNaiveUTC = (date: Date, isEndDate = false) => {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const time = isEndDate ? '23:59:59.999Z' : '00:00:00.000Z';
-                return `${year}-${month}-${day}T${time}`;
-            };
+            // Convert dates to server format using utility function
+            const startOfWeekUTC = formatDateRangeForServer(startOfWeek, false);
+            const endOfWeekUTC = formatDateRangeForServer(endOfWeek, true);
 
-            const startOfWeekUTC = formatAsNaiveUTC(startOfWeek, false);
-            const endOfWeekUTC = formatAsNaiveUTC(endOfWeek, true);
 
-            console.log('Fetch events debug:', {
-                startOfWeekLocal: startOfWeek.toString(),
-                endOfWeekLocal: endOfWeek.toString(),
-                startOfWeekUTC,
-                endOfWeekUTC,
-                originalMethod: {
-                    start: startOfWeek.toISOString(),
-                    end: endOfWeek.toISOString()
-                }
-            });
 
             const data = await recipeAPI.getEvents(startOfWeekUTC, endOfWeekUTC);
             setEvents(data);
@@ -867,7 +937,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
         targetDate.setDate(startOfWeek.getDate() + dayIndex);
 
         return events.filter(event => {
-            const eventDate = new Date(event.datetime_start);
+            const eventDate = fromDateServer(event.datetime_start);
             return eventDate.toDateString() === targetDate.toDateString();
         });
     };
@@ -950,20 +1020,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     const dayDate = new Date(startOfWeek);
                     dayDate.setDate(startOfWeek.getDate() + index);
 
-                    // Helper function to get ordinal suffix
-                    const getOrdinalSuffix = (day: number) => {
-                        if (day > 3 && day < 21) return 'th';
-                        switch (day % 10) {
-                            case 1: return 'st';
-                            case 2: return 'nd';
-                            case 3: return 'rd';
-                            default: return 'th';
-                        }
-                    };
-
-                    const dayNumber = dayDate.getDate();
-                    const monthName = dayDate.toLocaleDateString('en-US', { month: 'long' });
-                    const formattedDate = `${dayNumber}${getOrdinalSuffix(dayNumber)} ${monthName}`;
+                    const formattedDate = formatDateDisplay(dayDate);
 
                     return (
                         <GridItem
@@ -1084,8 +1141,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                 borderLeft="1px solid"
                                 borderRight="1px solid"
                                 borderColor={"gray.200"}
-                                // borderColor={isToday(dayIndex)  ?"gray.500" : "gray.200" }
-                                bg={isToday(dayIndex) ? "#fffae6" : "white"}
+                                // borderColor={isDayToday(dayIndex)  ?"gray.500" : "gray.200" }
+                                bg={isDayToday(dayIndex) ? "#fffae6" : "white"}
                                 _hover={{ bg: "gray.50" }}
                                 minH="200px"
                                 id={`calendar-${day}`}
@@ -1120,6 +1177,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                             event={event}
                                             position={position}
                                             onClick={handleEventClick}
+                                            onDoubleClick={handleEventDoubleClick}
                                             onEdit={handleEventEdit}
                                             onDelete={handleEventDelete}
                                             onTimeChange={handleEventTimeChange}
@@ -1127,6 +1185,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                             snapInterval={dayAxis.getSnapInterval()}
                                             gridWeek={dayAxis}
                                             dayIndex={dayIndex}
+                                            currentWeek={currentWeek}
                                             isDragging={isDragging && draggedEvent?.id === event.id}
                                             onDragStart={handleDragStart}
                                         />
@@ -1138,13 +1197,21 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                 </GridItem>
             </Grid>
 
-            {/* Event Creation Modal */}
-            <EventCreateModal
+            {/* Unified Event Modal (Create/Edit) */}
+            <EventModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingEvent(null);
+                    setModalInitialDate(undefined);
+                    setModalInitialTime(undefined);
+                }}
+                event={editingEvent}
                 initialDate={modalInitialDate}
                 initialTime={modalInitialTime}
                 onEventCreated={handleEventCreated}
+                onEventUpdated={handleEventUpdated}
+                onEventDeleted={handleEventDeleted}
             />
         </div>
     );

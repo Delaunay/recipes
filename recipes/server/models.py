@@ -76,8 +76,8 @@ class Event(Base):
             'id': self._id,
             'kind': self.kind,
             'color': self.color,
-            'datetime_start': self.datetime_start.isoformat() if self.datetime_start else None,
-            'datetime_end': self.datetime_end.isoformat() if self.datetime_end else None,
+            'datetime_start': self.datetime_start.isoformat() + 'Z' if self.datetime_start else None,
+            'datetime_end': self.datetime_end.isoformat() + 'Z' if self.datetime_end else None,
             'location': self.location,
             'title': self.title,
             'description': self.description,
@@ -89,8 +89,7 @@ class Event(Base):
             'people_count': self.people_count,
             'template': self.template,
             'recuring': self.recuring,
-            'active': self.active,
-            'extension': self.extension
+            'active': self.active
         }
 
 

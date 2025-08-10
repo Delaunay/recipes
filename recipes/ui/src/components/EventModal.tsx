@@ -6,32 +6,59 @@ import {
     Textarea,
     VStack,
     HStack,
-    Select,
     Text,
     Heading,
 } from '@chakra-ui/react';
 import { Event, recipeAPI } from '../services/api';
+import { datetimeLocalToServer, serverToDatetimeLocal } from '../utils/dateUtils';
 
-interface EventCreateModalProps {
+interface EventModalProps {
     isOpen: boolean;
     onClose: () => void;
+    event?: Event | null; // If provided, we're editing; if null/undefined, we're creating
     initialDate?: Date;
     initialTime?: string;
     onEventCreated?: (event: Event) => void;
+    onEventUpdated?: (event: Event) => void;
+    onEventDeleted?: (eventId: number) => void;
 }
 
-const EventCreateModal: React.FC<EventCreateModalProps> = ({
+const EventModal: React.FC<EventModalProps> = ({
     isOpen,
     onClose,
+    event,
     initialDate,
     initialTime,
-    onEventCreated
+    onEventCreated,
+    onEventUpdated,
+    onEventDeleted
 }) => {
     const [isLoading, setIsLoading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string>('');
 
+    // Determine if we're editing or creating
+    const isEditing = !!event;
+
     // Form state
-    const [formData, setFormData] = useState(() => {
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        datetime_start: '',
+        datetime_end: '',
+        location: '',
+        color: '#3182CE',
+        kind: 1,
+        done: false,
+        template: false,
+        recuring: false,
+        active: true
+    });
+
+    // Use utility function for consistent datetime formatting
+
+    // Create initial form data for new events
+    const createInitialFormData = () => {
         const now = initialDate || new Date();
         const startTime = initialTime || '09:00';
         const [hours, minutes] = startTime.split(':').map(Number);
@@ -42,21 +69,11 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
         const endDateTime = new Date(startDateTime);
         endDateTime.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
 
-        // Format for datetime-local input (YYYY-MM-DDTHH:MM)
-        const formatDateTimeLocal = (date: Date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hour = String(date.getHours()).padStart(2, '0');
-            const minute = String(date.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hour}:${minute}`;
-        };
-
         return {
             title: '',
             description: '',
-            datetime_start: formatDateTimeLocal(startDateTime),
-            datetime_end: formatDateTimeLocal(endDateTime),
+            datetime_start: serverToDatetimeLocal(startDateTime.toISOString()),
+            datetime_end: serverToDatetimeLocal(endDateTime.toISOString()),
             location: '',
             color: '#3182CE',
             kind: 1,
@@ -65,50 +82,35 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
             recuring: false,
             active: true
         };
-    });
+    };
 
-    // Update form data when modal opens with new initial values
+    // Update form data when modal opens
     useEffect(() => {
-        if (isOpen && (initialDate || initialTime)) {
-            const now = initialDate || new Date();
-            const startTime = initialTime || '09:00';
-            const [hours, minutes] = startTime.split(':').map(Number);
-
-            const startDateTime = new Date(now);
-            startDateTime.setHours(hours, minutes, 0, 0);
-
-            const endDateTime = new Date(startDateTime);
-            endDateTime.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
-
-            // Format for datetime-local input (YYYY-MM-DDTHH:MM)
-            const formatDateTimeLocal = (date: Date) => {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const hour = String(date.getHours()).padStart(2, '0');
-                const minute = String(date.getMinutes()).padStart(2, '0');
-                return `${year}-${month}-${day}T${hour}:${minute}`;
-            };
-
-
-
-            setFormData({
-                title: '',
-                description: '',
-                datetime_start: formatDateTimeLocal(startDateTime),
-                datetime_end: formatDateTimeLocal(endDateTime),
-                location: '',
-                color: '#3182CE',
-                kind: 1,
-                done: false,
-                template: false,
-                recuring: false,
-                active: true
-            });
+        if (isOpen) {
+            if (isEditing && event) {
+                // Editing mode - populate with existing event data
+                setFormData({
+                    title: event.title || '',
+                    description: event.description || '',
+                    datetime_start: serverToDatetimeLocal(event.datetime_start),
+                    datetime_end: serverToDatetimeLocal(event.datetime_end),
+                    location: event.location || '',
+                    color: event.color || '#3182CE',
+                    kind: event.kind || 1,
+                    done: event.done || false,
+                    template: event.template || false,
+                    recuring: event.recuring || false,
+                    active: event.active !== false
+                });
+            } else {
+                // Creating mode - use initial date/time
+                setFormData(createInitialFormData());
+            }
+            setError('');
         }
-    }, [isOpen, initialDate, initialTime]);
+    }, [isOpen, event, initialDate, initialTime, isEditing]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -132,65 +134,77 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
             return;
         }
 
+        if (isEditing && (!event || !event.id)) {
+            setError('Event ID is missing');
+            return;
+        }
+
         setIsLoading(true);
         setError('');
 
         try {
-            // Convert datetime-local format to ISO string while preserving the local time
-            // The simplest approach: treat the datetime-local as naive UTC time
-            const createLocalISOString = (datetimeLocal: string) => {
-                // datetime-local format: "2024-12-16T14:00"
-                // We want this to be treated as 14:00 regardless of timezone
-                // So we append the UTC indicator directly
-                return datetimeLocal + ':00.000Z';
-            };
-
-            console.log('Form datetime debug:', {
-                formStart: formData.datetime_start,
-                formEnd: formData.datetime_end,
-                isoStart: createLocalISOString(formData.datetime_start),
-                isoEnd: createLocalISOString(formData.datetime_end),
-                originalDate: new Date(formData.datetime_start).toString(),
-                originalISO: new Date(formData.datetime_start).toISOString(),
-                timezoneOffset: new Date().getTimezoneOffset()
-            });
-
+            // Convert datetime-local format to server format using utility function
             const eventData = {
                 ...formData,
-                datetime_start: createLocalISOString(formData.datetime_start),
-                datetime_end: createLocalISOString(formData.datetime_end),
+                datetime_start: datetimeLocalToServer(formData.datetime_start),
+                datetime_end: datetimeLocalToServer(formData.datetime_end),
             };
 
-            const newEvent = await recipeAPI.createEvent(eventData);
+            let resultEvent: Event;
 
-            if (onEventCreated) {
-                onEventCreated(newEvent);
+            if (isEditing && event?.id) {
+                // Update existing event
+                resultEvent = await recipeAPI.updateEvent(event.id, eventData);
+                if (onEventUpdated) {
+                    onEventUpdated(resultEvent);
+                }
+            } else {
+                // Create new event
+                resultEvent = await recipeAPI.createEvent(eventData);
+                if (onEventCreated) {
+                    onEventCreated(resultEvent);
+                }
             }
 
             onClose();
         } catch (error) {
-            console.error('Error creating event:', error);
-            setError('Failed to create event');
+            console.error(`Error ${isEditing ? 'updating' : 'creating'} event:`, error);
+            setError(`Failed to ${isEditing ? 'update' : 'create'} event`);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const handleDelete = async () => {
+        if (!isEditing || !event || !event.id) {
+            setError('Cannot delete: Event ID is missing');
+            return;
+        }
+
+        if (!window.confirm('Are you sure you want to delete this event?')) {
+            return;
+        }
+
+        setIsDeleting(true);
+        setError('');
+
+        try {
+            await recipeAPI.deleteEvent(event.id);
+
+            if (onEventDeleted) {
+                onEventDeleted(event.id);
+            }
+
+            onClose();
+        } catch (error) {
+            console.error('Error deleting event:', error);
+            setError('Failed to delete event');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const handleClose = () => {
-        // Reset form when closing
-        setFormData({
-            title: '',
-            description: '',
-            datetime_start: '',
-            datetime_end: '',
-            location: '',
-            color: '#3182CE',
-            kind: 1,
-            done: false,
-            template: false,
-            recuring: false,
-            active: true
-        });
         setError('');
         onClose();
     };
@@ -235,7 +249,9 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
                 overflowY="auto"
                 onClick={(e) => e.stopPropagation()}
             >
-                <Heading size="lg" mb={6}>Create New Event</Heading>
+                <Heading size="lg" mb={6}>
+                    {isEditing ? 'Edit Event' : 'Create New Event'}
+                </Heading>
 
                 {error && (
                     <Box bg="red.50" border="1px solid" borderColor="red.200" borderRadius="md" p={3} mb={4}>
@@ -323,17 +339,36 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
                         </Box>
                     </VStack>
 
-                    <HStack gap={3} mt={6} justify="flex-end">
-                        <Button variant="ghost" onClick={handleClose}>
-                            Cancel
-                        </Button>
-                        <Button
-                            colorScheme="blue"
-                            type="submit"
-                            loading={isLoading}
-                        >
-                            {isLoading ? 'Creating...' : 'Create Event'}
-                        </Button>
+                    <HStack gap={3} mt={6} justify="space-between">
+                        {/* Delete button - only show when editing */}
+                        {isEditing ? (
+                            <Button
+                                colorScheme="red"
+                                variant="outline"
+                                onClick={handleDelete}
+                                loading={isDeleting}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </Button>
+                        ) : (
+                            <Box /> // Empty space to maintain layout
+                        )}
+
+                        <HStack gap={3}>
+                            <Button variant="ghost" onClick={handleClose}>
+                                Cancel
+                            </Button>
+                            <Button
+                                colorScheme="blue"
+                                type="submit"
+                                loading={isLoading}
+                            >
+                                {isLoading
+                                    ? (isEditing ? 'Updating...' : 'Creating...')
+                                    : (isEditing ? 'Update Event' : 'Create Event')
+                                }
+                            </Button>
+                        </HStack>
                     </HStack>
                 </form>
             </Box>
@@ -341,4 +376,4 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
     );
 };
 
-export default EventCreateModal;
+export default EventModal;
