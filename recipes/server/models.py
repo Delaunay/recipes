@@ -345,6 +345,9 @@ class Ingredient(Base):
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text)
 
+    price_high = Column(Float)
+    price_low = Column(Float)
+    price_medium = Column(Float)
     calories = Column(Float)    # Calories per 100g or per unit
     density = Column(Float)     # Density in g/ml  | Used for conversions
 
