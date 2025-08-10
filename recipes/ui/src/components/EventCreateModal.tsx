@@ -90,15 +90,7 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
                 return `${year}-${month}-${day}T${hour}:${minute}`;
             };
 
-            console.log('Modal time setting debug:', {
-                initialTime,
-                initialDate,
-                hours,
-                minutes,
-                startDateTime: startDateTime.toString(),
-                formattedStart: formatDateTimeLocal(startDateTime),
-                formattedEnd: formatDateTimeLocal(endDateTime)
-            });
+
 
             setFormData({
                 title: '',

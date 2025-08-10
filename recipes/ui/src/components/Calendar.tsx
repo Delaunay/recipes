@@ -7,6 +7,10 @@ import {
     Grid,
     GridItem,
     Text,
+    Button,
+    HStack,
+    Heading,
+    IconButton,
 } from '@chakra-ui/react';
 import { recipeAPI, Event } from '../services/api';
 import EventCreateModal from './EventCreateModal';
@@ -647,7 +651,11 @@ class DragOperation {
     }
 }
 
-const WeeklyCalendar: React.FC = () => {
+interface WeeklyCalendarProps {
+    initialDate?: Date;
+}
+
+const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6 s 23
 
@@ -655,7 +663,7 @@ const WeeklyCalendar: React.FC = () => {
     const { containerRef, timeSlotHeight, totalCalendarHeight, weekWidth } = useCalendarSizing();
 
     const [events, setEvents] = useState<Event[]>([]);
-    const [currentWeek] = useState<Date>(new Date());
+    const [currentWeek, setCurrentWeek] = useState<Date>(initialDate || new Date());
     const [dayAxis, setDayAxis] = useState<GridWeek | null>(null);
     const calendarContentRef = useRef<HTMLDivElement>(null);
 
@@ -703,17 +711,7 @@ const WeeklyCalendar: React.FC = () => {
         const clickedHour = Math.max(6, Math.min(23, 6 + hoursFromStart)); // Clamp between 6-23
         const clickedMinutes = Math.min(45, minutesInHour); // Clamp minutes to max 45
 
-        // Debug logging
-        console.log('Time calculation debug:', {
-            clickY,
-            timeSlotHeight,
-            totalMinutesFromStart,
-            hoursFromStart,
-            minutesInHour,
-            clickedHour,
-            clickedMinutes,
-            resultTime: `${clickedHour.toString().padStart(2, '0')}:${clickedMinutes.toString().padStart(2, '0')}`
-        });
+
 
         // Calculate the date for the clicked day
         const dayIndex = days.indexOf(dayName);
@@ -775,7 +773,42 @@ const WeeklyCalendar: React.FC = () => {
         setIsModalOpen(false);
     };
 
+    // Navigation functions
+    const goToPreviousWeek = () => {
+        setCurrentWeek(prevWeek => {
+            const newWeek = new Date(prevWeek);
+            newWeek.setDate(newWeek.getDate() - 7);
+            return newWeek;
+        });
+    };
 
+    const goToNextWeek = () => {
+        setCurrentWeek(prevWeek => {
+            const newWeek = new Date(prevWeek);
+            newWeek.setDate(newWeek.getDate() + 7);
+            return newWeek;
+        });
+    };
+
+    const goToToday = () => {
+        setCurrentWeek(new Date());
+    };
+
+    // Format week range for display
+    const getWeekRangeText = () => {
+        const startOfWeek = getStartOfWeek(currentWeek);
+        const endOfWeek = getEndOfWeek(currentWeek);
+
+        const formatDate = (date: Date) => {
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: startOfWeek.getFullYear() !== endOfWeek.getFullYear() ? 'numeric' : undefined
+            });
+        };
+
+        return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
+    };
 
     const fetchEvents = async () => {
         try {
@@ -822,9 +855,42 @@ const WeeklyCalendar: React.FC = () => {
             className="cls-calendar"
             ref={containerRef}
             style={{
-                minHeight: "calc(100vh - 6rem)"
+                
+                height: "calc(100vh - 6rem)",
+                marginTop: "-1rem"
             }}
         >
+            {/* Navigation Header */}
+            <Box mb={4} p={2} bg="white" borderRadius="md" boxShadow="sm">
+                <HStack justify="space-between" align="center">
+  
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToPreviousWeek}
+                        >
+                            ← Previous
+                        </Button>
+                        <Button
+                            variant="solid"
+                            size="sm"
+                            colorScheme="blue"
+                            onClick={goToToday}
+                        >
+                            Today
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToNextWeek}
+                        >
+                            Next →
+                        </Button>
+
+
+                </HStack>
+            </Box>
+
             <Grid
                 templateColumns="80px repeat(7, 1fr)"
                 templateRows="50px 1fr"
@@ -846,21 +912,47 @@ const WeeklyCalendar: React.FC = () => {
                 />
 
                 {/* Day headers */}
-                {days.map((day) => (
-                    <GridItem
-                        key={day}
-                        border="1px solid"
-                        borderColor="gray.200"
-                        bg="blue.50"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        fontWeight="bold"
-                        fontSize="sm"
-                    >
-                        <Text>{day}</Text>
-                    </GridItem>
-                ))}
+                {days.map((day, index) => {
+                    const startOfWeek = getStartOfWeek(currentWeek);
+                    const dayDate = new Date(startOfWeek);
+                    dayDate.setDate(startOfWeek.getDate() + index);
+
+                    // Helper function to get ordinal suffix
+                    const getOrdinalSuffix = (day: number) => {
+                        if (day > 3 && day < 21) return 'th';
+                        switch (day % 10) {
+                            case 1: return 'st';
+                            case 2: return 'nd';
+                            case 3: return 'rd';
+                            default: return 'th';
+                        }
+                    };
+
+                    const dayNumber = dayDate.getDate();
+                    const monthName = dayDate.toLocaleDateString('en-US', { month: 'long' });
+                    const formattedDate = `${dayNumber}${getOrdinalSuffix(dayNumber)} ${monthName}`;
+
+                    return (
+                        <GridItem
+                            key={day}
+                            border="1px solid"
+                            borderColor="gray.200"
+                            bg="blue.50"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            fontWeight="bold"
+                            fontSize="sm"
+                            flexDirection="column"
+                            py={2}
+                        >
+                            <Text>{day}</Text>
+                            <Text fontSize="xs" fontWeight="normal" color="gray.600" textAlign="center">
+                                {formattedDate}
+                            </Text>
+                        </GridItem>
+                    );
+                })}
 
                 {/* Time labels column */}
                 <GridItem
