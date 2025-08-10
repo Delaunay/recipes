@@ -825,7 +825,30 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
             const startOfWeek = getStartOfWeek(currentWeek);
             const endOfWeek = getEndOfWeek(currentWeek);
 
-            const data = await recipeAPI.getEvents(startOfWeek.toISOString(), endOfWeek.toISOString());
+            // Convert dates to "naive UTC" format to match how we store events
+            const formatAsNaiveUTC = (date: Date, isEndDate = false) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const time = isEndDate ? '23:59:59.999Z' : '00:00:00.000Z';
+                return `${year}-${month}-${day}T${time}`;
+            };
+
+            const startOfWeekUTC = formatAsNaiveUTC(startOfWeek, false);
+            const endOfWeekUTC = formatAsNaiveUTC(endOfWeek, true);
+
+            console.log('Fetch events debug:', {
+                startOfWeekLocal: startOfWeek.toString(),
+                endOfWeekLocal: endOfWeek.toString(),
+                startOfWeekUTC,
+                endOfWeekUTC,
+                originalMethod: {
+                    start: startOfWeek.toISOString(),
+                    end: endOfWeek.toISOString()
+                }
+            });
+
+            const data = await recipeAPI.getEvents(startOfWeekUTC, endOfWeekUTC);
             setEvents(data);
         } catch (error) {
             console.error('Error fetching events:', error);
@@ -1060,9 +1083,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                 borderTop="1px solid"
                                 borderLeft="1px solid"
                                 borderRight="1px solid"
-                                borderColor={ "gray.200" }
+                                borderColor={"gray.200"}
                                 // borderColor={isToday(dayIndex)  ?"gray.500" : "gray.200" }
-                                bg={isToday(dayIndex) ? "#fffae6" :"white"}
+                                bg={isToday(dayIndex) ? "#fffae6" : "white"}
                                 _hover={{ bg: "gray.50" }}
                                 minH="200px"
                                 id={`calendar-${day}`}

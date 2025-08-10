@@ -136,11 +136,29 @@ const EventCreateModal: React.FC<EventCreateModalProps> = ({
         setError('');
 
         try {
-            // Convert datetime-local format to ISO string
+            // Convert datetime-local format to ISO string while preserving the local time
+            // The simplest approach: treat the datetime-local as naive UTC time
+            const createLocalISOString = (datetimeLocal: string) => {
+                // datetime-local format: "2024-12-16T14:00"
+                // We want this to be treated as 14:00 regardless of timezone
+                // So we append the UTC indicator directly
+                return datetimeLocal + ':00.000Z';
+            };
+
+            console.log('Form datetime debug:', {
+                formStart: formData.datetime_start,
+                formEnd: formData.datetime_end,
+                isoStart: createLocalISOString(formData.datetime_start),
+                isoEnd: createLocalISOString(formData.datetime_end),
+                originalDate: new Date(formData.datetime_start).toString(),
+                originalISO: new Date(formData.datetime_start).toISOString(),
+                timezoneOffset: new Date().getTimezoneOffset()
+            });
+
             const eventData = {
                 ...formData,
-                datetime_start: new Date(formData.datetime_start).toISOString(),
-                datetime_end: new Date(formData.datetime_end).toISOString(),
+                datetime_start: createLocalISOString(formData.datetime_start),
+                datetime_end: createLocalISOString(formData.datetime_end),
             };
 
             const newEvent = await recipeAPI.createEvent(eventData);
