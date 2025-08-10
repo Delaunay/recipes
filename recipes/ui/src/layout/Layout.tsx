@@ -33,7 +33,7 @@ const sidebarItems = [
   //   - Calories intake
   //   - Nutrients
   { name: 'Planning', href: '/planning' },
-  { name: 'Events', href: '/events' },
+  { name: 'Calendar', href: '/calendar' },
   { name: 'Tasks', href: '/tasks' },
   { name: 'Ingredients', href: '/ingredients' },
   { name: 'Unit Conversions', href: '/conversions' },

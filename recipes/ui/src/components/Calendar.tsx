@@ -9,6 +9,7 @@ import {
     Text,
 } from '@chakra-ui/react';
 import { recipeAPI, Event } from '../services/api';
+import EventCreateModal from './EventCreateModal';
 
 // Individual Event Component
 interface CalendarEventProps {
@@ -662,6 +663,11 @@ const WeeklyCalendar: React.FC = () => {
     const [draggedEvent, setDraggedEvent] = useState<Event | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalInitialDate, setModalInitialDate] = useState<Date | undefined>();
+    const [modalInitialTime, setModalInitialTime] = useState<string | undefined>();
+
     // Event handlers
     const handleEventClick = (event: Event) => {
         console.log('Event clicked:', event);
@@ -678,26 +684,76 @@ const WeeklyCalendar: React.FC = () => {
         // Add delete functionality here
     };
 
-    const handleDayClick = (dayName: string) => {
-        console.log('Day clicked:', dayName);
-        // You can add functionality for creating new events on day click
+    const handleDayClick = (dayName: string, event: React.MouseEvent) => {
+        // Don't show modal if dragging
+        if (isDragging) return;
+
+        // Calculate which time slot was clicked
+        const dayElement = event.currentTarget;
+        const rect = dayElement.getBoundingClientRect();
+        const clickY = event.clientY - rect.top;
+
+        // Calculate the time based on click position
+        // Each hour slot has a height of timeSlotHeight pixels
+        // Start hour is 6, so we need to add 6 to the calculated hour
+        const totalMinutesFromStart = (clickY / timeSlotHeight) * 60; // Convert to minutes
+        const hoursFromStart = Math.floor(totalMinutesFromStart / 60);
+        const minutesInHour = Math.floor((totalMinutesFromStart % 60) / 15) * 15; // Snap to 15-minute intervals
+
+        const clickedHour = Math.max(6, Math.min(23, 6 + hoursFromStart)); // Clamp between 6-23
+        const clickedMinutes = Math.min(45, minutesInHour); // Clamp minutes to max 45
+
+        // Debug logging
+        console.log('Time calculation debug:', {
+            clickY,
+            timeSlotHeight,
+            totalMinutesFromStart,
+            hoursFromStart,
+            minutesInHour,
+            clickedHour,
+            clickedMinutes,
+            resultTime: `${clickedHour.toString().padStart(2, '0')}:${clickedMinutes.toString().padStart(2, '0')}`
+        });
+
+        // Calculate the date for the clicked day
+        const dayIndex = days.indexOf(dayName);
+        const startOfWeek = getStartOfWeek(currentWeek);
+        const clickedDate = new Date(startOfWeek);
+        clickedDate.setDate(startOfWeek.getDate() + dayIndex);
+
+        // Set modal state and open it
+        setModalInitialDate(clickedDate);
+        setModalInitialTime(`${clickedHour.toString().padStart(2, '0')}:${clickedMinutes.toString().padStart(2, '0')}`);
+        setIsModalOpen(true);
     };
 
-    const handleEventTimeChange = (event: Event, newStartTime: Date, newEndTime: Date) => {
-        // console.log('Event time changed:', event, newStartTime, newEndTime);
+    const handleEventTimeChange = async (event: Event, newStartTime: Date, newEndTime: Date) => {
+        try {
+            // Only update if the event has an ID
+            if (event.id !== undefined) {
+                // Update the event on the server
+                await recipeAPI.updateEvent(event.id, {
+                    datetime_start: newStartTime.toISOString(),
+                    datetime_end: newEndTime.toISOString()
+                });
 
-        // Update the event in the events array
-        setEvents(prevEvents =>
-            prevEvents.map(e =>
-                e.id === event.id
-                    ? {
-                        ...e,
-                        datetime_start: newStartTime.toISOString(),
-                        datetime_end: newEndTime.toISOString()
-                    }
-                    : e
-            )
-        );
+                // Update the event in the local events array
+                setEvents(prevEvents =>
+                    prevEvents.map(e =>
+                        e.id === event.id
+                            ? {
+                                ...e,
+                                datetime_start: newStartTime.toISOString(),
+                                datetime_end: newEndTime.toISOString()
+                            }
+                            : e
+                    )
+                );
+            }
+        } catch (error) {
+            console.error('Error updating event:', error);
+            // Optionally show an error message to the user
+        }
 
         // Clear drag state
         setIsDragging(false);
@@ -711,6 +767,14 @@ const WeeklyCalendar: React.FC = () => {
         setIsDragging(true);
     };
 
+    // Handle event creation
+    const handleEventCreated = (newEvent: Event) => {
+        // Add the new event to the events list
+        setEvents(prevEvents => [...prevEvents, newEvent]);
+        // Close the modal
+        setIsModalOpen(false);
+    };
+
 
 
     const fetchEvents = async () => {
@@ -718,56 +782,12 @@ const WeeklyCalendar: React.FC = () => {
             const startOfWeek = getStartOfWeek(currentWeek);
             const endOfWeek = getEndOfWeek(currentWeek);
 
-            await recipeAPI.getEvents(startOfWeek.toISOString(), endOfWeek.toISOString());
-
-            // WHAT IF END TIME IS TOMORROW ?
-            const data2: Event[] = [
-                {
-                    id: 1,
-                    title: 'Morning Meeting',
-                    description: 'Daily standup with the team',
-                    datetime_start: new Date(getToday().getTime()).toISOString(),
-                    datetime_end: new Date(getToday().getTime() + 1 * 60 * 60 * 1000).toISOString(),
-                    color: '#3182CE',
-                    kind: 1,
-                    done: false,
-                    template: false,
-                    recuring: false,
-                    active: true,
-                },
-                {
-                    id: 2,
-                    title: 'Morning Meeting',
-                    description: 'Daily standup with the team',
-                    datetime_start: new Date(getToday().getTime() + 24.5 * 60 * 60 * 1000).toISOString(),
-                    datetime_end: new Date(getToday().getTime() + 26 * 60 * 60 * 1000).toISOString(),
-                    color: '#3182CE',
-                    kind: 1,
-                    done: false,
-                    template: false,
-                    recuring: false,
-                    active: true,
-                },
-                {
-                    id: 3,
-                    title: 'Morning Meeting',
-                    description: 'Daily standup with the team',
-                    datetime_start: new Date(getToday().getTime() + (25 + 16) * 60 * 60 * 1000).toISOString(),
-                    datetime_end: new Date(getToday().getTime() + (26 + 16) * 60 * 60 * 1000).toISOString(),
-                    color: '#3182CE',
-                    kind: 1,
-                    done: false,
-                    template: false,
-                    recuring: false,
-                    active: true,
-                },
-
-            ]
-            setEvents(data2);
+            const data = await recipeAPI.getEvents(startOfWeek.toISOString(), endOfWeek.toISOString());
+            setEvents(data);
         } catch (error) {
             console.error('Error fetching events:', error);
-            // For demo purposes, create some sample events
-            // setEvents(generateSampleEvents());
+            // Set empty array on error to avoid crashes
+            setEvents([]);
         }
     };
 
@@ -946,7 +966,7 @@ const WeeklyCalendar: React.FC = () => {
                                 position="relative"
                                 height="100%"
                                 cursor="pointer"
-                                onClick={() => handleDayClick(day)}
+                                onClick={(e) => handleDayClick(day, e)}
                             >
                                 {hours.map((hour) => (
                                     <Box
@@ -990,6 +1010,15 @@ const WeeklyCalendar: React.FC = () => {
                     </Grid>
                 </GridItem>
             </Grid>
+
+            {/* Event Creation Modal */}
+            <EventCreateModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                initialDate={modalInitialDate}
+                initialTime={modalInitialTime}
+                onEventCreated={handleEventCreated}
+            />
         </div>
     );
 };
