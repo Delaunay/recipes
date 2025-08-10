@@ -38,5 +38,15 @@ if __name__ == "__main__":
             # "recipes.recipes.templatetags",
         ],
         setup_requires=["setuptools"],
-        install_requires=["importlib_resources"],
+        install_requires=[
+            "importlib_resources"
+            "sqlalchemy",
+            "alembic",
+            "psycopg2-binary",
+            "flask",
+            "werkzeug",
+            "flask-sqlalchemy",
+            "flask-cors",
+            "pillow",
+        ],
     )

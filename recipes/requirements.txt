@@ -1,6 +1,0 @@
-django
-whitenoise
-gunicorn
-dj-database-url
-psycopg2
-Pillow
