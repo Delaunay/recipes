@@ -810,6 +810,16 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
         return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
     };
 
+    // Check if a given day index is today
+    const isToday = (dayIndex: number) => {
+        const startOfWeek = getStartOfWeek(currentWeek);
+        const dayDate = new Date(startOfWeek);
+        dayDate.setDate(startOfWeek.getDate() + dayIndex);
+
+        const today = new Date();
+        return dayDate.toDateString() === today.toDateString();
+    };
+
     const fetchEvents = async () => {
         try {
             const startOfWeek = getStartOfWeek(currentWeek);
@@ -855,7 +865,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
             className="cls-calendar"
             ref={containerRef}
             style={{
-                
+
                 height: "calc(100vh - 6rem)",
                 marginTop: "-1rem"
             }}
@@ -863,29 +873,29 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
             {/* Navigation Header */}
             <Box mb={4} p={2} bg="white" borderRadius="md" boxShadow="sm">
                 <HStack justify="space-between" align="center">
-  
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={goToPreviousWeek}
-                        >
-                            ← Previous
-                        </Button>
-                        <Button
-                            variant="solid"
-                            size="sm"
-                            colorScheme="blue"
-                            onClick={goToToday}
-                        >
-                            Today
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={goToNextWeek}
-                        >
-                            Next →
-                        </Button>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToPreviousWeek}
+                    >
+                        ← Previous
+                    </Button>
+                    <Button
+                        variant="solid"
+                        size="sm"
+                        colorScheme="blue"
+                        onClick={goToToday}
+                    >
+                        Today
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToNextWeek}
+                    >
+                        Next →
+                    </Button>
 
 
                 </HStack>
@@ -1044,17 +1054,19 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                         flex="1"
                         minH="0"
                     >
-                        {days.map((day) => (
+                        {days.map((day, dayIndex) => (
                             <GridItem
                                 key={day}
                                 borderTop="1px solid"
                                 borderLeft="1px solid"
                                 borderRight="1px solid"
-                                borderColor="gray.200"
-                                bg="white"
+                                borderColor={ "gray.200" }
+                                // borderColor={isToday(dayIndex)  ?"gray.500" : "gray.200" }
+                                bg={isToday(dayIndex) ? "#fffae6" :"white"}
                                 _hover={{ bg: "gray.50" }}
                                 minH="200px"
                                 id={`calendar-${day}`}
+                                // className={isToday(dayIndex) ? "current-day" : ""}
                                 position="relative"
                                 height="100%"
                                 cursor="pointer"

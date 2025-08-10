@@ -122,3 +122,8 @@
     font-size: 1rem;
   }
 }
+
+
+.current-day {
+  background: #fffae6 !important;
+}
