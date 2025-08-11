@@ -101,7 +101,9 @@ class Task(Base):
     title = Column(String(100), nullable=False)
     description = Column(Text)
     datetime_deadline = Column(DateTime)
+    datetime_done = Column(DateTime)
     done = Column(Boolean, default=False)
+    priority = Column(Integer, default=0)
 
     # Budgeting
     price_budget = Column(Float)
@@ -136,7 +138,8 @@ class Task(Base):
             'template': self.template,
             'recuring': self.recuring,
             'active': self.active,
-            'extension': self.extension
+            'extension': self.extension,
+            "priority": self.priority if self.priority is not None else 0
         }
 
 

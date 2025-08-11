@@ -81,6 +81,7 @@ interface Task {
   description?: string;
   datetime_deadline?: string;
   done: boolean;
+  priority?: number;
   price_budget?: number;
   price_real?: number;
   people_count?: number;
@@ -418,11 +419,13 @@ class RecipeAPI {
     });
   }
 
-  async updateTask(id: number, task: Partial<Task>): Promise<Task> {
+  async updateTask(id: number, task: Partial<Task>): Promise<void> {
     if (isStaticMode()) {
       throw new Error('Updating tasks is not supported in static mode');
     }
-    return this.request<Task>(`/tasks/${id}`, {
+    console.log('API updateTask - sending to server:', task);
+    console.log('API updateTask - JSON stringified:', JSON.stringify(task));
+    await this.request(`/tasks/${id}`, {
       method: 'PUT',
       body: JSON.stringify(task),
     });

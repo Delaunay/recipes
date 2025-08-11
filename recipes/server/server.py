@@ -79,7 +79,7 @@ class RecipeApp:
         @self.app.route('/tasks', methods=['GET'])
         def get_tasks() -> Dict[str, Any]:
             try:
-                tasks = self.db.session.query(Task).all()
+                tasks = self.db.session.query(Task).order_by(Task.priority.desc(), Task._id).all()
                 return jsonify([task.to_json() for task in tasks])
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
@@ -134,6 +134,7 @@ class RecipeApp:
                 if data.get('datetime_deadline'):
                     task.datetime_deadline = datetime.fromisoformat(data.get('datetime_deadline').replace('Z', '+00:00'))
                 task.done = data.get('done', task.done)
+                task.priority = data.get('priority', task.priority)
                 task.price_budget = data.get('price_budget', task.price_budget)
                 task.price_real = data.get('price_real', task.price_real)
                 task.people_count = data.get('people_count', task.people_count)
@@ -142,8 +143,7 @@ class RecipeApp:
                 task.active = data.get('active', task.active)
 
                 self.db.session.commit()
-
-                return jsonify(task.to_json())
+                return jsonify({})
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
