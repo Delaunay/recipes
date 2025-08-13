@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Spinner, Text, Button, VStack, HStack, SimpleGrid } from '@chakra-ui/react';
-import { recipeAPI, Ingredient } from '../services/api';
+import { recipeAPI, Ingredient, ConversionMatrix } from '../services/api';
+import ConversionMatrixComponent from './ConversionMatrix';
 
 const IngredientDetail = () => {
   const { identifier } = useParams<{ identifier?: string }>();
   const navigate = useNavigate();
   const [ingredient, setIngredient] = useState<Ingredient | null>(null);
+  const [conversionMatrix, setConversionMatrix] = useState<ConversionMatrix | null>(null);
   const [loading, setLoading] = useState(true);
+  const [matrixLoading, setMatrixLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [matrixError, setMatrixError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchIngredient = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         let fetchedIngredient: Ingredient;
-        
+
         if (identifier && !isNaN(Number(identifier))) {
           // Fetch by ID if identifier is a number
           fetchedIngredient = await recipeAPI.getIngredient(Number(identifier));
@@ -27,8 +31,23 @@ const IngredientDetail = () => {
         } else {
           throw new Error('Invalid ingredient identifier');
         }
-        
+
         setIngredient(fetchedIngredient);
+
+        // Fetch conversion matrix if we have an ingredient ID and density
+        if (fetchedIngredient.id && fetchedIngredient.density) {
+          try {
+            setMatrixLoading(true);
+            setMatrixError(null);
+            const matrix = await recipeAPI.getIngredientConversionMatrix(fetchedIngredient.id);
+            setConversionMatrix(matrix);
+          } catch (matrixErr) {
+            setMatrixError(matrixErr instanceof Error ? matrixErr.message : 'Failed to fetch conversion matrix');
+            console.error('Failed to fetch conversion matrix:', matrixErr);
+          } finally {
+            setMatrixLoading(false);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch ingredient');
         console.error('Failed to fetch ingredient:', err);
@@ -83,7 +102,7 @@ const IngredientDetail = () => {
       <Button mb={4} onClick={() => navigate('/ingredients')} variant="outline">
         ← Back to Ingredients
       </Button>
-      
+
       <VStack gap={6} align="stretch" maxW="4xl" mx="auto">
         {/* Header */}
         <Box>
@@ -149,6 +168,15 @@ const IngredientDetail = () => {
           </Box>
         </SimpleGrid>
 
+        {/* Conversion Matrix */}
+        {ingredient?.density && (
+          <ConversionMatrixComponent
+            matrix={conversionMatrix}
+            loading={matrixLoading}
+            error={matrixError}
+          />
+        )}
+
         {/* Empty State */}
         {(!ingredient.calories && !ingredient.density && !ingredient.description) && (
           <Box textAlign="center" py={12} bg="gray.50" borderRadius="lg">
@@ -168,7 +196,7 @@ const IngredientDetail = () => {
               Back to All Ingredients
             </Button>
             {ingredient.id && (
-              <Button 
+              <Button
                 onClick={() => navigate(`/conversions?ingredient=${ingredient.id}`)}
                 colorScheme="orange"
                 variant="outline"
@@ -176,7 +204,7 @@ const IngredientDetail = () => {
                 View Unit Conversions
               </Button>
             )}
-            <Button 
+            <Button
               onClick={() => navigator.clipboard.writeText(window.location.href)}
               colorScheme="blue"
               variant="outline"
@@ -190,4 +218,4 @@ const IngredientDetail = () => {
   );
 };
 
-export default IngredientDetail; 
+export default IngredientDetail;

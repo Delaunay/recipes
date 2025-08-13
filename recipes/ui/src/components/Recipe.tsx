@@ -1,4 +1,5 @@
 import { useState, KeyboardEvent, useCallback, useRef, useEffect, FC, FormEvent, ChangeEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   VStack,
@@ -508,6 +509,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   loadingUnits,
   setLoadingUnits,
 }) => {
+  const navigate = useNavigate();
   const isStatic = recipeAPI.isStaticMode();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -553,7 +555,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
 
         for (let i = 0; i < ingredients.length; i++) {
           const ingredient = ingredients[i];
-          if (ingredient.id && ingredient.unit) {
+          if (ingredient.ingredient_id && ingredient.unit) {
             try {
               console.log(ingredient.ingredient_id, ingredient.name, ingredient.unit)
               const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.ingredient_id, ingredient.unit);
@@ -613,7 +615,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   // Handle unit conversion
   const handleUnitChange = async (ingredientIndex: number, newUnit: string) => {
     const ingredient = ingredients[ingredientIndex];
-    if (!ingredient.id || !ingredient.unit) return;
+    if (!ingredient.ingredient_id || !ingredient.unit) return;
 
     const converted = convertedIngredients[ingredientIndex];
     // Always use the original measurements for conversion
@@ -639,7 +641,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
     try {
       // Always convert from original unit to new unit
       const response = await recipeAPI.convertUnit(
-        ingredient.id,
+        ingredient.ingredient_id,
         originalQuantity,
         originalUnit,
         newUnit
@@ -782,12 +784,24 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
                 )}
               </Box>
               <Box flex="1">
-                <ContentEditable
-                  content={ingredient.name}
-                  onContentChange={(e) => onUpdateIngredient(index, 'name', e.currentTarget.textContent || '')}
-                  isEditable={isEditable && !isStatic}
-                  onKeyDown={handleKeyDown}
-                />
+                <Box flex="1">
+                  {isEditable && !isStatic ? (
+                    <ContentEditable
+                      content={ingredient.name}
+                      onContentChange={(e) => onUpdateIngredient(index, 'name', e.currentTarget.textContent || '')}
+                      isEditable={true}
+                      onKeyDown={handleKeyDown}
+                    />
+                  ) : (
+                    <Text
+                      color="blue.600"
+                      _hover={{ textDecoration: 'underline', cursor: 'pointer' }}
+                      onClick={() => ingredient.ingredient_id && navigate(`/ingredients/${ingredient.ingredient_id}`)}
+                    >
+                      {ingredient.name}
+                    </Text>
+                  )}
+                </Box>
               </Box>
               {isEditable && !isStatic && (
                 <Button
@@ -1236,7 +1250,7 @@ const Recipe: FC<RecipeProps> = ({
 
         for (let i = 0; i < (recipe.ingredients?.length || 0); i++) {
           const ingredient = recipe.ingredients && recipe.ingredients[i];
-          if (ingredient?.id && ingredient?.unit) {
+          if (ingredient?.ingredient_id && ingredient?.unit) {
             try {
               const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.ingredient_id, ingredient.unit);
 

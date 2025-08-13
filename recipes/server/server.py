@@ -670,6 +670,57 @@ class RecipeApp:
                 "original_unit": from_unit
             })
 
+        @self.app.route('/ingredients/<int:ingredient_id>/conversion-matrix', methods=['GET'])
+        def get_conversion_matrix(ingredient_id: int) -> Dict[str, Any]:
+            """Get conversion matrix for an ingredient with volume units as rows and weight units as columns"""
+            try:
+                # Check if ingredient exists
+                ingredient = self.db.session.get(Ingredient, ingredient_id)
+                if not ingredient:
+                    return jsonify({"error": "Ingredient not found"}), 404
+
+                # Define unit categories
+                volume_units = ['ml', 'cl', 'l', 'cm3', 'fl oz', 'tbsp', 'tsp', 'cup', 'pint', 'quart', 'gallon']
+                weight_units = ['g', 'kg', 'mg', 'lb', 'oz']
+
+                # Build conversion matrix
+                matrix = {
+                    'ingredient': ingredient.to_json(),
+                    'volume_units': volume_units,
+                    'weight_units': weight_units,
+                    'conversions': {}
+                }
+
+                # For each volume unit (rows)
+                for vol_unit in volume_units:
+                    matrix['conversions'][vol_unit] = {}
+
+                    # For each weight unit (columns)
+                    for weight_unit in weight_units:
+                        try:
+                            # Create a temporary RecipeIngredient to use conversion function
+                            temp_ingredient = RecipeIngredient(
+                                ingredient_id=ingredient_id,
+                                quantity=1.0,  # Use 1 unit as base
+                                unit=vol_unit
+                            )
+
+                            # Try to convert from volume to weight
+                            converted_quantity = convert(self.db.session, temp_ingredient, weight_unit)
+
+                            if converted_quantity is not None:
+                                matrix['conversions'][vol_unit][weight_unit] = round(converted_quantity, 6)
+                            else:
+                                matrix['conversions'][vol_unit][weight_unit] = None
+
+                        except Exception as e:
+                            matrix['conversions'][vol_unit][weight_unit] = None
+
+                return jsonify(matrix)
+
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
         def save_original_image(file, filename):
             # Save the original image without modification
             if os.path.exists(self.app.config["ORIGINALS_FOLDER"]):

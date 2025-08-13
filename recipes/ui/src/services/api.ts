@@ -51,6 +51,15 @@ interface RecipeIngredient {
   unit?: string;
 }
 
+interface Ingredient {
+  id?: number;
+  name: string;
+  description?: string;
+  calories?: number;
+  density?: number;
+  extension?: any;
+}
+
 interface Category {
   id?: number;
   name: string;
@@ -73,6 +82,17 @@ interface UnitConversionResult {
   ingredient_id: number;
   original_quantity: number;
   original_unit: string;
+}
+
+interface ConversionMatrix {
+  ingredient: Ingredient;
+  volume_units: string[];
+  weight_units: string[];
+  conversions: {
+    [volumeUnit: string]: {
+      [weightUnit: string]: number | null;
+    };
+  };
 }
 
 interface Task {
@@ -282,6 +302,10 @@ class RecipeAPI {
     return this.request<{ message: string }>(`/ingredients/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async getIngredientConversionMatrix(id: number): Promise<ConversionMatrix> {
+    return this.request<ConversionMatrix>(`/ingredients/${id}/conversion-matrix`);
   }
 
   // Category methods
@@ -501,4 +525,4 @@ class RecipeAPI {
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
 export { imagePath };
-export type { RecipeData, Ingredient, Category, Instruction, UnitConversion, UnitConversionResult, Task, SubTask, Event };
+export type { RecipeData, Ingredient, RecipeIngredient, Category, Instruction, UnitConversion, UnitConversionResult, ConversionMatrix, Task, SubTask, Event };

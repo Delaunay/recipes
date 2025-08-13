@@ -773,8 +773,8 @@ def convert(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
         UnitConversion.from_unit == recipe_ingredient.unit,
         UnitConversion.to_unit == to_unit,
         or_(
-            UnitConversion.ingredient_id ==recipe_ingredient.ingredient_id,
-            UnitConversion.ingredient_id.is_(None)
+            UnitConversion.ingredient_id == recipe_ingredient.ingredient_id,
+            # UnitConversion.ingredient_id.is_(None)
         )
     )
 
