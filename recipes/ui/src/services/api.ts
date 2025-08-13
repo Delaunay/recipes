@@ -41,8 +41,8 @@ interface Instruction {
 }
 
 
-interface Ingredient {
-  id?: number;
+interface RecipeIngredient {
+  ingredient_id?: number;
   name: string;
   description?: string;
   calories?: number;

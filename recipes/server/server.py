@@ -645,7 +645,8 @@ class RecipeApp:
                 UnitConversion.ingredient_id == ingredient_id,
                 UnitConversion.from_unit == from_unit
             ).all()
-            return jsonify([conversion.to_unit for conversion in conversions])
+            conv = [conversion.to_unit for conversion in conversions]
+            return jsonify(conv)
 
         @self.app.route('/unit/conversions/<int:ingredient_id>/<string:from_unit>/<string:to_unit>')
         def convert_unit(ingredient_id: int, from_unit: str, to_unit: str) -> Dict[str, Any]:

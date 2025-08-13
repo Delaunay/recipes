@@ -13,7 +13,7 @@ import {
   Spinner,
   Link,
 } from '@chakra-ui/react';
-import { RecipeData, Ingredient, Instruction, recipeAPI, imagePath } from '../services/api';
+import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath } from '../services/api';
 import ImageUpload from './ImageUpload';
 
 // Utility functions for ingredient references
@@ -92,7 +92,7 @@ const parseTimeCommands = (text: string): TimeCommand[] => {
 };
 
 // Find ingredient by partial name match
-const findIngredientByName = (ingredients: Ingredient[], partialName: string): Ingredient | null => {
+const findIngredientByName = (ingredients: RecipeIngredient[], partialName: string): RecipeIngredient | null => {
   // Replace underscores with spaces for matching
   const normalizedPartialName = partialName.replace(/_/g, ' ').toLowerCase();
 
@@ -167,7 +167,7 @@ const formatTime = (time: number, unit: string): string => {
 // Render instruction text with ingredient references
 interface InstructionTextRendererProps {
   text: string;
-  ingredients: Ingredient[];
+  ingredients: RecipeIngredient[];
   multiplier?: number;
   convertedIngredients?: Record<number, ConvertedIngredient>;
   preferredTemperatureUnit?: 'C' | 'F';
@@ -469,11 +469,11 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
 
 // RecipeIngredients Component
 interface RecipeIngredientsProps {
-  ingredients: Ingredient[];
+  ingredients: RecipeIngredient[];
   isEditable: boolean;
   onAddIngredient: () => void;
   onRemoveIngredient: (index: number) => void;
-  onUpdateIngredient: (index: number, field: keyof Ingredient, value: any) => void;
+  onUpdateIngredient: (index: number, field: keyof RecipeIngredient, value: any) => void;
   onReorderIngredients: (fromIndex: number, toIndex: number) => void;
   handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   multiplier?: number;
@@ -555,7 +555,8 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
           const ingredient = ingredients[i];
           if (ingredient.id && ingredient.unit) {
             try {
-              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.id, ingredient.unit);
+              console.log(ingredient.ingredient_id, ingredient.name, ingredient.unit)
+              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.ingredient_id, ingredient.unit);
 
               // Always include the current unit first, then add other available units
               const currentUnit = ingredient.unit;
@@ -809,7 +810,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
 // RecipeInstructions Component
 interface RecipeInstructionsProps {
   instructions: Instruction[];
-  ingredients: Ingredient[];
+  ingredients: RecipeIngredient[];
   isEditable: boolean;
   onAddInstruction: () => void;
   onRemoveInstruction: (index: number) => void;
@@ -1237,7 +1238,7 @@ const Recipe: FC<RecipeProps> = ({
           const ingredient = recipe.ingredients && recipe.ingredients[i];
           if (ingredient?.id && ingredient?.unit) {
             try {
-              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.id, ingredient.unit);
+              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.ingredient_id, ingredient.unit);
 
               // Always include the current unit first, then add other available units
               const currentUnit = ingredient.unit;
@@ -1292,7 +1293,7 @@ const Recipe: FC<RecipeProps> = ({
   }, [isEditable, recipe.ingredients]);
 
   const addIngredient = useCallback(() => {
-    const newIngredient: Ingredient = {
+    const newIngredient: RecipeIngredient = {
       name: 'New ingredient',
       quantity: 1,
       unit: 'cup'
@@ -1453,7 +1454,7 @@ const Recipe: FC<RecipeProps> = ({
     }));
   }, []);
 
-  const updateIngredientStable = useCallback((index: number, field: keyof Ingredient, value: any) => {
+  const updateIngredientStable = useCallback((index: number, field: keyof RecipeIngredient, value: any) => {
     setRecipe(prev => ({
       ...prev,
       ingredients: prev.ingredients?.map((ing, i) =>
