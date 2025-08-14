@@ -721,6 +721,105 @@ class RecipeApp:
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
+        @self.app.route('/ingredients/<int:ingredient_id>/units-used', methods=['GET'])
+        def get_ingredient_units_used(ingredient_id: int) -> Dict[str, Any]:
+            """Get all units used for a specific ingredient across recipes"""
+            try:
+                # Check if ingredient exists
+                ingredient = self.db.session.get(Ingredient, ingredient_id)
+                if not ingredient:
+                    return jsonify({"error": "Ingredient not found"}), 404
+
+                # Get all units used for this ingredient in recipes
+                recipe_ingredients = self.db.session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).all()
+
+                # Count usage of each unit
+                unit_usage = {}
+                recipe_names = {}
+
+                for recipe_ingredient in recipe_ingredients:
+                    unit = recipe_ingredient.unit
+                    if unit:
+                        if unit not in unit_usage:
+                            unit_usage[unit] = 0
+                            recipe_names[unit] = []
+                        unit_usage[unit] += 1
+
+                        # Get recipe name for this usage
+                        if recipe_ingredient.recipe:
+                            recipe_names[unit].append(recipe_ingredient.recipe.title)
+
+                # Get all available units from conversions for reference
+                conversion_units_from = self.db.session.query(UnitConversion.from_unit).distinct().all()
+                conversion_units_to = self.db.session.query(UnitConversion.to_unit).distinct().all()
+
+                all_conversion_units = set()
+                for unit in conversion_units_from:
+                    if unit[0]:
+                        all_conversion_units.add(unit[0])
+                for unit in conversion_units_to:
+                    if unit[0]:
+                        all_conversion_units.add(unit[0])
+
+                # For each unit used, check which conversions already exist
+                existing_conversions = {}
+                for unit in unit_usage.keys():
+                    conversions_from_unit = self.db.session.query(UnitConversion).filter(
+                        UnitConversion.from_unit == unit,
+                        UnitConversion.ingredient_id == ingredient_id
+                    ).all()
+
+                    existing_conversions[unit] = [conv.to_unit for conv in conversions_from_unit]
+
+                return jsonify({
+                    'ingredient': ingredient.to_json(),
+                    'units_used': sorted(unit_usage.keys()),
+                    'unit_usage_count': unit_usage,
+                    'recipe_names': recipe_names,
+                    'existing_conversions': existing_conversions,
+                    'all_available_units': sorted(list(all_conversion_units)),
+                    'total_uses': sum(unit_usage.values())
+                })
+
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/units/used-in-recipes', methods=['GET'])
+        def get_units_used_in_recipes() -> Dict[str, Any]:
+            """Get all units currently used in recipe ingredients"""
+            try:
+                # Query all unique units from recipe ingredients
+                recipe_units = self.db.session.query(RecipeIngredient.unit).distinct().all()
+                units_from_recipes = [unit[0] for unit in recipe_units if unit[0]]
+
+                # Get all available units from unit conversions for reference
+                conversion_units_from = self.db.session.query(UnitConversion.from_unit).distinct().all()
+                conversion_units_to = self.db.session.query(UnitConversion.to_unit).distinct().all()
+
+                all_conversion_units = set()
+                for unit in conversion_units_from:
+                    if unit[0]:
+                        all_conversion_units.add(unit[0])
+                for unit in conversion_units_to:
+                    if unit[0]:
+                        all_conversion_units.add(unit[0])
+
+                # Get units used in recipes with their usage count
+                unit_usage = {}
+                for unit in units_from_recipes:
+                    count = self.db.session.query(RecipeIngredient).filter_by(unit=unit).count()
+                    unit_usage[unit] = count
+
+                return jsonify({
+                    'units_in_recipes': sorted(units_from_recipes),
+                    'unit_usage_count': unit_usage,
+                    'all_available_units': sorted(list(all_conversion_units)),
+                    'total_recipe_ingredients': self.db.session.query(RecipeIngredient).count()
+                })
+
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
         def save_original_image(file, filename):
             # Save the original image without modification
             if os.path.exists(self.app.config["ORIGINALS_FOLDER"]):

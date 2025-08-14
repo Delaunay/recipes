@@ -1,4 +1,4 @@
-import { HashRouter  as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import {
   ChakraProvider,
   createSystem,
@@ -12,6 +12,7 @@ import CreateRecipe from './components/CreateRecipe';
 import Ingredients from './components/Ingredients';
 import IngredientDetail from './components/IngredientDetail';
 import UnitConversions from './components/UnitConversions';
+import UnitManager from './components/UnitManager';
 import Calendar from './components/Calendar';
 import Tasks from './components/Tasks';
 import './App.css';
@@ -39,6 +40,7 @@ function App() {
             <Route path="/ingredients" element={<Ingredients />} />
             <Route path="/ingredients/:identifier" element={<IngredientDetail />} />
             <Route path="/conversions" element={<UnitConversions />} />
+            <Route path="/unit-manager" element={<UnitManager />} />
           </Routes>
         </Layout>
       </Router>

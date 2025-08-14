@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Spinner, Text, Button, VStack, HStack, SimpleGrid } from '@chakra-ui/react';
 import { recipeAPI, Ingredient, ConversionMatrix } from '../services/api';
 import ConversionMatrixComponent from './ConversionMatrix';
+import IngredientUnitsManager from './IngredientUnitsManager';
 
 const IngredientDetail = () => {
   const { identifier } = useParams<{ identifier?: string }>();
@@ -175,6 +176,11 @@ const IngredientDetail = () => {
             loading={matrixLoading}
             error={matrixError}
           />
+        )}
+
+        {/* Ingredient Units Manager */}
+        {ingredient?.id && (
+          <IngredientUnitsManager ingredientId={ingredient.id} />
         )}
 
         {/* Empty State */}

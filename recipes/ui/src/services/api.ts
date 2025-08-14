@@ -95,6 +95,23 @@ interface ConversionMatrix {
   };
 }
 
+interface UnitsUsedInRecipes {
+  units_in_recipes: string[];
+  unit_usage_count: { [unit: string]: number };
+  all_available_units: string[];
+  total_recipe_ingredients: number;
+}
+
+interface IngredientUnitsUsed {
+  ingredient: Ingredient;
+  units_used: string[];
+  unit_usage_count: { [unit: string]: number };
+  recipe_names: { [unit: string]: string[] };
+  existing_conversions: { [unit: string]: string[] };
+  all_available_units: string[];
+  total_uses: number;
+}
+
 interface Task {
   id?: number;
   title: string;
@@ -306,6 +323,14 @@ class RecipeAPI {
 
   async getIngredientConversionMatrix(id: number): Promise<ConversionMatrix> {
     return this.request<ConversionMatrix>(`/ingredients/${id}/conversion-matrix`);
+  }
+
+  async getUnitsUsedInRecipes(): Promise<UnitsUsedInRecipes> {
+    return this.request<UnitsUsedInRecipes>('/units/used-in-recipes');
+  }
+
+  async getIngredientUnitsUsed(ingredientId: number): Promise<IngredientUnitsUsed> {
+    return this.request<IngredientUnitsUsed>(`/ingredients/${ingredientId}/units-used`);
   }
 
   // Category methods
@@ -525,4 +550,4 @@ class RecipeAPI {
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
 export { imagePath };
-export type { RecipeData, Ingredient, RecipeIngredient, Category, Instruction, UnitConversion, UnitConversionResult, ConversionMatrix, Task, SubTask, Event };
+export type { RecipeData, Ingredient, RecipeIngredient, Category, Instruction, UnitConversion, UnitConversionResult, ConversionMatrix, UnitsUsedInRecipes, IngredientUnitsUsed, Task, SubTask, Event };
