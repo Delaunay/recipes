@@ -1088,7 +1088,10 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
         [timerId]: {
           ...timer,
           originalTime: timer.originalTime + 60,
-          currentTime: timer.currentTime + 60
+          currentTime: timer.currentTime + 60,
+          // If timer was finished, restart it when time is added
+          isFinished: false,
+          isRunning: timer.isFinished ? true : timer.isRunning
         }
       };
     });
@@ -1524,35 +1527,18 @@ const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose
         </Box>
       </Box>
 
-      {/* Timer finished message */}
-      {timer.isFinished && (
-        <Box p={2} bg="red.500" borderRadius="md" textAlign="center">
-          <Text color="white" fontWeight="medium" fontSize="sm">
-            ⏰ Timer Finished!
-          </Text>
-        </Box>
-      )}
-
       {/* Compact Control buttons */}
       <HStack gap={2} align="stretch" justify="space-between" position="absolute" left="5%" bottom="5%" width="90%">
-        {!timer.isFinished ? (
-          <>
-            <Button
-              size="xs"
-              colorScheme={timer.isRunning ? "orange" : "green"}
-              onClick={onToggle}
-            >
-              {timer.isRunning ? <PauseIcon /> : <PlayIcon />}
-            </Button>
-            <Button size="xs" color="white" onClick={onReset}>
-              <ResetIcon />
-            </Button>
-          </>
-        ) : (
-          <Button size="sm" colorScheme="blue" onClick={onReset}>
-            New Timer
-          </Button>
-        )}
+        <Button
+          size="xs"
+          colorScheme={timer.isRunning ? "orange" : "green"}
+          onClick={onToggle}
+        >
+          {timer.isRunning ? <PauseIcon /> : <PlayIcon />}
+        </Button>
+        <Button size="xs" color="white" onClick={onReset}>
+          <ResetIcon />
+        </Button>
       </HStack>
     </Box>
   );
