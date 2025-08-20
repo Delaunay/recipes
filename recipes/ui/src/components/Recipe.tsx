@@ -1037,7 +1037,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
         originalTime: totalSeconds,
         currentTime: totalSeconds,
         unit,
-        isRunning: false,
+        isRunning: true, // Start immediately when clicked
         isFinished: false
       }
     }));
@@ -1431,27 +1431,27 @@ const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose
       zIndex={10}
     >
       <Button
-          aria-label="Close timer"
-          size="xs"
-          variant="ghost"
-          color="white"
-          _hover={{ bg: "whiteAlpha.200" }}
-          onClick={onClose}
-          position="absolute"
-          top={"1%"}
-          right={"1%"}
+        aria-label="Close timer"
+        size="xs"
+        variant="ghost"
+        color="white"
+        _hover={{ bg: "whiteAlpha.200" }}
+        onClick={onClose}
+        position="absolute"
+        top={"1%"}
+        right={"1%"}
       >
         <CloseIcon />
       </Button>
-      
+
       {/* Compact Progress Ring */}
       <Box position="absolute" top="1%">
-        <svg width="120" height="120" style={{ transform: 'rotate(-90deg)' }}>
+        <svg width="120" height="120">
           {/* Background circle */}
           <circle
             cx="60"
             cy="60"
-            r="55"
+            r="50"
             stroke="rgba(255,255,255,0.3)"
             strokeWidth="6"
             fill="none"
@@ -1460,14 +1460,18 @@ const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose
           <circle
             cx="60"
             cy="60"
-            r="55"
+            r="50"
             stroke={timer.isFinished ? "#f56565" : timer.isRunning ? "#4299e6" : "#a0aec0"}
             strokeWidth="6"
             fill="none"
             strokeLinecap="round"
             strokeDasharray={`${2 * Math.PI * 50}`}
-            strokeDashoffset={`${2 * Math.PI * 50 * (1 - getProgressPercentage() / 100)}`}
-            style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
+            strokeDashoffset={`${2 * Math.PI * 50 - (2 * Math.PI * 50 * getProgressPercentage() / 100)}`}
+            style={{
+              transition: 'stroke-dashoffset 1s ease-in-out',
+              transform: 'rotate(-90deg)',
+              transformOrigin: '60px 60px'
+            }}
           />
         </svg>
         <Box
