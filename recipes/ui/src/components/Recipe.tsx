@@ -6,10 +6,10 @@ import {
   HStack,
   Text,
   Button,
+  IconButton,
   Badge,
   Flex,
   Spacer,
-
   Image,
   Spinner,
   Link,
@@ -39,6 +39,16 @@ interface TimeCommand {
   originalText: string;
   time: number;
   unit: string; // 'm', 'h', 's', etc.
+}
+
+// Timer state interface
+interface ActiveTimer {
+  id: string;
+  originalTime: number;
+  currentTime: number;
+  unit: string;
+  isRunning: boolean;
+  isFinished: boolean;
 }
 
 // Parse ingredient references in text
@@ -172,9 +182,21 @@ interface InstructionTextRendererProps {
   multiplier?: number;
   convertedIngredients?: Record<number, ConvertedIngredient>;
   preferredTemperatureUnit?: 'C' | 'F';
+  onTimerStart?: (timerId: string, time: number, unit: string) => void;
+  activeTimers?: Record<string, ActiveTimer>;
+  stepIndex?: number;
 }
 
-const InstructionTextRenderer: FC<InstructionTextRendererProps> = ({ text, ingredients, multiplier = 1, convertedIngredients = {}, preferredTemperatureUnit = 'C' }) => {
+const InstructionTextRenderer: FC<InstructionTextRendererProps> = ({
+  text,
+  ingredients,
+  multiplier = 1,
+  convertedIngredients = {},
+  preferredTemperatureUnit = 'C',
+  onTimerStart,
+  activeTimers = {},
+  stepIndex = 0
+}) => {
   const [temperatureUnit, setTemperatureUnit] = useState<'C' | 'F'>(preferredTemperatureUnit);
 
   const references = parseIngredientReferences(text);
@@ -262,10 +284,30 @@ const InstructionTextRenderer: FC<InstructionTextRendererProps> = ({ text, ingre
         </Text>
       );
     } else if (command.type === 'time') {
-      // Handle time commands
+      // Handle time commands - use stepIndex for consistent timer identification
+      const timerId = `timer-${command.time}-${command.unit}-step-${stepIndex}-cmd-${index}`;
+      const activeTimer = activeTimers[timerId];
+
       elements.push(
-        <Text as="span" key={`time-${index}`} fontWeight="bold" color="black">
+        <Text
+          as="span"
+          key={`time-${index}`}
+          fontWeight="bold"
+          color={activeTimer?.isRunning ? "green.600" : activeTimer?.isFinished ? "red.600" : "black"}
+          cursor="pointer"
+          onClick={() => onTimerStart?.(timerId, command.time, command.unit)}
+          _hover={{
+            color: 'blue.600',
+            textDecoration: 'underline'
+          }}
+          display="inline-flex"
+          alignItems="center"
+          gap={1}
+        >
           {formatTime(command.time, command.unit)}
+          {/* {activeTimer?.isRunning && <span style={{ fontSize: '0.8em', opacity: 0.7 }}>🕒</span>}
+          {activeTimer?.isFinished && <span style={{ fontSize: '0.8em', opacity: 0.7 }}>✅</span>} */}
+          <span style={{ fontSize: '1em', opacity: 0.6, paddingLeft: "2px" }}>🕒</span>
         </Text>
       );
     }
@@ -313,6 +355,24 @@ const CloseIcon = () => (
 const DragHandleIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
     <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+  </svg>
+);
+
+const PlayIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M8 5v14l11-7z" />
+  </svg>
+);
+
+const PauseIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+  </svg>
+);
+
+const ResetIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
   </svg>
 );
 
@@ -860,6 +920,164 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // Timer state management
+  const [activeTimers, setActiveTimers] = useState<Record<string, ActiveTimer>>({});
+  const [currentStepTimer, setCurrentStepTimer] = useState<{ stepIndex: number; timerId: string } | null>(null);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+
+  // Initialize audio context on first user interaction
+  const initAudioContext = useCallback(() => {
+    if (!audioContext) {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      setAudioContext(ctx);
+    }
+  }, [audioContext]);
+
+  // Convert time to seconds
+  const timeToSeconds = useCallback((time: number, unit: string): number => {
+    switch (unit) {
+      case 'h': return time * 3600;
+      case 'm': return time * 60;
+      case 's': return time;
+      default: return time * 60; // default to minutes
+    }
+  }, []);
+
+  // Play notification sound when timer finishes
+  const playTimerSound = useCallback(async () => {
+    if (!audioContext) return;
+
+    try {
+      // Resume audio context if suspended (required for some browsers)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
+      // Create a simple beep sound using Web Audio API
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Set up the beep sound
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz tone
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.5);
+
+      // Play multiple beeps
+      for (let i = 1; i < 3; i++) {
+        const nextOscillator = audioContext.createOscillator();
+        const nextGainNode = audioContext.createGain();
+
+        nextOscillator.connect(nextGainNode);
+        nextGainNode.connect(audioContext.destination);
+
+        const startTime = audioContext.currentTime + (i * 0.7);
+        nextOscillator.frequency.setValueAtTime(800, startTime);
+        nextGainNode.gain.setValueAtTime(0.3, startTime);
+        nextGainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.5);
+
+        nextOscillator.start(startTime);
+        nextOscillator.stop(startTime + 0.5);
+      }
+    } catch (error) {
+      console.error('Error playing timer sound:', error);
+    }
+  }, [audioContext]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveTimers(prevTimers => {
+        const updatedTimers = { ...prevTimers };
+        let hasChanges = false;
+
+        Object.keys(updatedTimers).forEach(timerId => {
+          const timer = updatedTimers[timerId];
+          if (timer.isRunning && !timer.isFinished && timer.currentTime > 0) {
+            updatedTimers[timerId] = {
+              ...timer,
+              currentTime: Math.max(0, timer.currentTime - 1)
+            };
+            hasChanges = true;
+
+            // Check if timer just finished
+            if (updatedTimers[timerId].currentTime === 0) {
+              updatedTimers[timerId].isFinished = true;
+              updatedTimers[timerId].isRunning = false;
+              playTimerSound();
+            }
+          }
+        });
+
+        return hasChanges ? updatedTimers : prevTimers;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [playTimerSound]);
+
+  // Timer control functions
+  const handleTimerStart = useCallback((timerId: string, time: number, unit: string) => {
+    initAudioContext();
+    const totalSeconds = timeToSeconds(time, unit);
+
+    // Extract step index from timerId (format: "timer-{time}-{unit}-step-{stepIndex}-cmd-{cmdIndex}")
+    const stepMatch = timerId.match(/step-(\d+)/);
+    const stepIndex = stepMatch ? parseInt(stepMatch[1], 10) : -1;
+
+    setActiveTimers(prev => ({
+      ...prev,
+      [timerId]: {
+        id: timerId,
+        originalTime: totalSeconds,
+        currentTime: totalSeconds,
+        unit,
+        isRunning: false,
+        isFinished: false
+      }
+    }));
+
+    if (stepIndex >= 0 && stepIndex < instructions.length) {
+      setCurrentStepTimer({ stepIndex, timerId });
+    }
+  }, [timeToSeconds, initAudioContext, instructions]);
+
+  const toggleTimer = useCallback((timerId: string) => {
+    setActiveTimers(prev => ({
+      ...prev,
+      [timerId]: {
+        ...prev[timerId],
+        isRunning: !prev[timerId].isRunning
+      }
+    }));
+  }, []);
+
+  const resetTimer = useCallback((timerId: string) => {
+    setActiveTimers(prev => {
+      const timer = prev[timerId];
+      if (!timer) return prev;
+
+      return {
+        ...prev,
+        [timerId]: {
+          ...timer,
+          currentTime: timer.originalTime,
+          isRunning: false,
+          isFinished: false
+        }
+      };
+    });
+  }, []);
+
+  const closeTimer = useCallback(() => {
+    setCurrentStepTimer(null);
+  }, []);
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -917,7 +1135,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
           <VStack align="start" gap={1} fontSize="sm" color="blue.700">
             <Text>• <strong>Ingredients:</strong> <code>@tomatoes{`{1/4}`}</code> or <code>@flour{`{2}`}</code> or just <code>@salt</code></Text>
             <Text>• <strong>Temperatures:</strong> <code>$temp{`{180}{C}`}</code> or <code>$temp{`{350}{F}`}</code> (clickable to convert)</Text>
-            <Text>• <strong>Times:</strong> <code>$time{`{40m}`}</code> or <code>$time{`{2h}`}</code> or <code>$time{`{30s}`}</code></Text>
+            <Text>• <strong>Times:</strong> <code>$time{`{40m}`}</code> or <code>$time{`{2h}`}</code> or <code>$time{`{30s}`}</code> (clickable to start timer)</Text>
           </VStack>
         </Box>
       )}
@@ -961,7 +1179,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
               )}
 
               {/* Step Image - Left Side */}
-              <Box minW="200px" maxW="200px">
+              <Box minW="200px" maxW="200px" position="relative">
                 {isEditable && !isStatic ? (
                   <VStack align="stretch" gap={2}>
                     <Text fontSize="xs" color="gray.600" fontWeight="medium">
@@ -978,34 +1196,46 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                     />
                   </VStack>
                 ) : (
-                  instruction.image ? (
-                    <Image
-                      src={imagePath(instruction.image)}
-                      alt={`Step ${instruction.step} image`}
-                      width="200px"
-                      height="150px"
-                      objectFit="cover"
-                      borderRadius="md"
-                      border="1px solid"
-                      borderColor="gray.200"
-                    />
-                  ) : (
-                    <Box
-                      width="200px"
-                      height="150px"
-                      bg="gray.100"
-                      borderRadius="md"
-                      border="2px dashed"
-                      borderColor="gray.300"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <Text color="gray.500" fontSize="sm" textAlign="center">
-                        No image
-                      </Text>
-                    </Box>
-                  )
+                  <>
+                    {instruction.image ? (
+                      <Image
+                        src={imagePath(instruction.image)}
+                        alt={`Step ${instruction.step} image`}
+                        width="200px"
+                        height="150px"
+                        objectFit="cover"
+                        borderRadius="md"
+                        border="1px solid"
+                        borderColor="gray.200"
+                      />
+                    ) : (
+                      <Box
+                        width="200px"
+                        height="150px"
+                        bg="gray.100"
+                        borderRadius="md"
+                        border="2px dashed"
+                        borderColor="gray.300"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Text color="gray.500" fontSize="sm" textAlign="center">
+                          No image
+                        </Text>
+                      </Box>
+                    )}
+
+                    {/* Timer Overlay */}
+                    {currentStepTimer?.stepIndex === index && currentStepTimer.timerId && activeTimers[currentStepTimer.timerId] && (
+                      <TimerOverlay
+                        timer={activeTimers[currentStepTimer.timerId]}
+                        onToggle={() => toggleTimer(currentStepTimer.timerId)}
+                        onReset={() => resetTimer(currentStepTimer.timerId)}
+                        onClose={closeTimer}
+                      />
+                    )}
+                  </>
                 )}
               </Box>
 
@@ -1043,6 +1273,9 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                         multiplier={multiplier}
                         convertedIngredients={convertedIngredients}
                         preferredTemperatureUnit={preferredTemperatureUnit}
+                        onTimerStart={handleTimerStart}
+                        activeTimers={activeTimers}
+                        stepIndex={index}
                       />
                     )}
                     {isEditable && !isStatic && (
@@ -1153,6 +1386,140 @@ const RecipeCategories: FC<RecipeCategoriesProps> = ({
           <Text color="gray.500" fontSize="sm">No categories assigned</Text>
         )
       )}
+    </Box>
+  );
+};
+
+// Timer Overlay Component for Step Images
+interface TimerOverlayProps {
+  timer: ActiveTimer;
+  onToggle: () => void;
+  onReset: () => void;
+  onClose: () => void;
+}
+
+const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose }) => {
+  const formatTimerDisplay = (timeInSeconds: number): string => {
+    const hours = Math.floor(timeInSeconds / 3600);
+    const minutes = Math.floor((timeInSeconds % 3600) / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+  };
+
+  const getProgressPercentage = (): number => {
+    if (timer.originalTime === 0) return 100;
+    return ((timer.originalTime - timer.currentTime) / timer.originalTime) * 100;
+  };
+
+  return (
+    <Box
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      bg="blackAlpha.700"
+      borderRadius="md"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      zIndex={10}
+    >
+      <Button
+          aria-label="Close timer"
+          size="xs"
+          variant="ghost"
+          color="white"
+          _hover={{ bg: "whiteAlpha.200" }}
+          onClick={onClose}
+          position="absolute"
+          top={"1%"}
+          right={"1%"}
+      >
+        <CloseIcon />
+      </Button>
+      
+      {/* Compact Progress Ring */}
+      <Box position="absolute" top="1%">
+        <svg width="120" height="120" style={{ transform: 'rotate(-90deg)' }}>
+          {/* Background circle */}
+          <circle
+            cx="60"
+            cy="60"
+            r="55"
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth="6"
+            fill="none"
+          />
+          {/* Progress circle */}
+          <circle
+            cx="60"
+            cy="60"
+            r="55"
+            stroke={timer.isFinished ? "#f56565" : timer.isRunning ? "#4299e6" : "#a0aec0"}
+            strokeWidth="6"
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 50}`}
+            strokeDashoffset={`${2 * Math.PI * 50 * (1 - getProgressPercentage() / 100)}`}
+            style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
+          />
+        </svg>
+        <Box
+          position="absolute"
+          top="50%"
+          left="50%"
+          transform="translate(-50%, -50%)"
+          textAlign="center"
+        >
+          <Text
+            fontSize="lg"
+            fontWeight="bold"
+            color={timer.isFinished ? "red.300" : "white"}
+          >
+            {formatTimerDisplay(timer.currentTime)}
+          </Text>
+          <Text fontSize="xs" color="whiteAlpha.800">
+            {timer.isFinished ? "Done!" : timer.isRunning ? "Running" : "Paused"}
+          </Text>
+        </Box>
+      </Box>
+
+      {/* Timer finished message */}
+      {timer.isFinished && (
+        <Box p={2} bg="red.500" borderRadius="md" textAlign="center">
+          <Text color="white" fontWeight="medium" fontSize="sm">
+            ⏰ Timer Finished!
+          </Text>
+        </Box>
+      )}
+
+      {/* Compact Control buttons */}
+      <HStack gap={2} align="stretch" justify="space-between" position="absolute" left="5%" bottom="5%" width="90%">
+        {!timer.isFinished ? (
+          <>
+            <Button
+              size="sm"
+              colorScheme={timer.isRunning ? "orange" : "green"}
+              onClick={onToggle}
+            >
+              {timer.isRunning ? <PauseIcon /> : <PlayIcon />}
+            </Button>
+            <Button size="sm" color="white" onClick={onReset}>
+              <ResetIcon />
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" colorScheme="blue" onClick={onReset}>
+            New Timer
+          </Button>
+        )}
+      </HStack>
     </Box>
   );
 };
