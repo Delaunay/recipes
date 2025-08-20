@@ -1078,6 +1078,22 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
     setCurrentStepTimer(null);
   }, []);
 
+  const addMinuteToTimer = useCallback((timerId: string) => {
+    setActiveTimers(prev => {
+      const timer = prev[timerId];
+      if (!timer) return prev;
+
+      return {
+        ...prev,
+        [timerId]: {
+          ...timer,
+          originalTime: timer.originalTime + 60,
+          currentTime: timer.currentTime + 60
+        }
+      };
+    });
+  }, []);
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -1233,6 +1249,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                         onToggle={() => toggleTimer(currentStepTimer.timerId)}
                         onReset={() => resetTimer(currentStepTimer.timerId)}
                         onClose={closeTimer}
+                        onAddMinute={() => addMinuteToTimer(currentStepTimer.timerId)}
                       />
                     )}
                   </>
@@ -1396,9 +1413,10 @@ interface TimerOverlayProps {
   onToggle: () => void;
   onReset: () => void;
   onClose: () => void;
+  onAddMinute: () => void;
 }
 
-const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose }) => {
+const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose, onAddMinute }) => {
   const formatTimerDisplay = (timeInSeconds: number): string => {
     const hours = Math.floor(timeInSeconds / 3600);
     const minutes = Math.floor((timeInSeconds % 3600) / 60);
@@ -1430,22 +1448,34 @@ const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose
       justifyContent="center"
       zIndex={10}
     >
-      <Button
-        aria-label="Close timer"
-        size="xs"
-        variant="ghost"
-        color="white"
-        _hover={{ bg: "whiteAlpha.200" }}
-        onClick={onClose}
-        position="absolute"
-        top={"1%"}
-        right={"1%"}
-      >
-        <CloseIcon />
-      </Button>
+      {/* Compact Control buttons */}
+      <HStack gap={2} align="stretch" justify="space-between" position="absolute" left="5%" top="5%" width="90%">
+        <Button
+          size="xs"
+          colorScheme="blue"
+          onClick={onAddMinute}
+          title="Add 1 minute"
+        >
+          <AddIcon />
+        </Button>
+
+        <Button
+          aria-label="Close timer"
+          size="xs"
+          variant="ghost"
+          color="white"
+          _hover={{ bg: "whiteAlpha.200" }}
+          onClick={onClose}
+          position="absolute"
+          top={"-10px"}
+          right={"-15px"}
+        >
+          <CloseIcon />
+        </Button>
+      </HStack>
 
       {/* Compact Progress Ring */}
-      <Box position="absolute" top="1%">
+      <Box position="absolute" top="10%">
         <svg width="120" height="120">
           {/* Background circle */}
           <circle
@@ -1508,13 +1538,13 @@ const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose
         {!timer.isFinished ? (
           <>
             <Button
-              size="sm"
+              size="xs"
               colorScheme={timer.isRunning ? "orange" : "green"}
               onClick={onToggle}
             >
               {timer.isRunning ? <PauseIcon /> : <PlayIcon />}
             </Button>
-            <Button size="sm" color="white" onClick={onReset}>
+            <Button size="xs" color="white" onClick={onReset}>
               <ResetIcon />
             </Button>
           </>
