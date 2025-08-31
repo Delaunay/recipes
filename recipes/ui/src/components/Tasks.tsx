@@ -8,7 +8,6 @@ import {
     Input,
     Textarea,
     Flex,
-    Spacer,
 } from '@chakra-ui/react';
 import { recipeAPI, Task, SubTask } from '../services/api';
 
@@ -22,8 +21,6 @@ const Tasks: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [subtasks, setSubtasks] = useState<SubTask[]>([]);
     const [taskTree, setTaskTree] = useState<TaskNode[]>([]);
-    const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
-
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -37,7 +34,6 @@ const Tasks: React.FC = () => {
         people_count: 1,
     });
     const [editingSubtasks, setEditingSubtasks] = useState<Map<number, Task[]>>(new Map());
-    const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
 
     useEffect(() => {
         fetchTasks();
@@ -176,7 +172,6 @@ const Tasks: React.FC = () => {
 
     const handleCreateTask = () => {
         setEditingTask(null);
-        setEditingTaskId(null);
         setFormData({
             title: '',
             description: '',
@@ -191,7 +186,6 @@ const Tasks: React.FC = () => {
 
     const handleEditTask = (task: Task) => {
         setEditingTask(task);
-        setEditingTaskId(task.id!);
         setFormData({
             title: task.title,
             description: task.description || '',
@@ -228,7 +222,6 @@ const Tasks: React.FC = () => {
             setShowForm(false);
             setShowEditModal(false);
             setEditingTask(null);
-            setEditingTaskId(null);
         } catch (error) {
             console.error('Error saving task:', error);
         }
@@ -237,24 +230,14 @@ const Tasks: React.FC = () => {
     const handleCancel = () => {
         setShowForm(false);
         setEditingTask(null);
-        setEditingTaskId(null);
     };
 
     const handleModalCancel = () => {
         setShowEditModal(false);
         setEditingTask(null);
-        setEditingTaskId(null);
     };
 
-    const toggleExpanded = (taskId: number) => {
-        const newExpanded = new Set(expandedTasks);
-        if (newExpanded.has(taskId)) {
-            newExpanded.delete(taskId);
-        } else {
-            newExpanded.add(taskId);
-        }
-        setExpandedTasks(newExpanded);
-    };
+
 
 
 
@@ -438,326 +421,7 @@ const Tasks: React.FC = () => {
         </Box>
     );
 
-    const renderTaskDetails = (task: Task) => {
-        const isEditing = editingTaskId === task.id;
 
-        if (isEditing) {
-            return (
-                <Box p={3} bg="blue.50" borderRadius="md" border="1px solid" borderColor="blue.200">
-                    <Text fontSize="sm" fontWeight="medium" mb={2} color="blue.700">
-                        Edit Task
-                    </Text>
-                    <form onSubmit={handleSaveTask}>
-                        <VStack gap={3} align="stretch">
-                            {/* Task Details Section - Grid Layout */}
-                            <Box>
-                                <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={2}>
-                                    Task Details
-                                </Text>
-                                <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap={2}>
-                                    {/* Title */}
-                                    <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                        <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                            📝 Title:
-                                        </Text>
-                                        <Input
-                                            size="sm"
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            placeholder="Task title"
-                                            required
-                                            border="none"
-                                            bg="transparent"
-                                            _focus={{ bg: "transparent", boxShadow: "none" }}
-                                        />
-                                    </HStack>
-
-                                    {/* Deadline */}
-                                    <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                        <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                            📅 Deadline:
-                                        </Text>
-                                        <Input
-                                            size="sm"
-                                            type="datetime-local"
-                                            value={formData.datetime_deadline}
-                                            onChange={(e) => setFormData({ ...formData, datetime_deadline: e.target.value })}
-                                            border="none"
-                                            bg="transparent"
-                                            _focus={{ bg: "transparent", boxShadow: "none" }}
-                                        />
-                                    </HStack>
-
-                                    {/* Budget */}
-                                    <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                        <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                            💰 Budget:
-                                        </Text>
-                                        <Input
-                                            size="sm"
-                                            type="number"
-                                            value={formData.price_budget}
-                                            onChange={(e) => setFormData({ ...formData, price_budget: Number(e.target.value) })}
-                                            placeholder="0"
-                                            border="none"
-                                            bg="transparent"
-                                            _focus={{ bg: "transparent", boxShadow: "none" }}
-                                        />
-                                    </HStack>
-
-                                    {/* People Count */}
-                                    <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                        <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                            👥 People:
-                                        </Text>
-                                        <Input
-                                            size="sm"
-                                            type="number"
-                                            value={formData.people_count}
-                                            onChange={(e) => setFormData({ ...formData, people_count: Number(e.target.value) })}
-                                            placeholder="1"
-                                            min={1}
-                                            border="none"
-                                            bg="transparent"
-                                            _focus={{ bg: "transparent", boxShadow: "none" }}
-                                        />
-                                    </HStack>
-
-                                    {/* Status */}
-                                    <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                        <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                            📊 Status:
-                                        </Text>
-                                        <HStack gap={2} align="center">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.done || false}
-                                                onChange={(e) => setFormData({ ...formData, done: e.target.checked })}
-                                                style={{
-                                                    margin: 0,
-                                                    width: '14px',
-                                                    height: '14px',
-                                                    accentColor: '#f56500'
-                                                }}
-                                            />
-                                            <Text fontSize="xs" color={formData.done ? "green.600" : "orange.600"} fontWeight="medium">
-                                                {formData.done ? "✅ Done" : "⏳ Pending"}
-                                            </Text>
-                                        </HStack>
-                                    </HStack>
-
-                                    {/* Properties */}
-                                    <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                        <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                            ⚙️ Props:
-                                        </Text>
-                                        <HStack gap={2} align="center">
-                                            <HStack gap={1} align="center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.template || false}
-                                                    onChange={(e) => setFormData({ ...formData, template: e.target.checked })}
-                                                    style={{
-                                                        margin: 0,
-                                                        width: '14px',
-                                                        height: '14px',
-                                                        accentColor: '#3182CE'
-                                                    }}
-                                                />
-                                                <Text fontSize="xs" color="blue.600" fontWeight="medium">
-                                                    📋
-                                                </Text>
-                                            </HStack>
-                                            <HStack gap={1} align="center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.recuring || false}
-                                                    onChange={(e) => setFormData({ ...formData, recuring: e.target.checked })}
-                                                    style={{
-                                                        margin: 0,
-                                                        width: '14px',
-                                                        height: '14px',
-                                                        accentColor: '#805AD5'
-                                                    }}
-                                                />
-                                                <Text fontSize="xs" color="purple.600" fontWeight="medium">
-                                                    🔄
-                                                </Text>
-                                            </HStack>
-                                            <HStack gap={1} align="center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.active !== false}
-                                                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                                                    style={{
-                                                        margin: 0,
-                                                        width: '14px',
-                                                        height: '14px',
-                                                        accentColor: formData.active !== false ? '#38A169' : '#E53E3E'
-                                                    }}
-                                                />
-                                                <Text fontSize="xs" color={formData.active !== false ? "green.600" : "red.600"} fontWeight="medium">
-                                                    {formData.active !== false ? "🟢" : "🔴"}
-                                                </Text>
-                                            </HStack>
-                                        </HStack>
-                                    </HStack>
-                                </Box>
-                            </Box>
-
-                            {/* Description Section */}
-                            <Box>
-                                <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>
-                                    Description
-                                </Text>
-                                <Textarea
-                                    size="sm"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Task description"
-                                    rows={2}
-                                    bg="white"
-                                    border="1px solid"
-                                    borderColor="gray.200"
-                                />
-                            </Box>
-
-                            {/* Action Buttons */}
-                            <HStack gap={2} justify="flex-end" pt={1}>
-                                <Button size="sm" variant="outline" onClick={handleCancel}>
-                                    Cancel
-                                </Button>
-                                <Button size="sm" type="submit" colorScheme="orange">
-                                    Save Task
-                                </Button>
-                            </HStack>
-                        </VStack>
-                    </form>
-                </Box>
-            );
-        }
-
-        return (
-            <Box p={3} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.200">
-                <VStack gap={3} align="stretch">
-                    {/* Metadata Grid - Compact Layout */}
-                    <Box>
-                        <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={2}>
-                            Task Details
-                        </Text>
-                        <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap={2}>
-                            {/* Title */}
-                            <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                    📝 Title:
-                                </Text>
-                                <Text fontSize="sm" color="gray.700" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {task.title}
-                                </Text>
-                            </HStack>
-
-                            {/* Deadline */}
-                            {task.datetime_deadline && (
-                                <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                    <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                        📅 Deadline:
-                                    </Text>
-                                    <Text fontSize="sm" color="gray.700">
-                                        {new Date(task.datetime_deadline).toLocaleDateString()} {new Date(task.datetime_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </Text>
-                                </HStack>
-                            )}
-
-                            {/* Budget Information */}
-                            <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                    💰 Budget:
-                                </Text>
-                                <Text fontSize="sm" color="gray.700">
-                                    ${task.price_budget || 0}
-                                    {task.price_real && task.price_real > 0 && (
-                                        <Text as="span" color="gray.500" ml={1}>
-                                            (${task.price_real})
-                                        </Text>
-                                    )}
-                                </Text>
-                            </HStack>
-
-                            {/* People Count */}
-                            <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                    👥 People:
-                                </Text>
-                                <Text fontSize="sm" color="gray.700">
-                                    {task.people_count || 1} {task.people_count === 1 ? 'person' : 'people'}
-                                </Text>
-                            </HStack>
-
-                            {/* Status Information */}
-                            <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                    📊 Status:
-                                </Text>
-                                <HStack gap={2}>
-                                    <Text fontSize="sm" color={task.done ? "green.600" : "orange.600"} fontWeight="medium">
-                                        {task.done ? "✅ Done" : "⏳ Pending"}
-                                    </Text>
-                                    {task.template && (
-                                        <Text fontSize="xs" color="blue.600" fontWeight="medium">
-                                            📋
-                                        </Text>
-                                    )}
-                                    {task.recuring && (
-                                        <Text fontSize="xs" color="purple.600" fontWeight="medium">
-                                            🔄
-                                        </Text>
-                                    )}
-                                </HStack>
-                            </HStack>
-
-                            {/* Task Properties */}
-                            <HStack gap={2} bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                <Text fontSize="xs" fontWeight="medium" color="gray.600" minW="60px">
-                                    ⚙️ Props:
-                                </Text>
-                                <HStack gap={2}>
-                                    <Text fontSize="sm" color={task.active ? "green.600" : "red.600"} fontWeight="medium">
-                                        {task.active ? "🟢 Active" : "🔴 Inactive"}
-                                    </Text>
-                                    <Text fontSize="xs" color="gray.500">
-                                        ID: {task.id}
-                                    </Text>
-                                </HStack>
-                            </HStack>
-                        </Box>
-                    </Box>
-
-                    {/* Description Section */}
-                    {task.description && (
-                        <Box>
-                            <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>
-                                Description
-                            </Text>
-                            <Text fontSize="sm" color="gray.700" bg="white" p={2} borderRadius="sm" border="1px solid" borderColor="gray.200">
-                                {task.description}
-                            </Text>
-                        </Box>
-                    )}
-
-                    {/* Action Buttons */}
-                    <HStack gap={2} justify="flex-end" pt={1}>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditTask(task)}
-                        >
-                            Edit Task
-                        </Button>
-                    </HStack>
-                </VStack>
-            </Box>
-        );
-    };
 
     const renderTaskNodeContent = (taskNode: TaskNode, index?: number): React.ReactElement => {
         const hasSubtasks = taskNode.children.length > 0;

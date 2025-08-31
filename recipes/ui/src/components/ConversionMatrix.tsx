@@ -5,7 +5,6 @@ import {
     Spinner,
     VStack,
     HStack,
-    SimpleGrid,
     Heading
 } from '@chakra-ui/react';
 import { ConversionMatrix as ConversionMatrixType } from '../services/api';
@@ -104,7 +103,7 @@ const ConversionMatrix: React.FC<ConversionMatrixProps> = ({ matrix, loading, er
                 </Box>
 
                 <Box overflowX="auto">
-                    <table style={{  borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table style={{ borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
                         <thead>
                             <tr style={{ backgroundColor: '#FED7AA' }}>
                                 <th style={{

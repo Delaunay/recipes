@@ -8,11 +8,10 @@ import {
     Spinner,
     SimpleGrid,
     Button,
-    Select,
     Input,
     Badge
 } from '@chakra-ui/react';
-import { recipeAPI, UnitsUsedInRecipes, UnitConversion, Ingredient } from '../services/api';
+import { recipeAPI, UnitsUsedInRecipes, Ingredient } from '../services/api';
 
 const UnitManager: React.FC = () => {
     const [unitsData, setUnitsData] = useState<UnitsUsedInRecipes | null>(null);

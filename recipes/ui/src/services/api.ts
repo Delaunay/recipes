@@ -28,7 +28,7 @@ interface RecipeData {
   prep_time?: number;
   cook_time?: number;
   servings?: number;
-  ingredients?: Array<Ingredient>;
+  ingredients?: Array<RecipeIngredient>;
   categories?: Array<Category>;
   author_id?: number;
 }

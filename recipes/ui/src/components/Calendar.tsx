@@ -147,7 +147,6 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
             clearTimeout(dragTimeout);
             setDragTimeout(null);
         }
-        setDragStartPos(null);
 
         if (onDoubleClick) {
             onDoubleClick(event);
@@ -162,19 +161,14 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
             clearTimeout(dragTimeout);
             setDragTimeout(null);
         }
-        setDragStartPos(null);
     };
 
 
 
-    const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
     const [dragTimeout, setDragTimeout] = useState<NodeJS.Timeout | null>(null);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         e.stopPropagation();
-
-        // Store the initial mouse position and set a timeout for drag start
-        setDragStartPos({ x: e.clientX, y: e.clientY });
 
         // Set a timeout to start dragging after a short delay
         const timeout = setTimeout(() => {
@@ -501,11 +495,7 @@ class GridWeek {
     }
 }
 
-const getToday = (): Date => {
-    const d = getStartOfWeek(new Date());
-    d.setHours(6, 0, 0, 0);
-    return d;
-};
+
 
 
 class DragOperation {
@@ -882,21 +872,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
         setCurrentWeek(new Date());
     };
 
-    // Format week range for display
-    const getWeekRangeText = () => {
-        const startOfWeek = getStartOfWeek(currentWeek);
-        const endOfWeek = getEndOfWeek(currentWeek);
 
-        const formatDate = (date: Date) => {
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: startOfWeek.getFullYear() !== endOfWeek.getFullYear() ? 'numeric' : undefined
-            });
-        };
-
-        return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
-    };
 
     // Check if a given day index is today
     const isDayToday = (dayIndex: number) => {
