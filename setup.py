@@ -39,7 +39,7 @@ if __name__ == "__main__":
         ],
         setup_requires=["setuptools"],
         install_requires=[
-            "importlib_resources"
+            "importlib_resources",
             "sqlalchemy",
             "alembic",
             "psycopg2-binary",
