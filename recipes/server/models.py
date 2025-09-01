@@ -401,6 +401,57 @@ class Category(Base):
         }
 
 
+class IngredientSubstitution(Base):
+    """Common substitution to handle intolerance of allergies"""
+    __tablename__ = 'substitutions'
+
+    _id = Column(Integer, primary_key=True)
+    reason = Column(String(50))                             # Reason of the replacement (nut alergy, lactose intolerance)
+    original = Column(String(50), nullable=False)           # Original ingredient we want to replace
+    replacement = Column(String(50), nullable=False)        # New ingredient replacing it
+    ratio = Column(Float, default=1)                        # replacement ratio if not =
+
+    def to_json(self):
+        return {
+            'id': self._id,
+            'reason': self.reason,
+            'original': self.original,
+            'replacement': self.replacement,
+            'ratio': self.ratio,
+        }
+
+class Product(Base):
+    """Grocery list + prices"""
+    __tablename__ = 'products'
+
+    _id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False)               # Name of the product
+    quantity = Column(Float)                                # Quantity in the package
+    unit = Column(String(50))                               # unit of quantity
+    price = Column(Float)                                   # price
+    organic = Column(Boolean)                               # Organic or not
+    created_at = Column(DateTime, default=datetime.utcnow)  # Date of purchase
+
+    def to_json(self):
+        return {
+            'id': self._id,
+            'name': self.name,
+            'quantity': self.quantity,
+            'unit': self.unit,
+            'price': self.price,
+            'organic': self.organic,
+        }
+
+
+class IngredientProduct(Base):
+    """Match an ingredient to a product"""
+    __tablename__ = 'ingredient_product_mapping'
+
+    _id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey('products._id'), nullable=False)
+    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
+
+
 # Table for unit conversions
 class UnitConversion(Base):
     __tablename__ = 'unit_conversions'

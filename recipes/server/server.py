@@ -891,6 +891,8 @@ class RecipeApp:
                         "filename": filename,
                         "folder": ""
                     }), 201
+                
+                return jsonify({"error": "missing namespace"}), 500
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
