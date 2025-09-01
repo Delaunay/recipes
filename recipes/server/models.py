@@ -443,6 +443,15 @@ class Product(Base):
         }
 
 
+class ProductInventory(Base):
+    """Food currently in inventory, buying things increase the quantity, cooking lowers it"""
+    __tablename__ = 'product_inventory'
+
+    _id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False)               # Name of the product
+    quantity = Column(Float)                                # Current amount in inventory
+
+
 class IngredientProduct(Base):
     """Match an ingredient to a product"""
     __tablename__ = 'ingredient_product_mapping'
