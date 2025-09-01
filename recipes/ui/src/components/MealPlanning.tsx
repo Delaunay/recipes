@@ -14,6 +14,7 @@ import {
     Flex,
     Card,
 } from '@chakra-ui/react';
+import { recipeAPI, RecipeData } from '../services/api';
 
 // Custom icon components
 const DeleteIcon = () => (
@@ -33,13 +34,6 @@ const CloseIcon = () => (
         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
     </svg>
 );
-
-interface Recipe {
-    id: string;
-    name: string;
-    portions: number;
-    ingredients: string[];
-}
 
 interface WeeklyRecipe {
     id: string;
@@ -70,15 +64,6 @@ interface MealPlan {
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
 
-// Mock data - replace with actual API calls
-const mockRecipes: Recipe[] = [
-    { id: '1', name: 'Spaghetti Carbonara', portions: 4, ingredients: ['pasta', 'eggs', 'bacon', 'cheese'] },
-    { id: '2', name: 'Chicken Curry', portions: 6, ingredients: ['chicken', 'rice', 'curry paste', 'coconut milk'] },
-    { id: '3', name: 'Tomato Soup', portions: 8, ingredients: ['tomatoes', 'onions', 'garlic', 'cream'] },
-    { id: '4', name: 'Beef Stir Fry', portions: 4, ingredients: ['beef', 'vegetables', 'soy sauce', 'noodles'] },
-    { id: '5', name: 'Vegetarian Lasagna', portions: 6, ingredients: ['pasta sheets', 'vegetables', 'cheese', 'tomato sauce'] },
-];
-
 const MealPlanning: React.FC = () => {
     const [mealPlan, setMealPlan] = useState<MealPlan>({
         weekStart: new Date(),
@@ -88,6 +73,7 @@ const MealPlanning: React.FC = () => {
         plannedMeals: [],
     });
 
+    const [recipes, setRecipes] = useState<RecipeData[]>([]);
     const [selectedRecipe, setSelectedRecipe] = useState<string>('');
     const [selectedDay, setSelectedDay] = useState<string>('');
     const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner'>('lunch');
@@ -96,10 +82,68 @@ const MealPlanning: React.FC = () => {
     const [isNewRecipe, setIsNewRecipe] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; show: boolean } | null>(null);
 
+    // Load recipes on component mount
+    useEffect(() => {
+        const loadRecipes = async () => {
+            try {
+                const data = await recipeAPI.getRecipes();
+                setRecipes(data);
+            } catch (error) {
+                console.error('Error fetching recipes:', error);
+            }
+        };
+
+        loadRecipes();
+    }, []);
+
     const totalPortionsNeeded = mealPlan.people * mealPlan.mealsPerDay * 7;
     const totalPortionsAvailable = mealPlan.weeklyRecipes.reduce((sum, recipe) => sum + recipe.totalPortions, 0);
     const totalPortionsPlanned = mealPlan.plannedMeals.reduce((sum, meal) => sum + meal.portions, 0);
     const remainingPortions = totalPortionsNeeded - totalPortionsPlanned;
+
+    // Generate grocery list from weekly recipes
+    const generateGroceryList = () => {
+        const groceryMap = new Map<string, { quantity: number; unit: string; recipes: string[] }>();
+
+        mealPlan.weeklyRecipes.forEach(weeklyRecipe => {
+            const recipe = recipes.find(r => r.id === parseInt(weeklyRecipe.recipeId));
+            if (!recipe || !recipe.servings || !recipe.ingredients) return;
+
+            // Use the total portions from the weekly recipe
+            const scaleFactor = weeklyRecipe.totalPortions / recipe.servings;
+
+            recipe.ingredients.forEach(ingredient => {
+                if (!ingredient.name || !ingredient.unit || ingredient.quantity === undefined) return;
+
+                const key = `${ingredient.name}-${ingredient.unit}`;
+                const scaledQuantity = ingredient.quantity * scaleFactor;
+
+                if (groceryMap.has(key)) {
+                    const existing = groceryMap.get(key)!;
+                    existing.quantity += scaledQuantity;
+                    existing.recipes.push(weeklyRecipe.recipeName);
+                } else {
+                    groceryMap.set(key, {
+                        quantity: scaledQuantity,
+                        unit: ingredient.unit,
+                        recipes: [weeklyRecipe.recipeName],
+                    });
+                }
+            });
+        });
+
+        return Array.from(groceryMap.entries()).map(([key, data]) => {
+            const [name] = key.split('-');
+            return {
+                name: name || 'Unknown',
+                quantity: data.quantity,
+                unit: data.unit,
+                recipes: data.recipes,
+            };
+        });
+    };
+
+    const groceryList = generateGroceryList();
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type, show: true });
@@ -121,21 +165,21 @@ const MealPlanning: React.FC = () => {
             return;
         }
 
-        // Check if this is a new recipe (from mockRecipes) or existing recipe (from weeklyRecipes)
-        const isNewRecipe = mockRecipes.some(r => r.id === selectedRecipe);
+        // Check if this is a new recipe (from recipes) or existing recipe (from weeklyRecipes)
+        const isNewRecipe = recipes.some(r => r.id === parseInt(selectedRecipe));
 
         if (isNewRecipe) {
             // Adding a new recipe to the week
-            const recipe = mockRecipes.find(r => r.id === selectedRecipe);
-            if (!recipe) return;
+            const recipe = recipes.find(r => r.id === parseInt(selectedRecipe));
+            if (!recipe || !recipe.servings) return;
 
             const newWeeklyRecipe: WeeklyRecipe = {
                 id: Date.now().toString(),
                 recipeId: selectedRecipe,
-                recipeName: recipe.name,
-                totalPortions: recipe.portions,
+                recipeName: recipe.title,
+                totalPortions: recipe.servings,
                 portionsUsed: portionsToUse,
-                portionsRemaining: recipe.portions - portionsToUse,
+                portionsRemaining: recipe.servings - portionsToUse,
             };
 
             setMealPlan(prev => ({
@@ -144,7 +188,7 @@ const MealPlanning: React.FC = () => {
                 plannedMeals: [...prev.plannedMeals, {
                     id: Date.now().toString(),
                     recipeId: selectedRecipe,
-                    recipeName: recipe.name,
+                    recipeName: recipe.title,
                     portions: portionsToUse,
                     day: selectedDay,
                     mealType: selectedMealType,
@@ -355,10 +399,10 @@ const MealPlanning: React.FC = () => {
                                                         position="relative"
                                                     >
                                                         {hasMeals ? (
-                                                            <VStack gap={1} align="stretch">
+                                                            <VStack align="stretch" gap={1}>
                                                                 {meals.map(meal => (
                                                                     <Box key={meal.id} p={2} border="1px" borderColor="blue.200" borderRadius="md" bg="blue.50">
-                                                                        <VStack gap={1} align="stretch">
+                                                                        <VStack align="stretch" gap={1}>
                                                                             <Text fontSize="xs" fontWeight="semibold">
                                                                                 {meal.recipeName}
                                                                             </Text>
@@ -454,17 +498,24 @@ const MealPlanning: React.FC = () => {
                     <Box width="33%" height="100%" padding="5px" borderRadius="md" border="1px solid" borderColor="gray.200">
                         <Heading size="md" mb={4}>Grocery List</Heading>
                         <Box as="ul" listStyleType="none" p={0} m={0}>
-                            <Box
-                                as="li"
-                                p={3}
-                                border="1px"
-                                borderColor="gray.200"
-                                borderRadius="md"
-                                bg="white"
-                                mb={2}
-                                _hover={{ bg: 'gray.50' }}
-                            >
-                            </Box>
+                            {groceryList.map((item, index) => (
+                                <Box
+                                    key={index}
+                                    as="li"
+                                    p={3}
+                                    border="1px"
+                                    borderColor="gray.200"
+                                    borderRadius="md"
+                                    bg="white"
+                                    mb={2}
+                                    _hover={{ bg: 'gray.50' }}
+                                >
+                                    <HStack justify="space-between" align="center">
+                                        <Text fontSize="md">{item.name}</Text>
+                                        <Badge colorScheme="blue">{item.quantity.toFixed(2)} {item.unit}</Badge>
+                                    </HStack>
+                                </Box>
+                            ))}
                         </Box>
                     </Box>
                     <Box width="33%" height="100%" padding="5px" borderRadius="md" border="1px solid" borderColor="gray.200">
@@ -562,9 +613,9 @@ const MealPlanning: React.FC = () => {
                                                         }}
                                                     >
                                                         <option value="">Select recipe</option>
-                                                        {mockRecipes.map(recipe => (
+                                                        {recipes.map(recipe => (
                                                             <option key={recipe.id} value={recipe.id}>
-                                                                {recipe.name} ({recipe.portions} portions)
+                                                                {recipe.title} ({recipe.servings} servings)
                                                             </option>
                                                         ))}
                                                     </select>
