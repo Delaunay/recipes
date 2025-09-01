@@ -15,6 +15,7 @@ import UnitConversions from './components/UnitConversions';
 import UnitManager from './components/UnitManager';
 import Calendar from './components/Calendar';
 import Tasks from './components/Tasks';
+import MealPlanning from './components/MealPlanning';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -30,11 +31,7 @@ function App() {
             <Route path="/recipes" element={<RecipeList />} />
             <Route path="/recipes/:identifier" element={<RecipeDetail />} />
             <Route path="/create" element={<CreateRecipe />} />
-            {/* Placeholder routes for other sidebar items */}
-            <Route path="/favorites" element={<div>Favorites - Coming Soon!</div>} />
-            <Route path="/my-recipes" element={<div>My Recipes - Coming Soon!</div>} />
-            <Route path="/settings" element={<div>Settings - Coming Soon!</div>} />
-            <Route path="/planning" element={<div>Planning - Coming Soon!</div>} />
+            <Route path="/planning" element={<MealPlanning />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/ingredients" element={<Ingredients />} />

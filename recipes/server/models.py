@@ -451,6 +451,14 @@ class ProductInventory(Base):
     name = Column(String(50), nullable=False)               # Name of the product
     quantity = Column(Float)                                # Current amount in inventory
 
+    # price = Column(Float) += price / qty 
+
+    def to_json(self):
+        return {
+            'id': self._id,
+            'name': self.name,
+            'quantity': self.quantity
+        }
 
 class IngredientProduct(Base):
     """Match an ingredient to a product"""

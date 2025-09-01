@@ -1907,7 +1907,7 @@ const Recipe: FC<RecipeProps> = ({
 
   return (
     <Box maxW="4xl" mx="auto" p={6} borderWidth="1px" borderRadius="lg" shadow="lg" bg="white">
-      <VStack gap={6} align="stretch">
+      <VStack gap={6} align="stretch" className='recipe-cls'>
         {/* Static Mode Notice */}
         {isStatic && (
           <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400">
