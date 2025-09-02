@@ -48,5 +48,7 @@ if __name__ == "__main__":
             "flask-sqlalchemy",
             "flask-cors",
             "pillow",
+            "appdirs",
+            "python-telegram-bot",
         ],
     )

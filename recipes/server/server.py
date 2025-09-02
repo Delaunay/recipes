@@ -463,6 +463,17 @@ class RecipeApp:
                 self.db.session.rollback()
                 return jsonify({"error": str(e)}), 400
 
+        @self.app.route('/planning/telegram/checklist', methods=['POST'])
+        def send_checklist():
+            from .messaging import send_todo_checklist
+            data = request.get_json()
+
+            grocery_list = []
+            for item in data:
+                grocery_list.append(f"{item['name']}: {item['quantity']} {item['unit']}")
+
+            send_todo_checklist("Grovery list", grocery_list)
+
         @self.app.route('/recipes/<int:recipe_id>', methods=['DELETE'])
         def delete_recipe(recipe_id: int) -> Dict[str, Any]:
             try:

@@ -545,6 +545,17 @@ class RecipeAPI {
       method: 'DELETE',
     });
   }
+
+  // Planning methods
+  async sendChecklist(checklistData: any[]): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Sending checklists is not supported in static mode');
+    }
+    return this.request<{ message: string }>('/planning/telegram/checklist', {
+      method: 'POST',
+      body: JSON.stringify(checklistData),
+    });
+  }
 }
 
 // Export a singleton instance

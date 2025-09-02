@@ -159,6 +159,31 @@ const MealPlanning: React.FC = () => {
         setSelectedRecipe('');
     };
 
+    const skipMeal = () => {
+        // Create a skipped meal entry with 0 portions
+        const skippedMeal: PlannedMeal = {
+            id: Date.now().toString(),
+            recipeId: 'skip',
+            recipeName: 'Skip meal',
+            portions: 0,
+            day: selectedDay,
+            mealType: selectedMealType,
+        };
+
+        setMealPlan(prev => ({
+            ...prev,
+            plannedMeals: [...prev.plannedMeals, skippedMeal],
+        }));
+
+        // Reset form and close modal
+        setSelectedDay('');
+        setSelectedMealType('lunch');
+        setShowMealModal(false);
+        setIsNewRecipe(false);
+
+        showToast('Meal skipped successfully!');
+    };
+
     const addMeal = () => {
         if (!selectedRecipe || !selectedDay) {
             showToast('Please select a recipe', 'error');
@@ -241,18 +266,26 @@ const MealPlanning: React.FC = () => {
         const meal = mealPlan.plannedMeals.find(m => m.id === mealId);
         if (!meal) return;
 
-        // Update portions used
-        const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
-            wr.recipeId === meal.recipeId
-                ? { ...wr, portionsUsed: wr.portionsUsed - meal.portions, portionsRemaining: wr.portionsRemaining + meal.portions }
-                : wr
-        );
+        // Only update portions if it's not a skipped meal
+        if (meal.recipeId !== 'skip') {
+            const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
+                wr.recipeId === meal.recipeId
+                    ? { ...wr, portionsUsed: wr.portionsUsed - meal.portions, portionsRemaining: wr.portionsRemaining + meal.portions }
+                    : wr
+            );
 
-        setMealPlan(prev => ({
-            ...prev,
-            weeklyRecipes: updatedWeeklyRecipes,
-            plannedMeals: prev.plannedMeals.filter(m => m.id !== mealId),
-        }));
+            setMealPlan(prev => ({
+                ...prev,
+                weeklyRecipes: updatedWeeklyRecipes,
+                plannedMeals: prev.plannedMeals.filter(m => m.id !== mealId),
+            }));
+        } else {
+            // For skipped meals, just remove them without updating portions
+            setMealPlan(prev => ({
+                ...prev,
+                plannedMeals: prev.plannedMeals.filter(m => m.id !== mealId),
+            }));
+        }
     };
 
     const getMealsForDayAndType = (day: string, mealType: 'breakfast' | 'lunch' | 'dinner') => {
@@ -401,14 +434,20 @@ const MealPlanning: React.FC = () => {
                                                         {hasMeals ? (
                                                             <VStack align="stretch" gap={1}>
                                                                 {meals.map(meal => (
-                                                                    <Box key={meal.id} p={2} border="1px" borderColor="blue.200" borderRadius="md" bg="blue.50">
+                                                                    <Box key={meal.id} p={2} border="1px" borderColor={meal.recipeId === 'skip' ? 'gray.300' : 'blue.200'} borderRadius="md" bg={meal.recipeId === 'skip' ? 'gray.100' : 'blue.50'}>
                                                                         <VStack align="stretch" gap={1}>
                                                                             <Text fontSize="xs" fontWeight="semibold">
                                                                                 {meal.recipeName}
                                                                             </Text>
-                                                                            <Badge size="sm" colorScheme="blue" alignSelf="center">
-                                                                                {meal.portions} portions
-                                                                            </Badge>
+                                                                            {meal.recipeId === 'skip' ? (
+                                                                                <Badge size="sm" colorScheme="gray" alignSelf="center">
+                                                                                    Skipped
+                                                                                </Badge>
+                                                                            ) : (
+                                                                                <Badge size="sm" colorScheme="blue" alignSelf="center">
+                                                                                    {meal.portions} portions
+                                                                                </Badge>
+                                                                            )}
                                                                             <IconButton
                                                                                 size="xs"
                                                                                 aria-label="Remove meal"
@@ -496,7 +535,52 @@ const MealPlanning: React.FC = () => {
                         </Box>
                     </Box>
                     <Box width="33%" height="100%" padding="5px" borderRadius="md" border="1px solid" borderColor="gray.200">
-                        <Heading size="md" mb={4}>Grocery List</Heading>
+                        <Flex justify="space-between" align="center" mb={4}>
+                            <Heading size="md">Grocery List</Heading>
+                            <HStack gap={2}>
+                                <Button
+                                    size="sm"
+                                    colorScheme="blue"
+                                    variant="outline"
+                                    onClick={() => {
+                                        const groceryText = groceryList.map(item =>
+                                            `[ ] ${item.name} ${item.quantity.toFixed(2)} ${item.unit}`
+                                        ).join('\n');
+
+                                        navigator.clipboard.writeText(groceryText).then(() => {
+                                            showToast('Grocery list copied to clipboard!');
+                                        }).catch(() => {
+                                            showToast('Failed to copy to clipboard', 'error');
+                                        });
+                                    }}
+                                >
+                                    Copy
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    colorScheme="green"
+                                    variant="outline"
+                                    onClick={async () => {
+                                        try {
+                                            const groceryData = groceryList.map(item => ({
+                                                name: item.name,
+                                                quantity: item.quantity,
+                                                unit: item.unit,
+                                                recipes: item.recipes
+                                            }));
+
+                                            await recipeAPI.sendChecklist(groceryData);
+                                            showToast('Grocery list sent to Telegram!');
+                                        } catch (error) {
+                                            console.error('Error sending to Telegram:', error);
+                                            showToast('Failed to send to Telegram', 'error');
+                                        }
+                                    }}
+                                >
+                                    Send to Telegram
+                                </Button>
+                            </HStack>
+                        </Flex>
                         <Box as="ul" listStyleType="none" p={0} m={0}>
                             {groceryList.map((item, index) => (
                                 <Box
@@ -586,10 +670,7 @@ const MealPlanning: React.FC = () => {
                                                 justifyContent="flex-start"
                                                 variant="outline"
                                                 colorScheme="gray"
-                                                onClick={() => {
-                                                    setShowMealModal(false);
-                                                    // Could add logic here to mark meal as skipped
-                                                }}
+                                                onClick={skipMeal}
                                             >
                                                 Skip meal
                                             </Button>

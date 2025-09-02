@@ -6,3 +6,5 @@ werkzeug
 flask-sqlalchemy
 flask-cors
 pillow
+appdirs
+python-telegram-bot
