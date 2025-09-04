@@ -7,14 +7,14 @@ import {
     Button,
     Input,
     Grid,
-    GridItem,
     Heading,
     Badge,
     IconButton,
     Flex,
-    Card,
 } from '@chakra-ui/react';
-import { recipeAPI, RecipeData } from '../services/api';
+import { recipeAPI, RecipeData, WeeklyRecipe, PlannedMeal, MealPlan } from '../services/api';
+import { TelegramClient, TelegramStorage } from '../services/telegram';
+import { TelegramSettings } from './TelegramSettings';
 
 // Custom icon components
 const DeleteIcon = () => (
@@ -23,11 +23,7 @@ const DeleteIcon = () => (
     </svg>
 );
 
-const AddIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-    </svg>
-);
+
 
 const CloseIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -35,31 +31,13 @@ const CloseIcon = () => (
     </svg>
 );
 
-interface WeeklyRecipe {
-    id: string;
-    recipeId: string;
-    recipeName: string;
-    totalPortions: number;
-    portionsUsed: number;
-    portionsRemaining: number;
-}
+const SettingsIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.65-.07-.97l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65c-.04-.24-.24-.42-.49-.42h-4c-.25 0-.45.18-.49.42l-.38 2.65c-.61.25-1.17.58-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.63c-.04.32-.07.65-.07.97s.03.65.07.97l-2.11 1.63c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.63z"/>
+    </svg>
+);
 
-interface PlannedMeal {
-    id: string;
-    recipeId: string;
-    recipeName: string;
-    portions: number;
-    day: string;
-    mealType: 'breakfast' | 'lunch' | 'dinner';
-}
-
-interface MealPlan {
-    weekStart: Date;
-    people: number;
-    mealsPerDay: number;
-    weeklyRecipes: WeeklyRecipe[];
-    plannedMeals: PlannedMeal[];
-}
+// Interfaces are now imported from api.ts
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
@@ -79,8 +57,64 @@ const MealPlanning: React.FC = () => {
     const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner'>('lunch');
     const [portionsToUse, setPortionsToUse] = useState<number>(2);
     const [showMealModal, setShowMealModal] = useState(false);
-    const [isNewRecipe, setIsNewRecipe] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; show: boolean } | null>(null);
+
+    // Meal plan save/load state
+    const [mealPlanName, setMealPlanName] = useState<string>('');
+    const [availableMealPlans, setAvailableMealPlans] = useState<string[]>([]);
+    const [selectedMealPlanToLoad, setSelectedMealPlanToLoad] = useState<string>('');
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [showLoadModal, setShowLoadModal] = useState(false);
+    const [showTelegramSettings, setShowTelegramSettings] = useState(false);
+
+    // Load available meal plans
+    const loadAvailableMealPlans = async () => {
+        try {
+            const mealPlanNames = await recipeAPI.getMealPlanNames();
+            setAvailableMealPlans(mealPlanNames);
+        } catch (error) {
+            console.error('Error fetching meal plan names:', error);
+            setAvailableMealPlans([]);
+        }
+    };
+
+    // Save meal plan
+    const saveMealPlan = async () => {
+        if (!mealPlanName.trim()) {
+            showToast('Please enter a name for the meal plan', 'error');
+            return;
+        }
+
+        try {
+            await recipeAPI.saveMealPlan(mealPlanName.trim(), mealPlan);
+            showToast(`Meal plan "${mealPlanName}" saved successfully!`);
+            setMealPlanName('');
+            setShowSaveModal(false);
+            await loadAvailableMealPlans(); // Refresh the list
+        } catch (error) {
+            console.error('Error saving meal plan:', error);
+            showToast('Failed to save meal plan', 'error');
+        }
+    };
+
+    // Load meal plan
+    const loadMealPlan = async () => {
+        if (!selectedMealPlanToLoad) {
+            showToast('Please select a meal plan to load', 'error');
+            return;
+        }
+
+        try {
+            const loadedMealPlan = await recipeAPI.loadMealPlan(selectedMealPlanToLoad);
+            setMealPlan(loadedMealPlan);
+            showToast(`Meal plan "${selectedMealPlanToLoad}" loaded successfully!`);
+            setSelectedMealPlanToLoad('');
+            setShowLoadModal(false);
+        } catch (error) {
+            console.error('Error loading meal plan:', error);
+            showToast('Failed to load meal plan', 'error');
+        }
+    };
 
     // Load recipes on component mount
     useEffect(() => {
@@ -94,6 +128,7 @@ const MealPlanning: React.FC = () => {
         };
 
         loadRecipes();
+        loadAvailableMealPlans();
     }, []);
 
     const totalPortionsNeeded = mealPlan.people * mealPlan.mealsPerDay * 7;
@@ -103,7 +138,7 @@ const MealPlanning: React.FC = () => {
 
     // Generate grocery list from weekly recipes
     const generateGroceryList = () => {
-        const groceryMap = new Map<string, { quantity: number; unit: string; recipes: string[] }>();
+        const groceryMap = new Map<string, { quantity: number; unit: string; recipes: string[]; quantities: { quantity: number; unit: string }[] }>();
 
         mealPlan.weeklyRecipes.forEach(weeklyRecipe => {
             const recipe = recipes.find(r => r.id === parseInt(weeklyRecipe.recipeId));
@@ -115,18 +150,22 @@ const MealPlanning: React.FC = () => {
             recipe.ingredients.forEach(ingredient => {
                 if (!ingredient.name || !ingredient.unit || ingredient.quantity === undefined) return;
 
-                const key = `${ingredient.name}-${ingredient.unit}`;
+                const key = `${ingredient.name}`;
                 const scaledQuantity = ingredient.quantity * scaleFactor;
 
                 if (groceryMap.has(key)) {
                     const existing = groceryMap.get(key)!;
-                    existing.quantity += scaledQuantity;
+                    if (existing.unit === ingredient.unit) {
+                        existing.quantity += scaledQuantity;
+                    }
                     existing.recipes.push(weeklyRecipe.recipeName);
+                    existing.quantities.push({ quantity: scaledQuantity, unit: ingredient.unit });
                 } else {
                     groceryMap.set(key, {
                         quantity: scaledQuantity,
                         unit: ingredient.unit,
                         recipes: [weeklyRecipe.recipeName],
+                        quantities: [{quantity: scaledQuantity, unit: ingredient.unit}],
                     });
                 }
             });
@@ -155,7 +194,6 @@ const MealPlanning: React.FC = () => {
         setSelectedMealType(mealType);
         setPortionsToUse(mealPlan.people); // Default to number of people
         setShowMealModal(true);
-        setIsNewRecipe(false);
         setSelectedRecipe('');
     };
 
@@ -179,7 +217,6 @@ const MealPlanning: React.FC = () => {
         setSelectedDay('');
         setSelectedMealType('lunch');
         setShowMealModal(false);
-        setIsNewRecipe(false);
 
         showToast('Meal skipped successfully!');
     };
@@ -257,7 +294,6 @@ const MealPlanning: React.FC = () => {
         setSelectedDay('');
         setPortionsToUse(mealPlan.people);
         setShowMealModal(false);
-        setIsNewRecipe(false);
 
         showToast('Meal added to plan successfully!');
     };
@@ -335,7 +371,30 @@ const MealPlanning: React.FC = () => {
             <VStack gap={6} align="stretch" width="100%" height="100%">
                 {/* Header */}
                 <Box>
-                    <Heading size="lg" mb={2}>Weekly Meal Planning</Heading>
+                    <Flex justify="space-between" align="center" mb={2}>
+                        <Heading size="lg">Weekly Meal Planning</Heading>
+                        <HStack gap={2}>
+                            <Button
+                                colorScheme="blue"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowSaveModal(true)}
+                            >
+                                Save Plan
+                            </Button>
+                            <Button
+                                colorScheme="green"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setShowLoadModal(true);
+                                    loadAvailableMealPlans();
+                                }}
+                            >
+                                Load Plan
+                            </Button>
+                        </HStack>
+                    </Flex>
                 </Box>
 
                 {/* Summary Cards */}
@@ -544,7 +603,7 @@ const MealPlanning: React.FC = () => {
                                     variant="outline"
                                     onClick={() => {
                                         const groceryText = groceryList.map(item =>
-                                            `[ ] ${item.name} ${item.quantity.toFixed(2)} ${item.unit}`
+                                            `* ${item.name} ${item.quantity.toFixed(2)} ${item.unit}`
                                         ).join('\n');
 
                                         navigator.clipboard.writeText(groceryText).then(() => {
@@ -556,42 +615,65 @@ const MealPlanning: React.FC = () => {
                                 >
                                     Copy
                                 </Button>
-                                <Button
-                                    size="sm"
-                                    colorScheme="green"
-                                    variant="outline"
-                                    onClick={async () => {
-                                        try {
-                                            const groceryData = groceryList.map(item => ({
-                                                name: item.name,
-                                                quantity: item.quantity,
-                                                unit: item.unit,
-                                                recipes: item.recipes
-                                            }));
+                                <HStack gap={2}>
+                                    <Button
+                                        size="sm"
+                                        colorScheme="green"
+                                        variant="outline"
+                                        onClick={async () => {
+                                            try {
+                                                // Check if credentials are configured
+                                                if (!TelegramStorage.hasCredentials()) {
+                                                    showToast('Please configure Telegram settings first', 'error');
+                                                    setShowTelegramSettings(true);
+                                                    return;
+                                                }
 
-                                            await recipeAPI.sendChecklist(groceryData);
-                                            showToast('Grocery list sent to Telegram!');
-                                        } catch (error) {
-                                            console.error('Error sending to Telegram:', error);
-                                            showToast('Failed to send to Telegram', 'error');
-                                        }
-                                    }}
-                                >
-                                    Send to Telegram
-                                </Button>
+                                                // Check if grocery list is not empty
+                                                if (groceryList.length === 0) {
+                                                    showToast('Grocery list is empty - nothing to send', 'error');
+                                                    return;
+                                                }
+
+                                                const groceryData = groceryList.map(item => ({
+                                                    name: item.name,
+                                                    quantity: item.quantity.toString(),
+                                                    unit: item.unit
+                                                }));
+
+                                                await TelegramClient.sendChecklist(groceryData, 'Grocery List');
+                                                showToast('Grocery list sent to Telegram!');
+                                            } catch (error) {
+                                                console.error('Error sending to Telegram:', error);
+                                                showToast('Failed to send to Telegram', 'error');
+                                            }
+                                        }}
+                                    >
+                                        Send to Telegram
+                                    </Button>
+                                    <IconButton
+                                        size="sm"
+                                        aria-label="Telegram Settings"
+                                        colorScheme="gray"
+                                        variant="outline"
+                                        onClick={() => setShowTelegramSettings(true)}
+                                    >
+                                        <SettingsIcon />
+                                    </IconButton>
+                                </HStack>
                             </HStack>
                         </Flex>
-                        <Box as="ul" listStyleType="none" p={0} m={0}>
+                        <Box as="ol" listStyleType="none" p={0} m={0}>
                             {groceryList.map((item, index) => (
                                 <Box
                                     key={index}
                                     as="li"
-                                    p={3}
+                                    p={0}
                                     border="1px"
                                     borderColor="gray.200"
                                     borderRadius="md"
                                     bg="white"
-                                    mb={2}
+                                    mb={0}
                                     _hover={{ bg: 'gray.50' }}
                                 >
                                     <HStack justify="space-between" align="center">
@@ -795,6 +877,173 @@ const MealPlanning: React.FC = () => {
                         </Box>
                     </Box>
                 )}
+
+                {/* Save Meal Plan Modal */}
+                {showSaveModal && (
+                    <Box
+                        position="fixed"
+                        top={0}
+                        left={0}
+                        right={0}
+                        bottom={0}
+                        bg="blackAlpha.600"
+                        zIndex={1000}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        p={4}
+                    >
+                        <Box
+                            bg="white"
+                            borderRadius="md"
+                            p={6}
+                            maxW="400px"
+                            width="100%"
+                        >
+                            <VStack gap={4} align="stretch">
+                                <Flex justify="space-between" align="center">
+                                    <Heading size="md">Save Meal Plan</Heading>
+                                    <IconButton
+                                        aria-label="Close modal"
+                                        onClick={() => {
+                                            setShowSaveModal(false);
+                                            setMealPlanName('');
+                                        }}
+                                        variant="ghost"
+                                        size="sm"
+                                    >
+                                        <CloseIcon />
+                                    </IconButton>
+                                </Flex>
+
+                                <Box>
+                                    <Text mb={2} fontWeight="semibold">Meal Plan Name</Text>
+                                    <Input
+                                        value={mealPlanName}
+                                        onChange={(e) => setMealPlanName(e.target.value)}
+                                        placeholder="Enter a name for your meal plan"
+                                        size="sm"
+                                    />
+                                </Box>
+
+                                <HStack justify="flex-end" pt={2}>
+                                    <Button 
+                                        variant="ghost" 
+                                        onClick={() => {
+                                            setShowSaveModal(false);
+                                            setMealPlanName('');
+                                        }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button 
+                                        colorScheme="blue" 
+                                        onClick={saveMealPlan}
+                                        disabled={!mealPlanName.trim()}
+                                    >
+                                        Save
+                                    </Button>
+                                </HStack>
+                            </VStack>
+                        </Box>
+                    </Box>
+                )}
+
+                {/* Load Meal Plan Modal */}
+                {showLoadModal && (
+                    <Box
+                        position="fixed"
+                        top={0}
+                        left={0}
+                        right={0}
+                        bottom={0}
+                        bg="blackAlpha.600"
+                        zIndex={1000}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        p={4}
+                    >
+                        <Box
+                            bg="white"
+                            borderRadius="md"
+                            p={6}
+                            maxW="400px"
+                            width="100%"
+                        >
+                            <VStack gap={4} align="stretch">
+                                <Flex justify="space-between" align="center">
+                                    <Heading size="md">Load Meal Plan</Heading>
+                                    <IconButton
+                                        aria-label="Close modal"
+                                        onClick={() => {
+                                            setShowLoadModal(false);
+                                            setSelectedMealPlanToLoad('');
+                                        }}
+                                        variant="ghost"
+                                        size="sm"
+                                    >
+                                        <CloseIcon />
+                                    </IconButton>
+                                </Flex>
+
+                                <Box>
+                                    <Text mb={2} fontWeight="semibold">Select Meal Plan</Text>
+                                    {availableMealPlans.length > 0 ? (
+                                        <select
+                                            value={selectedMealPlanToLoad}
+                                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedMealPlanToLoad(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px',
+                                                border: '1px solid #e2e8f0',
+                                                borderRadius: '4px',
+                                                fontSize: '14px',
+                                                backgroundColor: 'white',
+                                            }}
+                                        >
+                                            <option value="">Choose a meal plan to load</option>
+                                            {availableMealPlans.map(planName => (
+                                                <option key={planName} value={planName}>
+                                                    {planName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <Text fontSize="sm" color="gray.500" fontStyle="italic">
+                                            No saved meal plans available
+                                        </Text>
+                                    )}
+                                </Box>
+
+                                <HStack justify="flex-end" pt={2}>
+                                    <Button 
+                                        variant="ghost" 
+                                        onClick={() => {
+                                            setShowLoadModal(false);
+                                            setSelectedMealPlanToLoad('');
+                                        }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button 
+                                        colorScheme="green" 
+                                        onClick={loadMealPlan}
+                                        disabled={!selectedMealPlanToLoad || availableMealPlans.length === 0}
+                                    >
+                                        Load
+                                    </Button>
+                                </HStack>
+                            </VStack>
+                        </Box>
+                    </Box>
+                )}
+
+                {/* Telegram Settings Modal */}
+                <TelegramSettings 
+                    isOpen={showTelegramSettings} 
+                    onClose={() => setShowTelegramSettings(false)}
+                />
 
             </VStack>
         </Box>

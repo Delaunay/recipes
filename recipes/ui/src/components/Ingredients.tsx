@@ -181,10 +181,18 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
   return (
     <Box
       borderWidth="1px"
-      borderRadius="md"
-      p={4}
+      borderRadius="lg"
+      overflow="hidden"
       bg="white"
       shadow="sm"
+      _hover={{
+        shadow: "lg",
+        transform: "translateY(-2px)",
+        transition: "all 0.2s"
+      }}
+      cursor={!isEditing ? "pointer" : "default"}
+      onClick={!isEditing ? handleViewDetailsByName : undefined}
+      transition="all 0.2s"
       position="relative"
     >
       {saving && (
@@ -193,8 +201,73 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
         </Box>
       )}
 
-      <Flex align="center" justify="space-between">
-        <VStack align="start" gap={1} flex="1">
+      {/* Ingredient Icon/Placeholder */}
+      <Box 
+        bg="gray.100" 
+        height="120px" 
+        display="flex" 
+        alignItems="center" 
+        justifyContent="center"
+        position="relative"
+      >
+        <Text color="gray.500" fontSize="4xl">🥬</Text>
+        {!isStatic && (
+          <Box position="absolute" top={2} right={2}>
+            {isEditing ? (
+              <HStack gap={1}>
+                <Button
+                  size="xs"
+                  colorScheme="green"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSaveEdit();
+                  }}
+                >
+                  <CheckIcon />
+                </Button>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCancelEdit();
+                  }}
+                >
+                  <CloseIcon />
+                </Button>
+                <Button
+                  size="xs"
+                  colorScheme="red"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(ingredient.id!);
+                  }}
+                >
+                  <DeleteIcon />
+                </Button>
+              </HStack>
+            ) : (
+              <Button
+                size="xs"
+                variant="ghost"
+                bg="white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartEdit();
+                }}
+              >
+                <EditIcon />
+              </Button>
+            )}
+          </Box>
+        )}
+      </Box>
+
+      {/* Ingredient Details */}
+      <Box p={3}>
+        <VStack align="stretch" gap={2}>
+          {/* Ingredient Name */}
           {isEditing ? (
             <ContentEditable
               content={ingredient.name}
@@ -203,95 +276,84 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
               onKeyDown={handleKeyDown}
             />
           ) : (
-            <Text fontWeight="medium" fontSize="lg">{ingredient.name}</Text>
-          )}
-
-          <HStack gap={4} fontSize="sm" color="gray.600">
-            {ingredient.calories && (
-              <Text>{ingredient.calories} cal/100g</Text>
-            )}
-            {ingredient.density && (
-              <Text>Density: {ingredient.density} g/ml</Text>
-            )}
-            {ingredient.id && (
-              <Text color="gray.400">ID: {ingredient.id}</Text>
-            )}
-          </HStack>
-
-          {ingredient.description && !isEditing && (
-            <Text fontSize="sm" color="gray.700"
+            <Text 
+              fontWeight="bold" 
+              fontSize="md" 
               overflow="hidden"
               textOverflow="ellipsis"
               whiteSpace="nowrap"
-              maxW="400px">
-              {ingredient.description}
+            >
+              {ingredient.name}
             </Text>
           )}
 
+          {/* Description (only show in non-editing mode and if exists) */}
+          {ingredient.description && !isEditing && (
+            <Box 
+              minH="40px"
+              overflow="hidden"
+              position="relative"
+            >
+              <Text 
+                fontSize="sm" 
+                color="gray.600"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                display="-webkit-box"
+                style={{
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical"
+                }}
+              >
+                {ingredient.description}
+              </Text>
+            </Box>
+          )}
+
+          {/* Stats with Badges */}
+          <HStack gap={2} flexWrap="wrap" justify="center">
+            {ingredient.calories && (
+              <Badge colorScheme="blue" variant="subtle" fontSize="xs">
+                {ingredient.calories} cal
+              </Badge>
+            )}
+            {ingredient.density && (
+              <Badge colorScheme="green" variant="subtle" fontSize="xs">
+                {ingredient.density} g/ml
+              </Badge>
+            )}
+            {ingredient.id && (
+              <Badge colorScheme="gray" variant="outline" fontSize="xs">
+                #{ingredient.id}
+              </Badge>
+            )}
+          </HStack>
+
+          {/* Action Buttons for non-editing mode */}
           {!isEditing && (
-            <HStack gap={2} mt={2}>
-              <Button size="xs" colorScheme="blue" variant="solid" onClick={handleViewDetailsById}>
-                View by ID
-              </Button>
-              <Button size="xs" colorScheme="green" variant="outline" onClick={handleViewDetailsByName}>
-                View by Name
+            <HStack gap={1} justify="center" mt={2}>
+              <Button 
+                size="xs" 
+                colorScheme="blue" 
+                variant="solid" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewDetailsById();
+                }}
+              >
+                View Details
               </Button>
             </HStack>
           )}
         </VStack>
-
-        {!isStatic && (
-          <HStack gap={2}>
-            {isEditing ? (
-              <>
-                <Button
-                  size="sm"
-                  colorScheme="green"
-                  onClick={onSaveEdit}
-                >
-                  <CheckIcon />
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={onCancelEdit}
-                >
-                  <CloseIcon />
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  colorScheme="red"
-                  variant="ghost"
-                  onClick={() => onDelete(ingredient.id!)}
-                >
-                  <DeleteIcon />
-                </Button>
-              </>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStartEdit();
-                }}
-              >
-                <EditIcon />
-                Edit
-              </Button>
-            )}
-          </HStack>
-        )}
-      </Flex>
+      </Box>
 
       {/* Edit Form */}
       {isEditing && !isStatic && (
-        <Box mt={4} pt={4} borderTop="1px solid" borderColor="gray.200">
-          <VStack align="stretch" gap={4}>
+        <Box px={3} pb={3} borderTop="1px solid" borderColor="gray.200">
+          <VStack align="stretch" gap={3} mt={3}>
             <Box>
-              <Text fontSize="sm" fontWeight="medium" mb={1}>Description</Text>
+              <Text fontSize="xs" fontWeight="medium" mb={1} color="gray.600">Description</Text>
               <ContentEditable
                 content={ingredient.description || ''}
                 onContentChange={handleUpdate('description')}
@@ -302,9 +364,9 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
               />
             </Box>
 
-            <SimpleGrid columns={2} gap={4}>
+            <SimpleGrid columns={2} gap={2}>
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={1}>
+                <Text fontSize="xs" fontWeight="medium" mb={1} color="gray.600">
                   Calories (per 100g)
                 </Text>
                 <ContentEditable
@@ -317,7 +379,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
               </Box>
 
               <Box>
-                <Text fontSize="sm" fontWeight="medium" mb={1}>
+                <Text fontSize="xs" fontWeight="medium" mb={1} color="gray.600">
                   Density (g/ml)
                 </Text>
                 <ContentEditable
@@ -464,7 +526,7 @@ const Ingredients = () => {
   }
 
   return (
-    <Box maxW="4xl" mx="auto" p={6}>
+    <Box py={6}>
       <VStack gap={6} align="stretch">
         {/* Static Mode Notice */}
         {isStatic && (
@@ -518,7 +580,7 @@ const Ingredients = () => {
         </Flex>
 
         {ingredients.length > 0 ? (
-          <VStack gap={3} align="stretch">
+          <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 }} gap={4}>
             {ingredients.map((ingredient) => (
               <IngredientListItem
                 key={ingredient.id}
@@ -533,7 +595,7 @@ const Ingredients = () => {
                 formatName={formatIngredientName}
               />
             ))}
-          </VStack>
+          </SimpleGrid>
         ) : (
           <Box textAlign="center" py={12}>
             <Text fontSize="lg" color="gray.500" mb={4}>

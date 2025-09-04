@@ -1,8 +1,19 @@
+"""
+This was entirely reimplemented in javascript so it is not necessary anymore.
+
+Keeping the code here in case we add more use cases for telegram.
+
+Future use cases:
+- Event / Task reminder
+- Sport/activity tracking ?
+"""
+
 import asyncio
 import os
 
-from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackContext, CallbackQueryHandler
+from flask import request
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CallbackQueryHandler
 
 
 TOKEN = os.getenv("KIWI_PLANIFIER_BOT")
@@ -95,6 +106,20 @@ def main() -> None:
 
     app.post_init = set_commands
     app.run_polling()
+
+
+def messaging_routes(app):
+    """Routes to manage messaging"""
+
+    @app.route('/planning/telegram/checklist', methods=['POST'])
+    def send_checklist():
+        data = request.get_json()
+
+        grocery_list = []
+        for item in data:
+            grocery_list.append(f"{item['name']}: {item['quantity']} {item['unit']}")
+
+        send_todo_checklist("Grovery list", grocery_list)
 
 
 # Example usage

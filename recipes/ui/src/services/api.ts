@@ -157,6 +157,40 @@ interface Event {
   extension?: any;
 }
 
+interface WeeklyRecipe {
+  id: string;
+  recipeId: string;
+  recipeName: string;
+  totalPortions: number;
+  portionsUsed: number;
+  portionsRemaining: number;
+}
+
+interface PlannedMeal {
+  id: string;
+  recipeId: string;
+  recipeName: string;
+  portions: number;
+  day: string;
+  mealType: 'breakfast' | 'lunch' | 'dinner';
+}
+
+interface MealPlan {
+  weekStart: Date;
+  people: number;
+  mealsPerDay: number;
+  weeklyRecipes: WeeklyRecipe[];
+  plannedMeals: PlannedMeal[];
+}
+
+interface KeyValueEntry {
+  topic: string;
+  key: string;
+  value: any;
+  created_at: string;
+  updated_at: string;
+}
+
 class RecipeAPI {
   private async requestStatic<T>(endpoint: string): Promise<T> {
     // Convert endpoint to static JSON file path
@@ -556,9 +590,82 @@ class RecipeAPI {
       body: JSON.stringify(checklistData),
     });
   }
+
+  // Key Value Store methods
+  async getTopics(): Promise<string[]> {
+    return this.request<string[]>('/kv');
+  }
+
+  async getKeysForTopic(topic: string): Promise<string[]> {
+    return this.request<string[]>(`/kv/${encodeURIComponent(topic)}`);
+  }
+
+  async getKeyValue(topic: string, key: string): Promise<KeyValueEntry> {
+    return this.request<KeyValueEntry>(`/kv/${encodeURIComponent(topic)}/${encodeURIComponent(key)}`);
+  }
+
+  async setKeyValue(topic: string, key: string, value: any): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Setting key-value pairs is not supported in static mode');
+    }
+    return this.request<{ message: string }>(`/kv/${encodeURIComponent(topic)}/${encodeURIComponent(key)}`, {
+      method: 'POST',
+      body: JSON.stringify({ value }),
+    });
+  }
+
+  // Meal Plan specific methods
+  async saveMealPlan(name: string, mealPlan: MealPlan): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Saving meal plans is not supported in static mode');
+    }
+    // Convert Date objects to ISO strings for storage
+    const mealPlanForStorage = {
+      ...mealPlan,
+      weekStart: mealPlan.weekStart.toISOString(),
+    };
+    return this.setKeyValue('MEALPLAN', name, mealPlanForStorage);
+  }
+
+  async loadMealPlan(name: string): Promise<MealPlan> {
+    const response = await this.getKeyValue('MEALPLAN', name);
+    const mealPlanData = response.value;
+    // Convert ISO string back to Date object
+    return {
+      ...mealPlanData,
+      weekStart: new Date(mealPlanData.weekStart),
+    };
+  }
+
+  async getMealPlanNames(): Promise<string[]> {
+    try {
+      return await this.getKeysForTopic('MEALPLAN');
+    } catch (error) {
+      // If topic doesn't exist yet, return empty array
+      return [];
+    }
+  }
 }
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
 export { imagePath };
-export type { RecipeData, Ingredient, RecipeIngredient, Category, Instruction, UnitConversion, UnitConversionResult, ConversionMatrix, UnitsUsedInRecipes, IngredientUnitsUsed, Task, SubTask, Event };
+export type { 
+  RecipeData, 
+  Ingredient, 
+  RecipeIngredient, 
+  Category, 
+  Instruction, 
+  UnitConversion, 
+  UnitConversionResult, 
+  ConversionMatrix, 
+  UnitsUsedInRecipes, 
+  IngredientUnitsUsed, 
+  Task, 
+  SubTask, 
+  Event,
+  WeeklyRecipe,
+  PlannedMeal,
+  MealPlan,
+  KeyValueEntry
+};

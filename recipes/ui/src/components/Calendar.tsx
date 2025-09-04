@@ -368,8 +368,10 @@ const useCalendarSizing = () => {
             const containerHeight = rect.height;
             const containerWidth = rect.width;
 
+
+            // Header 80x50
             // Account for day header (50px) and padding
-            const headerHeight = 50;
+            const headerHeight = 50 + 10;
             const padding = 32; // Account for container padding
             const availableHeight = containerHeight - headerHeight - padding;
 
@@ -380,10 +382,14 @@ const useCalendarSizing = () => {
             const calculatedHeight = availableHeight / hoursCount;
 
             // Set minimum and maximum constraints
-            const minSlotHeight = 25;
-            const maxSlotHeight = 80;
+            const minSlotHeight = 5; //25;
+            const maxSlotHeight = 8000; // 80;
 
             const optimalHeight = Math.max(minSlotHeight, Math.min(maxSlotHeight, calculatedHeight));
+
+
+            console.log("containerHeight", containerHeight);
+            console.log("containerWidth", containerWidth);
 
             setTimeSlotHeight(optimalHeight);
             setTotalCalendarHeight(optimalHeight * hoursCount);
@@ -930,14 +936,10 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
     }, [currentWeek]);
 
     return (
-        <div
+        <Box
             className="cls-calendar"
-            ref={containerRef}
-            style={{
-
-                height: "calc(100vh - 6rem)",
-                marginTop: "-1rem"
-            }}
+            h="100%"
+            w="100%"
         >
             {/* Navigation Header */}
             <Box mb={4} p={2} bg="white" borderRadius="md" boxShadow="sm">
@@ -970,14 +972,15 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                 </HStack>
             </Box>
 
+            <HStack ref={containerRef} h="100%" w="100%" maxH="100%" maxW="100%">
             <Grid
                 templateColumns="80px repeat(7, 1fr)"
                 templateRows="50px 1fr"
-                gap={1}
+                gap={0.5}
                 borderColor="gray.300"
                 borderRadius="md"
                 bg="white"
-                minH="600px"
+                // minH="600px"
                 className="class-grid"
                 flex="1"
                 width="100%"
@@ -1106,7 +1109,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     {/* Day columns inside the content area */}
                     <Grid
                         templateColumns="repeat(7, 1fr)"
-                        gap={1}
+                        gap={0.5}
                         flex="1"
                         minH="0"
                     >
@@ -1189,7 +1192,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                 onEventUpdated={handleEventUpdated}
                 onEventDeleted={handleEventDeleted}
             />
-        </div>
+            </HStack>
+        </Box>
     );
 };
 
