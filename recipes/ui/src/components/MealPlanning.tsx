@@ -33,7 +33,7 @@ const CloseIcon = () => (
 
 const SettingsIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.65-.07-.97l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65c-.04-.24-.24-.42-.49-.42h-4c-.25 0-.45.18-.49.42l-.38 2.65c-.61.25-1.17.58-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.63c-.04.32-.07.65-.07.97s.03.65.07.97l-2.11 1.63c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.63z"/>
+        <path d="M12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.65-.07-.97l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65c-.04-.24-.24-.42-.49-.42h-4c-.25 0-.45.18-.49.42l-.38 2.65c-.61.25-1.17.58-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.63c-.04.32-.07.65-.07.97s.03.65.07.97l-2.11 1.63c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.63z" />
     </svg>
 );
 
@@ -138,19 +138,20 @@ const MealPlanning: React.FC = () => {
 
     // Generate grocery list from weekly recipes
     const generateGroceryList = () => {
-        const groceryMap = new Map<string, { quantity: number; unit: string; recipes: string[]; quantities: { quantity: number; unit: string }[] }>();
+        const groceryMap = new Map<string, { quantity: number; unit: string; recipes: string[]; quantities: { quantity: number; unit: string }[]; displayName: string }>();
 
         mealPlan.weeklyRecipes.forEach(weeklyRecipe => {
             const recipe = recipes.find(r => r.id === parseInt(weeklyRecipe.recipeId));
             if (!recipe || !recipe.servings || !recipe.ingredients) return;
 
             // Use the total portions from the weekly recipe
-            const scaleFactor = weeklyRecipe.totalPortions / recipe.servings;
+            const scaleFactor = weeklyRecipe.portionsUsed / recipe.servings;
 
             recipe.ingredients.forEach(ingredient => {
                 if (!ingredient.name || !ingredient.unit || ingredient.quantity === undefined) return;
 
-                const key = `${ingredient.name}`;
+                // Use lowercase name as key for case-insensitive grouping
+                const key = ingredient.name.toLowerCase();
                 const scaledQuantity = ingredient.quantity * scaleFactor;
 
                 if (groceryMap.has(key)) {
@@ -165,16 +166,16 @@ const MealPlanning: React.FC = () => {
                         quantity: scaledQuantity,
                         unit: ingredient.unit,
                         recipes: [weeklyRecipe.recipeName],
-                        quantities: [{quantity: scaledQuantity, unit: ingredient.unit}],
+                        quantities: [{ quantity: scaledQuantity, unit: ingredient.unit }],
+                        displayName: ingredient.name, // Store original case for display
                     });
                 }
             });
         });
 
         return Array.from(groceryMap.entries()).map(([key, data]) => {
-            const [name] = key.split('-');
             return {
-                name: name || 'Unknown',
+                name: data.displayName,
                 quantity: data.quantity,
                 unit: data.unit,
                 recipes: data.recipes,
@@ -182,6 +183,30 @@ const MealPlanning: React.FC = () => {
         });
     };
 
+    // Group recipes by name (case-insensitive) for display
+    const getGroupedRecipes = () => {
+        const grouped = new Map<string, WeeklyRecipe>();
+
+        mealPlan.weeklyRecipes.forEach(recipe => {
+            const key = recipe.recipeName.toLowerCase();
+            if (grouped.has(key)) {
+                const existing = grouped.get(key)!;
+                // Combine the recipes
+                grouped.set(key, {
+                    ...existing,
+                    totalPortions: existing.totalPortions + recipe.totalPortions,
+                    portionsUsed: existing.portionsUsed + recipe.portionsUsed,
+                    portionsRemaining: existing.portionsRemaining + recipe.portionsRemaining,
+                });
+            } else {
+                grouped.set(key, { ...recipe });
+            }
+        });
+
+        return Array.from(grouped.values());
+    };
+
+    const groupedRecipes = getGroupedRecipes();
     const groceryList = generateGroceryList();
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -235,58 +260,152 @@ const MealPlanning: React.FC = () => {
             const recipe = recipes.find(r => r.id === parseInt(selectedRecipe));
             if (!recipe || !recipe.servings) return;
 
-            const newWeeklyRecipe: WeeklyRecipe = {
-                id: Date.now().toString(),
-                recipeId: selectedRecipe,
-                recipeName: recipe.title,
-                totalPortions: recipe.servings,
-                portionsUsed: portionsToUse,
-                portionsRemaining: recipe.servings - portionsToUse,
-            };
+            // Check if we already have this recipe (by name, case-insensitive)
+            const existingWeeklyRecipe = mealPlan.weeklyRecipes.find(wr =>
+                wr.recipeName.toLowerCase() === recipe.title.toLowerCase()
+            );
 
-            setMealPlan(prev => ({
-                ...prev,
-                weeklyRecipes: [...prev.weeklyRecipes, newWeeklyRecipe],
-                plannedMeals: [...prev.plannedMeals, {
+            if (existingWeeklyRecipe) {
+                // Recipe already exists, check if we need more portions
+                if (portionsToUse > existingWeeklyRecipe.portionsRemaining) {
+                    // Need to scale up the recipe
+                    const additionalPortionsNeeded = portionsToUse - existingWeeklyRecipe.portionsRemaining;
+                    const additionalBatches = Math.ceil(additionalPortionsNeeded / recipe.servings);
+                    const newTotalPortions = existingWeeklyRecipe.totalPortions + (additionalBatches * recipe.servings);
+
+                    const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
+                        wr.recipeName.toLowerCase() === recipe.title.toLowerCase()
+                            ? {
+                                ...wr,
+                                totalPortions: newTotalPortions,
+                                portionsUsed: wr.portionsUsed + portionsToUse,
+                                portionsRemaining: newTotalPortions - (wr.portionsUsed + portionsToUse)
+                            }
+                            : wr
+                    );
+
+                    setMealPlan(prev => ({
+                        ...prev,
+                        weeklyRecipes: updatedWeeklyRecipes,
+                        plannedMeals: [...prev.plannedMeals, {
+                            id: Date.now().toString(),
+                            recipeId: existingWeeklyRecipe.recipeId,
+                            recipeName: recipe.title,
+                            portions: portionsToUse,
+                            day: selectedDay,
+                            mealType: selectedMealType,
+                        }],
+                    }));
+                } else {
+                    // Enough portions available, just use them
+                    const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
+                        wr.recipeName.toLowerCase() === recipe.title.toLowerCase()
+                            ? {
+                                ...wr,
+                                portionsUsed: wr.portionsUsed + portionsToUse,
+                                portionsRemaining: wr.portionsRemaining - portionsToUse
+                            }
+                            : wr
+                    );
+
+                    setMealPlan(prev => ({
+                        ...prev,
+                        weeklyRecipes: updatedWeeklyRecipes,
+                        plannedMeals: [...prev.plannedMeals, {
+                            id: Date.now().toString(),
+                            recipeId: existingWeeklyRecipe.recipeId,
+                            recipeName: recipe.title,
+                            portions: portionsToUse,
+                            day: selectedDay,
+                            mealType: selectedMealType,
+                        }],
+                    }));
+                }
+            } else {
+                // New recipe, create it
+                const newWeeklyRecipe: WeeklyRecipe = {
                     id: Date.now().toString(),
                     recipeId: selectedRecipe,
                     recipeName: recipe.title,
-                    portions: portionsToUse,
-                    day: selectedDay,
-                    mealType: selectedMealType,
-                }],
-            }));
+                    totalPortions: recipe.servings,
+                    portionsUsed: portionsToUse,
+                    portionsRemaining: recipe.servings - portionsToUse,
+                };
+
+                setMealPlan(prev => ({
+                    ...prev,
+                    weeklyRecipes: [...prev.weeklyRecipes, newWeeklyRecipe],
+                    plannedMeals: [...prev.plannedMeals, {
+                        id: Date.now().toString(),
+                        recipeId: selectedRecipe,
+                        recipeName: recipe.title,
+                        portions: portionsToUse,
+                        day: selectedDay,
+                        mealType: selectedMealType,
+                    }],
+                }));
+            }
         } else {
             // Using existing recipe from weekly plan
             const weeklyRecipe = mealPlan.weeklyRecipes.find(wr => wr.recipeId === selectedRecipe);
             if (!weeklyRecipe) return;
 
             if (portionsToUse > weeklyRecipe.portionsRemaining) {
-                showToast(`Only ${weeklyRecipe.portionsRemaining} portions remaining for ${weeklyRecipe.recipeName}`, 'error');
-                return;
+                // Need to scale up the recipe
+                const recipe = recipes.find(r => r.id === parseInt(weeklyRecipe.recipeId));
+                if (!recipe || !recipe.servings) return;
+
+                const additionalPortionsNeeded = portionsToUse - weeklyRecipe.portionsRemaining;
+                const additionalBatches = Math.ceil(additionalPortionsNeeded / recipe.servings);
+                const newTotalPortions = weeklyRecipe.totalPortions + (additionalBatches * recipe.servings);
+
+                const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
+                    wr.recipeId === selectedRecipe
+                        ? {
+                            ...wr,
+                            totalPortions: newTotalPortions,
+                            portionsUsed: wr.portionsUsed + portionsToUse,
+                            portionsRemaining: newTotalPortions - (wr.portionsUsed + portionsToUse)
+                        }
+                        : wr
+                );
+
+                setMealPlan(prev => ({
+                    ...prev,
+                    weeklyRecipes: updatedWeeklyRecipes,
+                    plannedMeals: [...prev.plannedMeals, {
+                        id: Date.now().toString(),
+                        recipeId: selectedRecipe,
+                        recipeName: weeklyRecipe.recipeName,
+                        portions: portionsToUse,
+                        day: selectedDay,
+                        mealType: selectedMealType,
+                    }],
+                }));
+            } else {
+                // Enough portions available
+                const newMeal: PlannedMeal = {
+                    id: Date.now().toString(),
+                    recipeId: selectedRecipe,
+                    recipeName: weeklyRecipe.recipeName,
+                    portions: portionsToUse,
+                    day: selectedDay,
+                    mealType: selectedMealType,
+                };
+
+                // Update portions used
+                const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
+                    wr.recipeId === selectedRecipe
+                        ? { ...wr, portionsUsed: wr.portionsUsed + portionsToUse, portionsRemaining: wr.portionsRemaining - portionsToUse }
+                        : wr
+                );
+
+                setMealPlan(prev => ({
+                    ...prev,
+                    weeklyRecipes: updatedWeeklyRecipes,
+                    plannedMeals: [...prev.plannedMeals, newMeal],
+                }));
             }
-
-            const newMeal: PlannedMeal = {
-                id: Date.now().toString(),
-                recipeId: selectedRecipe,
-                recipeName: weeklyRecipe.recipeName,
-                portions: portionsToUse,
-                day: selectedDay,
-                mealType: selectedMealType,
-            };
-
-            // Update portions used
-            const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
-                wr.recipeId === selectedRecipe
-                    ? { ...wr, portionsUsed: wr.portionsUsed + portionsToUse, portionsRemaining: wr.portionsRemaining - portionsToUse }
-                    : wr
-            );
-
-            setMealPlan(prev => ({
-                ...prev,
-                weeklyRecipes: updatedWeeklyRecipes,
-                plannedMeals: [...prev.plannedMeals, newMeal],
-            }));
         }
 
         // Reset form and close modal
@@ -304,11 +423,20 @@ const MealPlanning: React.FC = () => {
 
         // Only update portions if it's not a skipped meal
         if (meal.recipeId !== 'skip') {
-            const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
-                wr.recipeId === meal.recipeId
-                    ? { ...wr, portionsUsed: wr.portionsUsed - meal.portions, portionsRemaining: wr.portionsRemaining + meal.portions }
-                    : wr
-            );
+            // Find any weekly recipe with the same name (case-insensitive) that has enough portions to deduct
+            let portionsToDeduct = meal.portions;
+            const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr => {
+                if (wr.recipeName.toLowerCase() === meal.recipeName.toLowerCase() && portionsToDeduct > 0) {
+                    const deductFromThis = Math.min(portionsToDeduct, wr.portionsUsed);
+                    portionsToDeduct -= deductFromThis;
+                    return {
+                        ...wr,
+                        portionsUsed: wr.portionsUsed - deductFromThis,
+                        portionsRemaining: wr.portionsRemaining + deductFromThis
+                    };
+                }
+                return wr;
+            });
 
             setMealPlan(prev => ({
                 ...prev,
@@ -552,45 +680,64 @@ const MealPlanning: React.FC = () => {
                     <Box width="33%" height="100%" padding="5px" borderRadius="md" border="1px solid" borderColor="gray.200">
                         <Heading size="md" mb={4}>Recipes</Heading>
                         <Box as="ul" listStyleType="none" p={0} m={0}>
-                            {mealPlan.weeklyRecipes.map(recipe => (
-                                <Box
-                                    as="li"
-                                    key={recipe.id}
-                                    paddingLeft={2}
-                                    border="1px"
-                                    borderColor="gray.200"
-                                    borderRadius="md"
-                                    bg="white"
-                                    mb={2}
-                                    _hover={{ bg: 'gray.50' }}
-                                >
-                                    <Flex justify="space-between" align="center">
-                                        <Text fontSize="md">{recipe.recipeName}</Text>
-                                        <HStack gap={4} align="center">
+                            {groupedRecipes.map(recipe => {
+                                // Calculate the multiplier (how many times the original recipe is repeated)
+                                const originalRecipe = recipes.find(r => r.title.toLowerCase() === recipe.recipeName.toLowerCase());
+                                const multiplier = originalRecipe && originalRecipe.servings ? recipe.totalPortions / originalRecipe.servings : 1;
+
+                                return (
+                                    <Box
+                                        as="li"
+                                        key={recipe.recipeName.toLowerCase()}
+                                        paddingLeft={2}
+                                        border="1px"
+                                        borderColor="gray.200"
+                                        borderRadius="md"
+                                        bg="white"
+                                        mb={2}
+                                        _hover={{ bg: 'gray.50' }}
+                                    >
+                                        <Flex justify="space-between" align="center">
                                             <HStack gap={2}>
-                                                <Badge size="sm" colorScheme="blue">{recipe.portionsUsed}/{recipe.totalPortions}</Badge>
+                                                <Text fontSize="md" fontWeight={"semibold"}>
+                                                    {`${multiplier} x`}
+                                                </Text>
+                                                <Text fontSize="md">{recipe.recipeName}</Text>
                                             </HStack>
-                                            <IconButton
-                                                size="sm"
-                                                aria-label="Remove recipe from week"
-                                                colorScheme="red"
-                                                variant="ghost"
-                                                onClick={() => {
-                                                    // Remove all planned meals that use this recipe
-                                                    const updatedPlannedMeals = mealPlan.plannedMeals.filter(meal => meal.recipeId !== recipe.recipeId);
-                                                    setMealPlan(prev => ({
-                                                        ...prev,
-                                                        weeklyRecipes: prev.weeklyRecipes.filter(r => r.recipeId !== recipe.recipeId),
-                                                        plannedMeals: updatedPlannedMeals,
-                                                    }));
-                                                }}
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </HStack>
-                                    </Flex>
-                                </Box>
-                            ))}
+                                            <HStack gap={4} align="center">
+
+                                                <HStack gap={2}>
+                                                    <Badge size="sm" colorScheme="blue">{recipe.portionsUsed}/{recipe.totalPortions}</Badge>
+                                                </HStack>
+
+                                                <IconButton
+                                                    size="sm"
+                                                    aria-label="Remove recipe from week"
+                                                    colorScheme="red"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                        // Remove all planned meals and weekly recipes that use this recipe name (case-insensitive)
+                                                        const recipeNameLower = recipe.recipeName.toLowerCase();
+                                                        const updatedPlannedMeals = mealPlan.plannedMeals.filter(meal =>
+                                                            meal.recipeName.toLowerCase() !== recipeNameLower
+                                                        );
+                                                        const updatedWeeklyRecipes = mealPlan.weeklyRecipes.filter(r =>
+                                                            r.recipeName.toLowerCase() !== recipeNameLower
+                                                        );
+                                                        setMealPlan(prev => ({
+                                                            ...prev,
+                                                            weeklyRecipes: updatedWeeklyRecipes,
+                                                            plannedMeals: updatedPlannedMeals,
+                                                        }));
+                                                    }}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </HStack>
+                                        </Flex>
+                                    </Box>
+                                );
+                            })}
                         </Box>
                     </Box>
                     <Box width="33%" height="100%" padding="5px" borderRadius="md" border="1px solid" borderColor="gray.200">
@@ -798,12 +945,12 @@ const MealPlanning: React.FC = () => {
                                         <Box as="li">
                                             <Box>
                                                 <Text fontSize="sm" color="gray.600" mb={2}>Use leftovers</Text>
-                                                {mealPlan.weeklyRecipes.filter(recipe => recipe.portionsRemaining > 0).length > 0 ? (
+                                                {groupedRecipes.filter(recipe => recipe.portionsRemaining > 0).length > 0 ? (
                                                     <Box as="ul" listStyleType="none" p={0} m={0}>
-                                                        {mealPlan.weeklyRecipes
+                                                        {groupedRecipes
                                                             .filter(recipe => recipe.portionsRemaining > 0)
                                                             .map(recipe => (
-                                                                <Box as="li" key={recipe.id} mb={2}>
+                                                                <Box as="li" key={recipe.recipeName.toLowerCase()} mb={2}>
                                                                     <HStack gap={2}>
                                                                         <Text fontSize="sm" flex={1}>
                                                                             {recipe.recipeName} ({recipe.portionsRemaining} portions left)
@@ -836,12 +983,20 @@ const MealPlanning: React.FC = () => {
                                                                                     mealType: selectedMealType,
                                                                                 };
 
-                                                                                // Update portions used
-                                                                                const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr =>
-                                                                                    wr.recipeId === recipe.recipeId
-                                                                                        ? { ...wr, portionsUsed: wr.portionsUsed + portionsToUseForLeftover, portionsRemaining: wr.portionsRemaining - portionsToUseForLeftover }
-                                                                                        : wr
-                                                                                );
+                                                                                // Update portions used - distribute across all weekly recipes with this name
+                                                                                let portionsToDeduct = portionsToUseForLeftover;
+                                                                                const updatedWeeklyRecipes = mealPlan.weeklyRecipes.map(wr => {
+                                                                                    if (wr.recipeName.toLowerCase() === recipe.recipeName.toLowerCase() && portionsToDeduct > 0) {
+                                                                                        const deductFromThis = Math.min(portionsToDeduct, wr.portionsRemaining);
+                                                                                        portionsToDeduct -= deductFromThis;
+                                                                                        return {
+                                                                                            ...wr,
+                                                                                            portionsUsed: wr.portionsUsed + deductFromThis,
+                                                                                            portionsRemaining: wr.portionsRemaining - deductFromThis
+                                                                                        };
+                                                                                    }
+                                                                                    return wr;
+                                                                                });
 
                                                                                 setMealPlan(prev => ({
                                                                                     ...prev,
@@ -927,8 +1082,8 @@ const MealPlanning: React.FC = () => {
                                 </Box>
 
                                 <HStack justify="flex-end" pt={2}>
-                                    <Button 
-                                        variant="ghost" 
+                                    <Button
+                                        variant="ghost"
                                         onClick={() => {
                                             setShowSaveModal(false);
                                             setMealPlanName('');
@@ -936,8 +1091,8 @@ const MealPlanning: React.FC = () => {
                                     >
                                         Cancel
                                     </Button>
-                                    <Button 
-                                        colorScheme="blue" 
+                                    <Button
+                                        colorScheme="blue"
                                         onClick={saveMealPlan}
                                         disabled={!mealPlanName.trim()}
                                     >
@@ -1017,8 +1172,8 @@ const MealPlanning: React.FC = () => {
                                 </Box>
 
                                 <HStack justify="flex-end" pt={2}>
-                                    <Button 
-                                        variant="ghost" 
+                                    <Button
+                                        variant="ghost"
                                         onClick={() => {
                                             setShowLoadModal(false);
                                             setSelectedMealPlanToLoad('');
@@ -1026,8 +1181,8 @@ const MealPlanning: React.FC = () => {
                                     >
                                         Cancel
                                     </Button>
-                                    <Button 
-                                        colorScheme="green" 
+                                    <Button
+                                        colorScheme="green"
                                         onClick={loadMealPlan}
                                         disabled={!selectedMealPlanToLoad || availableMealPlans.length === 0}
                                     >
@@ -1040,8 +1195,8 @@ const MealPlanning: React.FC = () => {
                 )}
 
                 {/* Telegram Settings Modal */}
-                <TelegramSettings 
-                    isOpen={showTelegramSettings} 
+                <TelegramSettings
+                    isOpen={showTelegramSettings}
                     onClose={() => setShowTelegramSettings(false)}
                 />
 
