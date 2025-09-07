@@ -207,6 +207,10 @@ class RecipeIngredient(Base):
     quantity = Column(Float, nullable=False)
     unit = Column(String(50), nullable=False)
 
+    # Product usually used for this ingredient
+    # used to fetch the price
+    product = Column(String(50))
+
     # Relationships
     recipe = relationship('Recipe', back_populates='recipe_ingredients')
     ingredient = relationship('Ingredient', back_populates='recipe_ingredients')
@@ -453,11 +457,14 @@ class Product(Base):
 
     _id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)               # Name of the product
+    brand = Column(String(50))
     quantity = Column(Float)                                # Quantity in the package
     unit = Column(String(50))                               # unit of quantity
-    price = Column(Float)                                   # price
+    price = Column(Float)                                   # unitary price
+    count = Column(Integer)                                 # Number of item purchase
     organic = Column(Boolean)                               # Organic or not
     created_at = Column(DateTime, default=datetime.utcnow)  # Date of purchase
+    ingredient = Column(String(50))                         # Ingredient this is usually used for
 
     def to_json(self):
         return {
@@ -495,6 +502,17 @@ class IngredientProduct(Base):
     product_id = Column(Integer, ForeignKey('products._id'), nullable=False)
     ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
 
+
+class Unit(Base):
+    __tablename__ = 'units'
+
+    name = Column(String(50))
+    volume = Column(Boolean)
+    mass = Column(Boolean)
+    metric = Column(Bolean)
+
+
+# Unit Profile ?
 
 # Table for unit conversions
 class UnitConversion(Base):

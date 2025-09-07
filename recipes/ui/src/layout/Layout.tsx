@@ -23,6 +23,9 @@ interface LayoutProps {
 const sidebarItems = [
   { name: 'Home', href: '/' },
   { name: 'Recipes', href: '/recipes' },
+  { name: 'Receipts', href: '/receipts' },
+  { name: 'Pantry', href: '/pantry' },
+  { name: 'Budget', href: '/budget' },
   { name: 'Planning', href: '/planning' },
 
   // Planning is about selecting recipes for a meal plan
@@ -50,7 +53,7 @@ const Layout: FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="layout" style={{height: "100%", width: "100%"}}>
+    <div className="layout" style={{ height: "100%", width: "100%" }}>
       {/* Mobile Menu Button */}
       <Box
         position="fixed"
@@ -93,8 +96,8 @@ const Layout: FC<LayoutProps> = ({ children }) => {
         </nav>
       </div>
 
-      <div className="main-content" style={{height: "100%", width: "100%"}}>
-        <div className="content-wrapper" style={{height: "100%", width: "100%"}}>
+      <div className="main-content" style={{ height: "100%", width: "100%" }}>
+        <div className="content-wrapper" style={{ height: "100%", width: "100%" }}>
           {children}
         </div>
       </div>

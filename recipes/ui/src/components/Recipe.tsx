@@ -12,8 +12,12 @@ import {
   Image,
   Spinner,
   Link,
+  Input,
+  Select,
+  IconButton,
+  Heading,
 } from '@chakra-ui/react';
-import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath } from '../services/api';
+import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath, UnitConversion } from '../services/api';
 import ImageUpload from './ImageUpload';
 
 // Utility functions for ingredient references
@@ -375,6 +379,12 @@ const ResetIcon = () => (
   </svg>
 );
 
+const ConversionIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
+  </svg>
+);
+
 
 
 // Move ContentEditable outside to prevent recreation on every render
@@ -572,6 +582,13 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   const isStatic = recipeAPI.isStaticMode();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<{
+    id?: number;
+    name: string;
+    quantity?: number;
+    unit?: string;
+  } | null>(null);
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -603,6 +620,21 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   const handleDragEnd = () => {
     setDraggedIndex(null);
     setDragOverIndex(null);
+  };
+
+  const openConversionModal = (ingredient: RecipeIngredient) => {
+    setSelectedIngredient({
+      id: ingredient.ingredient_id,
+      name: ingredient.name,
+      quantity: ingredient.quantity,
+      unit: ingredient.unit
+    });
+    setShowConversionModal(true);
+  };
+
+  const closeConversionModal = () => {
+    setShowConversionModal(false);
+    setSelectedIngredient(null);
   };
 
   // Load available units for each ingredient when not in edit mode
@@ -862,20 +894,240 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
                   )}
                 </Box>
               </Box>
-              {isEditable && !isStatic && (
-                <Button
-                  size="sm"
-                  colorScheme="red"
-                  variant="ghost"
-                  onClick={() => onRemoveIngredient(index)}
-                >
-                  <DeleteIcon />
-                </Button>
-              )}
+              <HStack gap={1}>
+                {!isStatic && (
+                  <IconButton
+                    size="sm"
+                    colorScheme="blue"
+                    variant="ghost"
+                    aria-label="Add unit conversion"
+                    title="Add unit conversion"
+                    onClick={() => openConversionModal(ingredient)}
+                  >
+                    <ConversionIcon />
+                  </IconButton>
+                )}
+                {isEditable && !isStatic && (
+                  <Button
+                    size="sm"
+                    colorScheme="red"
+                    variant="ghost"
+                    onClick={() => onRemoveIngredient(index)}
+                  >
+                    <DeleteIcon />
+                  </Button>
+                )}
+              </HStack>
             </HStack>
           );
         })}
       </VStack>
+
+      {/* Unit Conversion Modal */}
+      <UnitConversionModal
+        isOpen={showConversionModal}
+        onClose={closeConversionModal}
+        ingredientId={selectedIngredient?.id}
+        ingredientName={selectedIngredient?.name}
+        initialQuantity={selectedIngredient?.quantity}
+        initialUnit={selectedIngredient?.unit}
+      />
+    </Box>
+  );
+};
+
+// Unit Conversion Modal Component
+interface UnitConversionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  ingredientId?: number;
+  ingredientName?: string;
+  initialQuantity?: number;
+  initialUnit?: string;
+}
+
+const UnitConversionModal: FC<UnitConversionModalProps> = ({
+  isOpen,
+  onClose,
+  ingredientId,
+  ingredientName,
+  initialQuantity,
+  initialUnit
+}) => {
+  const [fromQty, setFromQty] = useState('1');
+  const [fromUnit, setFromUnit] = useState('');
+  const [toQty, setToQty] = useState('');
+  const [toUnit, setToUnit] = useState('');
+  const [isIngredientSpecific, setIsIngredientSpecific] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Set initial values when modal opens
+  useEffect(() => {
+    if (isOpen && initialQuantity && initialUnit) {
+      setFromQty(initialQuantity.toString());
+      setFromUnit(initialUnit);
+    }
+  }, [isOpen, initialQuantity, initialUnit]);
+
+  const handleSubmit = async () => {
+    if (!fromUnit || !toUnit || !fromQty || !toQty) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const fromQtyNum = parseFloat(fromQty);
+    const toQtyNum = parseFloat(toQty);
+
+    if (fromQtyNum <= 0 || toQtyNum <= 0) {
+      setError('Quantities must be greater than 0');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Calculate conversion factor: how many toUnits in 1 fromUnit
+      const conversionFactor = toQtyNum / fromQtyNum;
+
+      const conversion: Omit<UnitConversion, 'id'> = {
+        from_unit: fromUnit,
+        to_unit: toUnit,
+        conversion_factor: conversionFactor,
+        category: 'user_defined',
+        ingredient_id: isIngredientSpecific ? ingredientId : undefined,
+      };
+
+      await recipeAPI.createUnitConversion(conversion);
+
+      // Reset form
+      setFromQty('1');
+      setFromUnit('');
+      setToQty('');
+      setToUnit('');
+      setIsIngredientSpecific(false);
+
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create unit conversion');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFromQty('1');
+    setFromUnit('');
+    setToQty('');
+    setToUnit('');
+    setIsIngredientSpecific(false);
+    setError('');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Box
+      position="fixed"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      bg="blackAlpha.600"
+      zIndex={1000}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      p={4}
+    >
+      <Box
+        bg="white"
+        borderRadius="md"
+        p={6}
+        maxW="500px"
+        width="100%"
+        maxH="90vh"
+        overflowY="auto"
+      >
+        <VStack gap={4} align="stretch">
+          <Flex justify="space-between" align="center">
+            <Heading size="md">
+              Add Unit Conversion
+            </Heading>
+            <IconButton
+              aria-label="Close modal"
+              onClick={handleClose}
+              variant="ghost"
+              size="sm"
+            >
+              <CloseIcon />
+            </IconButton>
+          </Flex>
+
+          {error && (
+            <Box p={3} bg="red.50" borderRadius="md" borderLeft="4px solid" borderColor="red.400">
+              <Text color="red.700" fontSize="sm">{error}</Text>
+            </Box>
+          )}
+
+          {/* Conversion Formula Display */}
+          <Box p={4} bg="gray.50" borderRadius="md">
+            <HStack align="center" justify="center" gap={3}>
+              <HStack gap={1}>
+                <Text>{fromQty}</Text>
+                <Text>{fromUnit}</Text>
+              </HStack>
+              <Text fontSize="lg" fontWeight="bold" color="blue.600">=&gt;</Text>
+
+              <HStack gap={1}>
+                <Input
+                  type="number"
+                  step="any"
+                  value={toQty}
+                  onChange={(e) => setToQty(e.target.value)}
+                  placeholder="236.588"
+                  width="80px"
+                  size="sm"
+                />
+                <Input
+                  value={toUnit}
+                  onChange={(e) => setToUnit(e.target.value)}
+                  placeholder="ml"
+                  width="80px"
+                  size="sm"
+                />
+              </HStack>
+            </HStack>
+          </Box>
+
+          {/* Ingredient Specific Checkbox */}
+          <HStack align="center" gap={2}>
+            <input
+              type="checkbox"
+              checked={isIngredientSpecific}
+              onChange={(e) => setIsIngredientSpecific(e.target.checked)}
+              style={{ marginRight: '8px' }}
+            />
+            <Text fontSize="sm" fontWeight={"semibold"}>{ingredientName}</Text>
+            <Text fontSize="sm">specific</Text>
+          </HStack>
+
+          <HStack gap={3} justify="flex-end">
+            <Button variant="ghost" onClick={handleClose} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={handleSubmit}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Creating...' : 'Add Conversion'}
+            </Button>
+          </HStack>
+        </VStack>
+      </Box>
     </Box>
   );
 };

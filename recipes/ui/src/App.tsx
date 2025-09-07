@@ -16,6 +16,9 @@ import UnitManager from './components/UnitManager';
 import Calendar from './components/Calendar';
 import Tasks from './components/Tasks';
 import MealPlanning from './components/MealPlanning';
+import GroceryReceipts from './components/GroceryReceipts';
+import Pantry from './components/Pantry';
+import Budget from './components/Budget';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -31,6 +34,9 @@ function App() {
             <Route path="/recipes" element={<RecipeList />} />
             <Route path="/recipes/:identifier" element={<RecipeDetail />} />
             <Route path="/create" element={<CreateRecipe />} />
+            <Route path="/receipts" element={<GroceryReceipts />} />
+            <Route path="/pantry" element={<Pantry />} />
+            <Route path="/budget" element={<Budget />} />
             <Route path="/planning" element={<MealPlanning />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/tasks" element={<Tasks />} />
