@@ -503,13 +503,13 @@ class IngredientProduct(Base):
     ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
 
 
-class Unit(Base):
-    __tablename__ = 'units'
+# class Unit(Base):
+#     __tablename__ = 'units'
 
-    name = Column(String(50))
-    volume = Column(Boolean)
-    mass = Column(Boolean)
-    metric = Column(Bolean)
+#     name = Column(String(50))
+#     volume = Column(Boolean)
+#     mass = Column(Boolean)
+#     metric = Column(Boolean)
 
 
 # Unit Profile ?
@@ -523,6 +523,8 @@ class UnitConversion(Base):
     to_unit = Column(String(50), nullable=False)
     conversion_factor = Column(Float, nullable=False)
     category = Column(String(50), nullable=False)
+
+    is_volume = Column(Boolean)
 
     ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=True)
 
@@ -545,38 +547,7 @@ class UnitConversion(Base):
         return f'<UnitConversion {self.from_unit}->{self.to_unit} {self.conversion_factor}>'
 
 
-def common_conversions():
-    return {
-        # Density
-        # Mass/Volume
 
-        # Mass
-        # 1g/this = that
-        'g': {
-            'g': 1,
-            'kg': 1000,
-            'mg': 0.001,
-            'lb': 453.592,
-            'oz': 28.3495
-        },
-
-        # Volume
-        'ml': {
-            'ml': 1,
-            'cl': 10,
-            'l': 1000,
-            "cm3": 1,
-            'fl oz': 29.5735,
-            'tbsp': 14.7868,
-            'tsp': 4.92892,
-            # 'wineglass': 236.588 / 4,
-            # 'teacup': 236.588 / 2,
-            'cup': 236.588,
-            "pint": 473.176,
-            "quart": 946.353,
-            "gallon": 3785.
-        },
-    }
 
 
 def insert_common_ingredients(session):
@@ -726,6 +697,8 @@ def insert_common_ingredients(session):
 
 
 def insert_common_conversions(session):
+    from .route_units import common_conversions
+
     session.query(UnitConversion).delete()
     session.commit()
 

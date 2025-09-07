@@ -1001,9 +1001,7 @@ const UnitConversionModal: FC<UnitConversionModalProps> = ({
 
       await recipeAPI.createUnitConversion(conversion);
 
-      // Reset form
-      setFromQty('1');
-      setFromUnit('');
+      // Reset form (only conversion fields)
       setToQty('');
       setToUnit('');
       setIsIngredientSpecific(false);
@@ -1017,8 +1015,7 @@ const UnitConversionModal: FC<UnitConversionModalProps> = ({
   };
 
   const handleClose = () => {
-    setFromQty('1');
-    setFromUnit('');
+    // Only reset conversion fields, keep from fields as they're pre-populated
     setToQty('');
     setToUnit('');
     setIsIngredientSpecific(false);
