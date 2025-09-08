@@ -126,6 +126,38 @@ async function convertFromStandard(qty: number, standardUnit: string, toUnit: st
     return qty * conversionFactor.conversion_factor;
 }
 
+// Get available units based on unit type and ingredient density
+export async function getAvailableUnits(unit: string, ingredientId?: number): Promise<string[]> {
+    try {
+        const unitDef = await getUnit(unit);
+
+        if (!unitDef || Object.keys(unitDef).length === 0) {
+            return [];
+        }
+
+        // If we have an ingredient ID, check if it has density
+        if (ingredientId) {
+            const ingredient = await getIngredient(ingredientId);
+
+            // If ingredient has density, it can convert between volume and mass
+            if (ingredient.density && ingredient.density > 0) {
+                return await recipeAPI.getAllAvailableUnits();
+            }
+        }
+
+        // If no density or no ingredient, only return units of the same type
+        if (unitDef.is_volume) {
+            return await recipeAPI.getVolumeUnits();
+        } else {
+            return await recipeAPI.getMassUnits();
+        }
+    } catch (error) {
+        console.error('Error getting available units:', error);
+        // Fallback to all units on error
+        return await recipeAPI.getAllAvailableUnits();
+    }
+}
+
 // Clear cache function for testing or when data changes
 export function clearConversionCache(): void {
     unitCache.clear();

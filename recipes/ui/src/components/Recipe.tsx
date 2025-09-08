@@ -18,7 +18,7 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath, UnitConversion } from '../services/api';
-import { convert } from '../utils/unit_cvt';
+import { convert, getAvailableUnits } from '../utils/unit_cvt';
 import ImageUpload from './ImageUpload';
 
 // Utility functions for ingredient references
@@ -646,16 +646,16 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
         const newConvertedIngredients: Record<number, ConvertedIngredient> = {};
 
         try {
-          // Get all available units from the API
-          const allUnits = await recipeAPI.getAllAvailableUnits();
-
           for (let i = 0; i < ingredients.length; i++) {
             const ingredient = ingredients[i];
             const currentUnit = ingredient.unit || 'cup';
 
+            // Get available units based on unit type and ingredient density
+            const availableUnitsFromAPI = await getAvailableUnits(currentUnit, ingredient.ingredient_id);
+
             // Always include the current unit first, then add other available units
             const availableUnits = [currentUnit];
-            allUnits.forEach(unit => {
+            availableUnitsFromAPI.forEach(unit => {
               if (unit !== currentUnit && !availableUnits.includes(unit)) {
                 availableUnits.push(unit);
               }
@@ -1896,17 +1896,17 @@ const Recipe: FC<RecipeProps> = ({
         const newConvertedIngredients: Record<number, ConvertedIngredient> = {};
 
         try {
-          // Get all available units from the API
-          const allUnits = await recipeAPI.getAllAvailableUnits();
-
           for (let i = 0; i < (recipe.ingredients?.length || 0); i++) {
             const ingredient = recipe.ingredients && recipe.ingredients[i];
             if (ingredient) {
               const currentUnit = ingredient.unit || 'cup';
 
+              // Get available units based on unit type and ingredient density
+              const availableUnitsFromAPI = await getAvailableUnits(currentUnit, ingredient.ingredient_id);
+
               // Always include the current unit first, then add other available units
               const availableUnits = [currentUnit];
-              allUnits.forEach(unit => {
+              availableUnitsFromAPI.forEach(unit => {
                 if (unit !== currentUnit && !availableUnits.includes(unit)) {
                   availableUnits.push(unit);
                 }

@@ -124,10 +124,10 @@ from sqlalchemy import select
 
 
 def get_unit(db, unit) -> UnitConversion:
-    return jsonify(db.session.execute(select(UnitConversion).where(
+    return db.session.execute(select(UnitConversion).where(
         UnitConversion.from_unit == unit,
         UnitConversion.to_unit == unit
-    )).scalar().to_json())
+    )).scalar()
 
 
 def get_ingredient(db, ingredient_id) -> Ingredient:
@@ -251,11 +251,14 @@ def units_routes(app, db):
 
     @app.route('/unit/definition/<string:name>')
     def flask_get_unit(name):
-        return get_unit(db, name)
+        unit =  get_unit(db, name)
+        if unit is not None:
+            return unit.to_json()
+        return {}
 
     @app.route('/unit/ingredient/<int:ingredient_id>')
     def flask_get_ingredient(ingredient_id):
-        return get_ingredient(db, ingredient_id)
+        return get_ingredient(db, ingredient_id).to_json()
 
     @app.route('/unit/convert/<string:from_unit>/<string:to_unit>')
     def convert(from_unit, to_unit):
@@ -265,6 +268,26 @@ def units_routes(app, db):
     def all_units() -> List[str]:
         conversions = (
             db.session.query(UnitConversion.to_unit)
+            .distinct()
+            .all()
+        )
+        return jsonify([unit for (unit,) in conversions])
+
+    @app.route('/units/available/volume', methods=['GET'])
+    def get_volume_units():
+        conversions = (
+            db.session.query(UnitConversion.to_unit)
+            .filter(UnitConversion.is_volume == True)
+            .distinct()
+            .all()
+        )
+        return jsonify([unit for (unit,) in conversions])
+
+    @app.route('/units/available/mass', methods=['GET'])
+    def get_mass_units():
+        conversions = (
+            db.session.query(UnitConversion.to_unit)
+            .filter(UnitConversion.is_volume == False)
             .distinct()
             .all()
         )

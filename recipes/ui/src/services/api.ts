@@ -650,6 +650,14 @@ class RecipeAPI {
   async getAllAvailableUnits(): Promise<string[]> {
     return this.request<string[]>('/units/available');
   }
+
+  async getVolumeUnits(): Promise<string[]> {
+    return this.request<string[]>('/units/available/volume');
+  }
+
+  async getMassUnits(): Promise<string[]> {
+    return this.request<string[]>('/units/available/mass');
+  }
 }
 
 // Export a singleton instance
