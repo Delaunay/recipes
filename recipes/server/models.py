@@ -540,15 +540,12 @@ class UnitConversion(Base):
             'conversion_factor': self.conversion_factor,
             'category': self.category,
             'ingredient_id': self.ingredient_id,
-            'extension': self.extension
+            'extension': self.extension,
+            'is_volume': True,
         }
 
     def __repr__(self):
         return f'<UnitConversion {self.from_unit}->{self.to_unit} {self.conversion_factor}>'
-
-
-
-
 
 def insert_common_ingredients(session):
     # Drop all existing ingredients
@@ -696,96 +693,6 @@ def insert_common_ingredients(session):
         session.commit()
 
 
-def insert_common_conversions(session):
-    from .route_units import common_conversions
-
-    session.query(UnitConversion).delete()
-    session.commit()
-
-    for unit, conversions in common_conversions().items():
-        for to_unit, conversion_factor in conversions.items():
-            conv = UnitConversion(
-                ingredient_id=None,
-                from_unit=unit,
-                to_unit=to_unit,
-                conversion_factor=1/conversion_factor,
-                category="1",
-            )
-            session.add(conv)
-            # print(conv)
-            conv = UnitConversion(
-                ingredient_id=None,
-                from_unit=to_unit,
-                to_unit=unit,
-                conversion_factor=conversion_factor,
-                category="1",
-            )
-            session.add(conv)
-            # print(conv)
-
-    mass = common_conversions()["g"]
-    volume = common_conversions()["ml"]
-
-    for ingredient in session.query(Ingredient).all():
-        for vol_unit, vol_factor in volume.items():
-            for mass_unit, mass_factor in mass.items():
-
-                # ml/vol_unit: conversions
-                # g/mass_unit: conversions
-                # density = g/ml
-
-                # vol_unit -> mass_unit = (ml/vol) (g/ml) / (g/mass)
-                # vol_unit -> mass_unit = (g/vol) * (mass/g)
-                # vol_unit -> mass_unit = mass/vol
-                conversion = vol_factor * ingredient.density / mass_factor
-
-                conv = UnitConversion(
-                    ingredient_id=ingredient._id,
-                    from_unit=vol_unit,
-                    to_unit=mass_unit,
-                    conversion_factor=conversion,
-                    category="1",
-                )
-                session.add(conv)
-                # print(conv)
-
-                conv = UnitConversion(
-                    ingredient_id=ingredient._id,
-                    from_unit=mass_unit,
-                    to_unit=vol_unit,
-                    conversion_factor=1/conversion,
-                    category="1",
-                )
-
-                session.add(conv)
-                # print(conv)
-
-    session.commit()
-            # conv.save()
-
-
-def available_units(ingredient_id: int, from_unit: str):
-    from sqlalchemy import select, or_
-
-    return select(UnitConversion.to_unit).where(
-        UnitConversion.from_unit == from_unit,
-        or_(
-            UnitConversion.ingredient_id == ingredient_id,
-            UnitConversion.ingredient_id.is_(None)
-        )
-    )
-
-
-#
-# conversion logic should be done in the front end
-#
-
-def is_volume(unit: str):
-    return unit in [
-        "ml", "cl", "l", "cm3", "fl oz", "tbsp",
-        "tsp", "cup", "pint", "quart", "gallon"
-    ]
-
 
 def make_unit_from_input(sesh, recipe_ingredient: RecipeIngredient):
 
@@ -801,76 +708,6 @@ def make_unit_from_input(sesh, recipe_ingredient: RecipeIngredient):
         quantity=qty,
         unit="g"
     )
-
-def convert_volume(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
-    from sqlalchemy import select, or_
-
-    ingredient = sesh.query(Ingredient).get(recipe_ingredient.ingredient_id)
-
-    vals = select(UnitConversion).where(
-        UnitConversion.from_unit == "ml",
-        UnitConversion.to_unit == to_unit,
-        or_(
-            UnitConversion.ingredient_id == recipe_ingredient.ingredient_id,
-            UnitConversion.ingredient_id.is_(None)
-        )
-    )
-
-    vals = sesh.execute(vals)
-    vals = vals.all()
-
-    if len(vals) == 0:
-        return None
-
-    volume = recipe_ingredient.quantity / ingredient.density
-    return volume / vals[0][0].conversion_factor
-
-
-def convert_mass(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
-    from sqlalchemy import select, or_
-
-    ingredient = sesh.query(Ingredient).get(recipe_ingredient.ingredient_id)
-
-    # 1. Convert volume to ml
-    vals = select(UnitConversion).where(
-        UnitConversion.from_unit == recipe_ingredient.unit,
-        UnitConversion.to_unit == "ml",
-        or_(
-            UnitConversion.ingredient_id == recipe_ingredient.ingredient_id,
-            UnitConversion.ingredient_id.is_(None)
-        )
-    )
-
-    # 2. Convert ml to mass
-    vals = sesh.execute(vals)
-    vals = vals.all()
-
-    if len(vals) == 0:
-        return None
-
-    volume_ml = recipe_ingredient.quantity / vals[0][0].conversion_factor
-    return volume_ml * ingredient.density
-
-
-def convert(sesh, recipe_ingredient: RecipeIngredient, to_unit: str):
-    from sqlalchemy import select, or_
-
-    vals = select(UnitConversion).where(
-        UnitConversion.from_unit == recipe_ingredient.unit,
-        UnitConversion.to_unit == to_unit,
-        or_(
-            UnitConversion.ingredient_id == recipe_ingredient.ingredient_id,
-            # UnitConversion.ingredient_id.is_(None)
-        )
-    )
-
-    vals = sesh.execute(vals)
-    vals = vals.all()
-
-    if len(vals) == 0:
-        return None
-
-    return recipe_ingredient.quantity * vals[0][0].conversion_factor
 
 
 def main():

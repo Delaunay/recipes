@@ -18,6 +18,7 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath, UnitConversion } from '../services/api';
+import { convert } from '../utils/unit_cvt';
 import ImageUpload from './ImageUpload';
 
 // Utility functions for ingredient references
@@ -644,53 +645,54 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
         const newAvailableUnits: Record<number, string[]> = {};
         const newConvertedIngredients: Record<number, ConvertedIngredient> = {};
 
-        for (let i = 0; i < ingredients.length; i++) {
-          const ingredient = ingredients[i];
-          if (ingredient.ingredient_id && ingredient.unit) {
-            try {
-              console.log(ingredient.ingredient_id, ingredient.name, ingredient.unit)
-              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.ingredient_id, ingredient.unit);
+        try {
+          // Get all available units from the API
+          const allUnits = await recipeAPI.getAllAvailableUnits();
 
-              // Always include the current unit first, then add other available units
-              const currentUnit = ingredient.unit;
-              const availableUnits = [currentUnit];
+          for (let i = 0; i < ingredients.length; i++) {
+            const ingredient = ingredients[i];
+            const currentUnit = ingredient.unit || 'cup';
 
-              // Add other units that aren't already in the list
-              availableUnitsFromAPI.forEach((unit: string) => {
-                if (unit !== currentUnit && !availableUnits.includes(unit)) {
-                  availableUnits.push(unit);
-                }
-              });
+            // Always include the current unit first, then add other available units
+            const availableUnits = [currentUnit];
+            allUnits.forEach(unit => {
+              if (unit !== currentUnit && !availableUnits.includes(unit)) {
+                availableUnits.push(unit);
+              }
+            });
 
-              newAvailableUnits[i] = availableUnits;
+            newAvailableUnits[i] = availableUnits;
 
-              // Initialize converted ingredients with original values
-              newConvertedIngredients[i] = {
-                quantity: ingredient.quantity || 1,
-                unit: ingredient.unit,
-                originalQuantity: ingredient.quantity || 1,
-                originalUnit: ingredient.unit,
-              };
-            } catch (error) {
-              console.error('Error loading available units:', error);
-              const fallbackUnit = ingredient.unit || 'cup';
-              newAvailableUnits[i] = [fallbackUnit]; // Fallback to original unit
-              newConvertedIngredients[i] = {
-                quantity: ingredient.quantity || 1,
-                unit: fallbackUnit,
-                originalQuantity: ingredient.quantity || 1,
-                originalUnit: fallbackUnit,
-              };
-            }
-          } else {
-            // For ingredients without ID (new recipes), just show the original unit
-            const fallbackUnit = ingredient.unit || 'cup';
-            newAvailableUnits[i] = [fallbackUnit];
+            // Initialize converted ingredients with original values
             newConvertedIngredients[i] = {
               quantity: ingredient.quantity || 1,
-              unit: fallbackUnit,
+              unit: currentUnit,
               originalQuantity: ingredient.quantity || 1,
-              originalUnit: fallbackUnit,
+              originalUnit: currentUnit,
+            };
+          }
+        } catch (error) {
+          console.error('Error loading available units:', error);
+          // Fallback to common units if API fails
+          const fallbackUnits = ['ml', 'cl', 'l', 'tsp', 'tbsp', 'cup', 'fl oz', 'pint', 'quart', 'gallon', 'g', 'kg', 'mg', 'oz', 'lb'];
+
+          for (let i = 0; i < ingredients.length; i++) {
+            const ingredient = ingredients[i];
+            const currentUnit = ingredient.unit || 'cup';
+
+            const availableUnits = [currentUnit];
+            fallbackUnits.forEach(unit => {
+              if (unit !== currentUnit && !availableUnits.includes(unit)) {
+                availableUnits.push(unit);
+              }
+            });
+
+            newAvailableUnits[i] = availableUnits;
+            newConvertedIngredients[i] = {
+              quantity: ingredient.quantity || 1,
+              unit: currentUnit,
+              originalQuantity: ingredient.quantity || 1,
+              originalUnit: currentUnit,
             };
           }
         }
@@ -703,10 +705,10 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
     }
   }, [isEditable, ingredients]);
 
-  // Handle unit conversion
+  // Handle unit conversion using new JavaScript implementation
   const handleUnitChange = async (ingredientIndex: number, newUnit: string) => {
     const ingredient = ingredients[ingredientIndex];
-    if (!ingredient.ingredient_id || !ingredient.unit) return;
+    if (!ingredient.unit) return;
 
     const converted = convertedIngredients[ingredientIndex];
     // Always use the original measurements for conversion
@@ -730,25 +732,35 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
     setLoadingUnits(prev => ({ ...prev, [ingredientIndex]: true }));
 
     try {
-      // Always convert from original unit to new unit
-      const response = await recipeAPI.convertUnit(
-        ingredient.ingredient_id,
+      // Use new JavaScript convert function
+      const convertedQuantity = await convert(
         originalQuantity,
         originalUnit,
-        newUnit
+        newUnit,
+        ingredient.ingredient_id
       );
 
       setConvertedIngredients(prev => ({
         ...prev,
         [ingredientIndex]: {
-          quantity: response.quantity,
-          unit: response.unit,
+          quantity: convertedQuantity,
+          unit: newUnit,
           originalQuantity: originalQuantity,
           originalUnit: originalUnit,
         }
       }));
     } catch (error) {
       console.error('Error converting unit:', error);
+      // On error, keep the original unit
+      setConvertedIngredients(prev => ({
+        ...prev,
+        [ingredientIndex]: {
+          quantity: originalQuantity,
+          unit: originalUnit,
+          originalQuantity: originalQuantity,
+          originalUnit: originalUnit,
+        }
+      }));
     } finally {
       setLoadingUnits(prev => ({ ...prev, [ingredientIndex]: false }));
     }
@@ -1883,18 +1895,18 @@ const Recipe: FC<RecipeProps> = ({
         const newAvailableUnits: Record<number, string[]> = {};
         const newConvertedIngredients: Record<number, ConvertedIngredient> = {};
 
-        for (let i = 0; i < (recipe.ingredients?.length || 0); i++) {
-          const ingredient = recipe.ingredients && recipe.ingredients[i];
-          if (ingredient?.ingredient_id && ingredient?.unit) {
-            try {
-              const availableUnitsFromAPI = await recipeAPI.getAvailableUnits(ingredient.ingredient_id, ingredient.unit);
+        try {
+          // Get all available units from the API
+          const allUnits = await recipeAPI.getAllAvailableUnits();
+
+          for (let i = 0; i < (recipe.ingredients?.length || 0); i++) {
+            const ingredient = recipe.ingredients && recipe.ingredients[i];
+            if (ingredient) {
+              const currentUnit = ingredient.unit || 'cup';
 
               // Always include the current unit first, then add other available units
-              const currentUnit = ingredient.unit;
               const availableUnits = [currentUnit];
-
-              // Add other units that aren't already in the list
-              availableUnitsFromAPI.forEach((unit: string) => {
+              allUnits.forEach(unit => {
                 if (unit !== currentUnit && !availableUnits.includes(unit)) {
                   availableUnits.push(unit);
                 }
@@ -1905,31 +1917,37 @@ const Recipe: FC<RecipeProps> = ({
               // Initialize converted ingredients with original values
               newConvertedIngredients[i] = {
                 quantity: ingredient.quantity || 1,
-                unit: ingredient.unit,
+                unit: currentUnit,
                 originalQuantity: ingredient.quantity || 1,
-                originalUnit: ingredient.unit,
-              };
-            } catch (error) {
-              console.error('Error loading available units:', error);
-              const fallbackUnit = ingredient.unit || 'cup';
-              newAvailableUnits[i] = [fallbackUnit]; // Fallback to original unit
-              newConvertedIngredients[i] = {
-                quantity: ingredient.quantity || 1,
-                unit: fallbackUnit,
-                originalQuantity: ingredient.quantity || 1,
-                originalUnit: fallbackUnit,
+                originalUnit: currentUnit,
               };
             }
-          } else if (ingredient) {
-            // For ingredients without ID (new recipes), just show the original unit
-            const fallbackUnit = ingredient.unit || 'cup';
-            newAvailableUnits[i] = [fallbackUnit];
-            newConvertedIngredients[i] = {
-              quantity: ingredient.quantity || 1,
-              unit: fallbackUnit,
-              originalQuantity: ingredient.quantity || 1,
-              originalUnit: fallbackUnit,
-            };
+          }
+        } catch (error) {
+          console.error('Error loading available units:', error);
+          // Fallback to common units if API fails
+          const fallbackUnits = ['ml', 'cl', 'l', 'tsp', 'tbsp', 'cup', 'fl oz', 'pint', 'quart', 'gallon', 'g', 'kg', 'mg', 'oz', 'lb'];
+
+          for (let i = 0; i < (recipe.ingredients?.length || 0); i++) {
+            const ingredient = recipe.ingredients && recipe.ingredients[i];
+            if (ingredient) {
+              const currentUnit = ingredient.unit || 'cup';
+
+              const availableUnits = [currentUnit];
+              fallbackUnits.forEach(unit => {
+                if (unit !== currentUnit && !availableUnits.includes(unit)) {
+                  availableUnits.push(unit);
+                }
+              });
+
+              newAvailableUnits[i] = availableUnits;
+              newConvertedIngredients[i] = {
+                quantity: ingredient.quantity || 1,
+                unit: currentUnit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: currentUnit,
+              };
+            }
           }
         }
 

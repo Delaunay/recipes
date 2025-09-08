@@ -74,15 +74,10 @@ interface UnitConversion {
   category: string;
   ingredient_id?: number;
   extension?: any;
+  is_volume?: boolean;
 }
 
-interface UnitConversionResult {
-  quantity: number;
-  unit: string;
-  ingredient_id: number;
-  original_quantity: number;
-  original_unit: string;
-}
+
 
 interface ConversionMatrix {
   ingredient: Ingredient;
@@ -387,22 +382,7 @@ class RecipeAPI {
     return this.request<{ status: string }>('/health');
   }
 
-  // Unit conversion methods
-  async getAvailableUnits(ingredientId: number, fromUnit: string): Promise<string[]> {
-    return this.request<string[]>(`/units/available/${ingredientId}/${fromUnit}`);
-  }
-
-  async convertUnit(ingredientId: number, quantity: number, fromUnit: string, toUnit: string): Promise<UnitConversionResult> {
-    const url = `/unit/conversions/${ingredientId}/${fromUnit}/${toUnit}?quantity=1.0`;
-    const result = await this.request<UnitConversionResult>(url);
-
-    // Scale the returned quantity by the original quantity
-    return {
-      ...result,
-      quantity: result.quantity * quantity,
-      original_quantity: quantity
-    };
-  }
+  // Unit conversion methods (using new JavaScript implementation)
 
   // Unit conversion CRUD methods
   async getUnitConversions(): Promise<UnitConversion[]> {
@@ -645,24 +625,48 @@ class RecipeAPI {
       return [];
     }
   }
+
+  // Unit conversion queries
+  async getUnit(unit: string): Promise<UnitConversion | null> {
+    try {
+      return this.request<UnitConversion>(`/unit/definition/${encodeURIComponent(unit)}`);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async getIngredientById(ingredientId: number): Promise<Ingredient> {
+    return this.request<Ingredient>(`/unit/ingredient/${ingredientId}`);
+  }
+
+  async getConversionFactor(fromUnit: string, toUnit: string): Promise<UnitConversion | null> {
+    try {
+      return this.request<UnitConversion>(`/unit/convert/${encodeURIComponent(fromUnit)}/${encodeURIComponent(toUnit)}`);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async getAllAvailableUnits(): Promise<string[]> {
+    return this.request<string[]>('/units/available');
+  }
 }
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
 export { imagePath };
-export type { 
-  RecipeData, 
-  Ingredient, 
-  RecipeIngredient, 
-  Category, 
-  Instruction, 
-  UnitConversion, 
-  UnitConversionResult, 
-  ConversionMatrix, 
-  UnitsUsedInRecipes, 
-  IngredientUnitsUsed, 
-  Task, 
-  SubTask, 
+export type {
+  RecipeData,
+  Ingredient,
+  RecipeIngredient,
+  Category,
+  Instruction,
+  UnitConversion,
+  ConversionMatrix,
+  UnitsUsedInRecipes,
+  IngredientUnitsUsed,
+  Task,
+  SubTask,
   Event,
   WeeklyRecipe,
   PlannedMeal,

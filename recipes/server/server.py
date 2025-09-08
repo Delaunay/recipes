@@ -14,7 +14,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from ..tools.images import centercrop_resize_image
-from .models import Base, Recipe, Ingredient, Category, UnitConversion, convert, RecipeIngredient, Event, Task, SubTask
+from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task, SubTask
 from .route_keyvalue import key_value_routes
 from .route_messaging import messaging_routes
 from .route_calendar import calendar_routes
@@ -71,6 +71,7 @@ class RecipeApp:
         messaging_routes(self.app)
         calendar_routes(self.app, self.db)
         tasks_routes(self.app, self.db)
+        units_routes(self.app, self.db)
 
     def setup_routes(self):
         @self.app.route('/', defaults={'path': ''})

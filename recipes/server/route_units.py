@@ -2,11 +2,8 @@ from typing import List, Dict, Any
 
 from flask import jsonify
 
-# from .models import Product, ProductIngredient, Ingredient
+from .models import Ingredient, UnitConversion, RecipeIngredient
 
-
-DEFAULT_MASS_UNIT = "g"
-DEFAULT_VOLUME_UNIT = "ml"
 
 # Hard coded defaults
 MASS_UNITS = {
@@ -97,76 +94,192 @@ def hc_convert(qty, from_unit, to_unit, get_density):
             return from_unit_std / factor
 
 
-def get_unit(unit):
-    return select(UnitConversion).where(
-        UnitConversion.from_unit == from_unit,
+# Hard coded defaults
+MASS_UNITS = {
+    'g': 1,
+    'kg': 1000,
+    'mg': 0.001,
+    'lb': 453.592,
+    'oz': 28.3495
+}
+
+VOLUME_UNITS = {
+    'ml': 1,
+    'cl': 10,
+    'l': 1000,
+    "cm3": 1,
+    'fl oz': 29.5735,
+    'tbsp': 14.7868,
+    'tsp': 4.92892,
+    'cup': 236.588,
+    "pint": 473.176,
+    "quart": 946.353,
+    "gallon": 3785.
+}
+
+DEFAULT_MASS_UNIT = "g"
+DEFAULT_VOLUME_UNIT = "ml"
+
+from sqlalchemy import select
+
+
+def get_unit(db, unit) -> UnitConversion:
+    return jsonify(db.session.execute(select(UnitConversion).where(
+        UnitConversion.from_unit == unit,
         UnitConversion.to_unit == unit
-    )
-
-def get_unit_type(unit):
-    if get_unit(unit).is_volume:
-        return "V", DEFAULT_VOLUME_UNIT
-
-    return "M", DEFAULT_MASS_UNIT
+    )).scalar().to_json())
 
 
-def get_density_conversion(from_unit, to_unit, ingredient_id)
-    def get_density():
-        ingredient = select(Ingredient).where(Ingredient._id == ingredient_id)
-        return ingredient.density
-
-    match (from_type, to_type):
-        case ("V", "M"):
-            return get_density(), 'g'
-
-        case ("M", "V"):
-            return 1 / get_density(), 'ml'
-    
-        case _:
-            return 1, NONE
+def get_ingredient(db, ingredient_id) -> Ingredient:
+    return db.session.execute(select(Ingredient).where(Ingredient._id == ingredient_id)).scalar()
 
 
-def convert(qty, from_unit, to_unit, ingredient_id)
+def conversion_factor(db, from_unit, to_unit) -> float:
+    return db.session.execute(select(UnitConversion).where(
+        UnitConversion.from_unit == from_unit, 
+        UnitConversion.to_unit == to_unit,
+        UnitConversion.ingredient_id.is_(None)
+    )).scalar()
+
+
+def convert(db, qty, from_unit, to_unit, ingredient_id) -> float:
     if from_unit == to_unit:
         return qty
 
-    from_unit_type, from_default = get_unit_type(from_unit)
-    to_unit_type, to_default = get_unit_type(to_unit)
+    from_def = get_unit(db, from_unit)
+    to_def = get_unit(db, to_unit)
+
+    from_default = DEFAULT_VOLUME_UNIT if from_def.is_volume else DEFAULT_MASS_UNIT
+    to_default = DEFAULT_VOLUME_UNIT if from_def.is_volume else DEFAULT_MASS_UNIT
 
     # ml OR g
-    std_qty = convert(qty, from_unit, from_default)
+    std_qty = convert(db, qty, from_unit, from_default)
 
     # shortcut for ml/g
     if from_default == to_unit:
         return std_qty
 
+    if ingredient_id is None:
+        raise ValueError("Density-based conversion requires ingredient_id")
+
     # Conversion factor to ml or to g
-    density_cvt, new_unit = get_density_conversion(from_unit, to_unit, ingredient_id)
+    density_cvt = get_ingredient(db, ingredient_id).density
 
-    # Change to VOLUME or MASS
-    if new_unit is not None:
-        return convert(qty * density_cvt, new_unit, to_unit)
+    match (from_default, to_default):
+        case (DEFAULT_VOLUME_UNIT, DEFAULT_MASS_UNIT):
+            return convert(qty * get_density(), DEFAULT_MASS_UNIT, to_unit)
 
-    cvt = select(UnitConversion).where(
-        UnitConversion.from_unit == from_unit, 
-        UnitConversion.to_unit == to_unit,
-        UnitConversion.ingredient_id.is_(None)
-    )
+        case (DEFAULT_MASS_UNIT, DEFAULT_VOLUME_UNIT):
+            return convert(qty / get_density(), DEFAULT_VOLUME_UNIT, to_unit)
 
-    return cvt.conversion_factor * qty
+        case _:
+            return conversion_factor(db, from_unit, to_unit) * qty
 
 
+def insert_base_conversions(session):
+    session.query(UnitConversion).delete()
+    session.commit()
 
-def units_routes(app):
+    # Insert Unit Definition
+    for unit, conversions in MASS_UNITS.items():
+        conv = UnitConversion(
+            ingredient_id=None,
+            from_unit=unit,
+            to_unit=unit,
+            conversion_factor=1,
+            category="default",
+            is_volume=False
+        )
+        session.add(conv)
+    
+    for unit, conversions in VOLUME_UNITS.items():
+        conv = UnitConversion(
+            ingredient_id=None,
+            from_unit=unit,
+            to_unit=unit,
+            conversion_factor=1,
+            category="default",
+            is_volume=True
+        )
+        session.add(conv)
+    
+    # Insert Unit Conversion
+    for unit, conversions in MASS_UNITS.items():
+        conv = UnitConversion(
+            ingredient_id=None,
+            from_unit=DEFAULT_MASS_UNIT,
+            to_unit=unit,
+            conversion_factor=1/conversions,
+            category="default",
+            is_volume=False
+        )
+        session.add(conv)
+        conv = UnitConversion(
+            ingredient_id=None,
+            from_unit=unit,
+            to_unit=DEFAULT_MASS_UNIT,
+            conversion_factor=conversions,
+            category="default",
+            is_volume=False
+        )
+        session.add(conv)
+    
+    for unit, conversions in VOLUME_UNITS.items():
+        conv = UnitConversion(
+            ingredient_id=None,
+            from_unit=DEFAULT_VOLUME_UNIT,
+            to_unit=unit,
+            conversion_factor=1/conversions,
+            category="default",
+            is_volume=True
+        )
+        session.add(conv)
+        conv = UnitConversion(
+            ingredient_id=None,
+            from_unit=unit,
+            to_unit=DEFAULT_VOLUME_UNIT,
+            conversion_factor=conversions,
+            category="default",
+            is_volume=True
+        )
+        session.add(conv)
+    session.commit()
+
+
+def units_routes(app, db):
     """Handle ingredient unit"""
 
+    @app.route('/unit/definition/<string:name>')
+    def flask_get_unit(name):
+        return get_unit(db, name)
 
-    @self.app.route('/unit/conversions', methods=['GET'])
-    def get_unit_conversions() -> Dict[str, Any]:
-        conversions = self.db.session.query(UnitConversion).all()
-        return jsonify([conversion.to_json() for conversion in conversions])
+    @app.route('/unit/ingredient/<int:ingredient_id>')
+    def flask_get_ingredient(ingredient_id):
+        return get_ingredient(db, ingredient_id)
 
-    @self.app.route('/unit/conversions', methods=['POST'])
+    @app.route('/unit/convert/<string:from_unit>/<string:to_unit>')
+    def convert(from_unit, to_unit):
+        return conversion_factor(db, from_unit, to_unit).to_json()
+
+    @app.route('/units/available', methods=['GET'])
+    def all_units() -> List[str]:
+        conversions = (
+            db.session.query(UnitConversion.to_unit)
+            .distinct()
+            .all()
+        )
+        return jsonify([unit for (unit,) in conversions])
+    # -----
+
+    @app.route('/unit/conversions', methods=['GET'])
+    def get_all_conversions() -> Dict[str, Any]:
+        conversions = (
+            db.session.query(UnitConversion)
+            .all()
+        )
+        return jsonify([conv.to_json() for conv in conversions])
+
+    @app.route('/unit/conversions', methods=['POST'])
     def create_unit_conversion() -> Dict[str, Any]:
         try:
             data = request.get_json()
@@ -177,24 +290,24 @@ def units_routes(app):
                 category=data.get('category', 'custom'),
                 ingredient_id=data.get('ingredient_id') if data.get('ingredient_id') else None
             )
-            self.db.session.add(conversion)
-            self.db.session.commit()
+            db.session.add(conversion)
+            db.session.commit()
             return jsonify(conversion.to_json()), 201
         except Exception as e:
-            self.db.session.rollback()
+            db.session.rollback()
             return jsonify({"error": str(e)}), 400
 
-    @self.app.route('/unit/conversions/<int:conversion_id>', methods=['GET'])
+    @app.route('/unit/conversions/<int:conversion_id>', methods=['GET'])
     def get_unit_conversion(conversion_id: int) -> Dict[str, Any]:
-        conversion = self.db.session.get(UnitConversion, conversion_id)
+        conversion = db.session.get(UnitConversion, conversion_id)
         if not conversion:
             return jsonify({"error": "Unit conversion not found"}), 404
         return jsonify(conversion.to_json())
 
-    @self.app.route('/unit/conversions/<int:conversion_id>', methods=['PUT'])
+    @app.route('/unit/conversions/<int:conversion_id>', methods=['PUT'])
     def update_unit_conversion(conversion_id: int) -> Dict[str, Any]:
         try:
-            conversion = self.db.session.get(UnitConversion, conversion_id)
+            conversion = db.session.get(UnitConversion, conversion_id)
             if not conversion:
                 return jsonify({"error": "Unit conversion not found"}), 404
 
@@ -207,65 +320,37 @@ def units_routes(app):
             conversion.category = data.get('category', conversion.category)
             conversion.ingredient_id = data.get('ingredient_id') if data.get('ingredient_id') else None
 
-            self.db.session.commit()
+            db.session.commit()
             return jsonify(conversion.to_json())
 
         except Exception as e:
-            self.db.session.rollback()
+            db.session.rollback()
             return jsonify({"error": str(e)}), 400
 
-    @self.app.route('/unit/conversions/<int:conversion_id>', methods=['DELETE'])
+    @app.route('/unit/conversions/<int:conversion_id>', methods=['DELETE'])
     def delete_unit_conversion(conversion_id: int) -> Dict[str, Any]:
         try:
-            conversion = self.db.session.get(UnitConversion, conversion_id)
+            conversion = db.session.get(UnitConversion, conversion_id)
             if not conversion:
                 return jsonify({"error": "Unit conversion not found"}), 404
 
-            self.db.session.delete(conversion)
-            self.db.session.commit()
+            db.session.delete(conversion)
+            db.session.commit()
             return jsonify({"message": "Unit conversion deleted successfully"})
 
         except Exception as e:
-            self.db.session.rollback()
+            db.session.rollback()
             return jsonify({"error": str(e)}), 400
 
-    @self.app.route('/units/available/<int:ingredient_id>/<string:from_unit>', methods=['GET'])
-    def available_units(ingredient_id: int, from_unit: str) -> Dict[str, Any]:
-        conversions = self.db.session.query(UnitConversion).filter(
-            UnitConversion.ingredient_id == ingredient_id,
-            UnitConversion.from_unit == from_unit
-        ).all()
-        conv = [conversion.to_unit for conversion in conversions]
-        return jsonify(conv)
-
-    @self.app.route('/unit/conversions/<int:ingredient_id>/<string:from_unit>/<string:to_unit>')
-    def convert_unit(ingredient_id: int, from_unit: str, to_unit: str) -> Dict[str, Any]:
-        # Get quantity from query parameters, default to 1.0
-        quantity = float(request.args.get('quantity', 1.0))
-
-        conversion = convert(
-            self.db.session,
-            RecipeIngredient(
-                ingredient_id=ingredient_id,
-                quantity=quantity,
-                unit=from_unit
-            ),
-            to_unit
-        )
-        return jsonify({
-            "quantity": conversion,
-            "unit": to_unit,
-            "ingredient_id": ingredient_id,
-            "original_quantity": quantity,
-            "original_unit": from_unit
-        })
-
-    @self.app.route('/ingredients/<int:ingredient_id>/conversion-matrix', methods=['GET'])
+    #
+    #
+    #
+    @app.route('/ingredients/<int:ingredient_id>/conversion-matrix', methods=['GET'])
     def get_conversion_matrix(ingredient_id: int) -> Dict[str, Any]:
         """Get conversion matrix for an ingredient with volume units as rows and weight units as columns"""
         try:
             # Check if ingredient exists
-            ingredient = self.db.session.get(Ingredient, ingredient_id)
+            ingredient = db.session.get(Ingredient, ingredient_id)
             if not ingredient:
                 return jsonify({"error": "Ingredient not found"}), 404
 
@@ -296,7 +381,7 @@ def units_routes(app):
                         )
 
                         # Try to convert from volume to weight
-                        converted_quantity = convert(self.db.session, temp_ingredient, weight_unit)
+                        converted_quantity = convert(db.session, temp_ingredient, weight_unit)
 
                         if converted_quantity is not None:
                             matrix['conversions'][vol_unit][weight_unit] = round(converted_quantity, 6)
@@ -311,17 +396,17 @@ def units_routes(app):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @self.app.route('/ingredients/<int:ingredient_id>/units-used', methods=['GET'])
+    @app.route('/ingredients/<int:ingredient_id>/units-used', methods=['GET'])
     def get_ingredient_units_used(ingredient_id: int) -> Dict[str, Any]:
         """Get all units used for a specific ingredient across recipes"""
         try:
             # Check if ingredient exists
-            ingredient = self.db.session.get(Ingredient, ingredient_id)
+            ingredient = db.session.get(Ingredient, ingredient_id)
             if not ingredient:
                 return jsonify({"error": "Ingredient not found"}), 404
 
             # Get all units used for this ingredient in recipes
-            recipe_ingredients = self.db.session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).all()
+            recipe_ingredients = db.session.query(RecipeIngredient).filter_by(ingredient_id=ingredient_id).all()
 
             # Count usage of each unit
             unit_usage = {}
@@ -340,8 +425,8 @@ def units_routes(app):
                         recipe_names[unit].append(recipe_ingredient.recipe.title)
 
             # Get all available units from conversions for reference
-            conversion_units_from = self.db.session.query(UnitConversion.from_unit).distinct().all()
-            conversion_units_to = self.db.session.query(UnitConversion.to_unit).distinct().all()
+            conversion_units_from = db.session.query(UnitConversion.from_unit).distinct().all()
+            conversion_units_to = db.session.query(UnitConversion.to_unit).distinct().all()
 
             all_conversion_units = set()
             for unit in conversion_units_from:
@@ -354,7 +439,7 @@ def units_routes(app):
             # For each unit used, check which conversions already exist
             existing_conversions = {}
             for unit in unit_usage.keys():
-                conversions_from_unit = self.db.session.query(UnitConversion).filter(
+                conversions_from_unit = db.session.query(UnitConversion).filter(
                     UnitConversion.from_unit == unit,
                     UnitConversion.ingredient_id == ingredient_id
                 ).all()
@@ -374,17 +459,17 @@ def units_routes(app):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @self.app.route('/units/used-in-recipes', methods=['GET'])
+    @app.route('/units/used-in-recipes', methods=['GET'])
     def get_units_used_in_recipes() -> Dict[str, Any]:
         """Get all units currently used in recipe ingredients"""
         try:
             # Query all unique units from recipe ingredients
-            recipe_units = self.db.session.query(RecipeIngredient.unit).distinct().all()
+            recipe_units = db.session.query(RecipeIngredient.unit).distinct().all()
             units_from_recipes = [unit[0] for unit in recipe_units if unit[0]]
 
             # Get all available units from unit conversions for reference
-            conversion_units_from = self.db.session.query(UnitConversion.from_unit).distinct().all()
-            conversion_units_to = self.db.session.query(UnitConversion.to_unit).distinct().all()
+            conversion_units_from = db.session.query(UnitConversion.from_unit).distinct().all()
+            conversion_units_to = db.session.query(UnitConversion.to_unit).distinct().all()
 
             all_conversion_units = set()
             for unit in conversion_units_from:
@@ -397,15 +482,34 @@ def units_routes(app):
             # Get units used in recipes with their usage count
             unit_usage = {}
             for unit in units_from_recipes:
-                count = self.db.session.query(RecipeIngredient).filter_by(unit=unit).count()
+                count = db.session.query(RecipeIngredient).filter_by(unit=unit).count()
                 unit_usage[unit] = count
 
             return jsonify({
                 'units_in_recipes': sorted(units_from_recipes),
                 'unit_usage_count': unit_usage,
                 'all_available_units': sorted(list(all_conversion_units)),
-                'total_recipe_ingredients': self.db.session.query(RecipeIngredient).count()
+                'total_recipe_ingredients': db.session.query(RecipeIngredient).count()
             })
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+def main():
+    from sqlalchemy import create_engine, select, Boolean, Index
+    from sqlalchemy.orm import relationship, sessionmaker, declarative_base
+
+    from sqlalchemy.orm import sessionmaker, scoped_session
+
+    # open the instance/project.db with SQLAlchemy and insert the common conversions
+    engine = create_engine('sqlite:////home/setepenre/website/database.db')
+    Session = sessionmaker(bind=engine)
+
+    with Session() as session:
+        insert_base_conversions(session)
+
+
+
+
+if __name__ == "__main__":
+    main()
