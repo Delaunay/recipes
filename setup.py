@@ -33,6 +33,7 @@ if __name__ == "__main__":
             "recipes.server",
             "recipes.tools",
             "recipes.cli",
+            "recipes.plugin"
             # "recipes.recipes",
             #   "recipes.recipes.migrations",
             # "recipes.recipes.templatetags",
@@ -51,4 +52,9 @@ if __name__ == "__main__":
             "appdirs",
             "python-telegram-bot",
         ],
+         entry_points={
+            "console_scripts": [
+                "recipe = recipes.cli.main:main_force",
+            ],
+        },
     )

@@ -57,10 +57,10 @@ def hc_is_mass(unit):
 def hc_get_unit_type(unit):
     if is_volume(unit):
         return "V", DEFAULT_VOLUME_UNIT, VOLUME_UNITS
-    
+
     if is_mass(unit):
         return "M", DEFAULT_MASS_UNIT, MASS_UNITS
-    
+
     raise RuntimeError(f"Unknown unit {unit}")
 
 
@@ -87,9 +87,9 @@ def hc_convert(qty, from_unit, to_unit, get_density):
 
             # from_unit_std is g: g / (g / ml) = g * ml / g => ml
             return hc_convert(from_unit_std / density, "ml", to_unit)
-    
+
         case _:
-            # from_unit_std is (g or ml) and gets converted 
+            # from_unit_std is (g or ml) and gets converted
             factor = cvt_from[to_unit]
             return from_unit_std / factor
 
@@ -136,7 +136,7 @@ def get_ingredient(db, ingredient_id) -> Ingredient:
 
 def conversion_factor(db, from_unit, to_unit) -> float:
     return db.session.execute(select(UnitConversion).where(
-        UnitConversion.from_unit == from_unit, 
+        UnitConversion.from_unit == from_unit,
         UnitConversion.to_unit == to_unit,
         UnitConversion.ingredient_id.is_(None)
     )).scalar()
@@ -191,7 +191,7 @@ def insert_base_conversions(session):
             is_volume=False
         )
         session.add(conv)
-    
+
     for unit, conversions in VOLUME_UNITS.items():
         conv = UnitConversion(
             ingredient_id=None,
@@ -202,7 +202,7 @@ def insert_base_conversions(session):
             is_volume=True
         )
         session.add(conv)
-    
+
     # Insert Unit Conversion
     for unit, conversions in MASS_UNITS.items():
         conv = UnitConversion(
@@ -223,7 +223,7 @@ def insert_base_conversions(session):
             is_volume=False
         )
         session.add(conv)
-    
+
     for unit, conversions in VOLUME_UNITS.items():
         conv = UnitConversion(
             ingredient_id=None,
@@ -307,12 +307,22 @@ def units_routes(app, db):
     def create_unit_conversion() -> Dict[str, Any]:
         try:
             data = request.get_json()
+
+            # Determine if this is a volume conversion based on the units
+            from_unit = data.get('from_unit')
+            to_unit = data.get('to_unit')
+
+            # If both units are volume units, mark as volume conversion
+            # If either unit is not a volume unit, assume it's mass/weight
+            is_volume = data.get('is_volume')
+
             conversion = UnitConversion(
-                from_unit=data.get('from_unit'),
-                to_unit=data.get('to_unit'),
+                from_unit=from_unit,
+                to_unit=to_unit,
                 conversion_factor=data.get('conversion_factor'),
                 category=data.get('category', 'custom'),
-                ingredient_id=data.get('ingredient_id') if data.get('ingredient_id') else None
+                ingredient_id=data.get('ingredient_id') if data.get('ingredient_id') else None,
+                is_volume=is_volume
             )
             db.session.add(conversion)
             db.session.commit()
@@ -343,6 +353,9 @@ def units_routes(app, db):
             conversion.conversion_factor = data.get('conversion_factor', conversion.conversion_factor)
             conversion.category = data.get('category', conversion.category)
             conversion.ingredient_id = data.get('ingredient_id') if data.get('ingredient_id') else None
+
+            if data.get('is_volume'):
+                conversion.is_volume = data.get('is_volume')
 
             db.session.commit()
             return jsonify(conversion.to_json())

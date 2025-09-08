@@ -81,8 +81,6 @@ const PANTRY_CATEGORIES = [
 ];
 
 const Pantry: React.FC = () => {
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
     const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);

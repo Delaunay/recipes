@@ -9,7 +9,6 @@ import {
     Input,
     Textarea,
     Heading,
-    Badge,
     IconButton,
     Grid,
     Flex,
@@ -178,7 +177,6 @@ const GroceryReceipts: React.FC = () => {
             /^(.+?)\s+(\d+[.,]\d{2})$/,     // Without $: ITEM NAME   9.99
             /^\s*(.+?)\s+(\d+[.,]\d{2})\s*$/, // With extra spaces
         ];
-        const priceOnlyPattern = /\$?\d+[.,]\d{2}/;
 
         // Total patterns (English and French)
         const totalPatterns = [

@@ -20,7 +20,7 @@ const TOLERANCE = 0.001;
  * @param unit - The unit (optional, used for context-specific formatting)
  * @returns Formatted string with fractions where appropriate
  */
-export function formatQuantityWithFractions(quantity: number, unit?: string): string {
+export function formatQuantityWithFractions(quantity: number): string {
     // Handle zero and negative numbers
     if (quantity <= 0) {
         return '0';
@@ -112,7 +112,7 @@ export function shouldUseFractions(unit: string): boolean {
  */
 export function formatQuantity(quantity: number, unit?: string): string {
     if (unit && shouldUseFractions(unit)) {
-        return formatQuantityWithFractions(quantity, unit);
+        return formatQuantityWithFractions(quantity);
     } else {
         // For non-fraction units, use regular decimal formatting
         return quantity.toFixed(2).replace(/\.?0+$/, '');

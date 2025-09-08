@@ -59,17 +59,7 @@ const BudgetIcon = () => (
     </svg>
 );
 
-const ChartIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
-    </svg>
-);
 
-const CalendarIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-    </svg>
-);
 
 const EditIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -107,11 +97,8 @@ interface MonthlyBudget {
 }
 
 const Budget: React.FC = () => {
-    const navigate = useNavigate();
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-    const [selectedPeriod, setSelectedPeriod] = useState('current');
     const [showBudgetModal, setShowBudgetModal] = useState(false);
-    const [editingBudget, setEditingBudget] = useState(false);
 
     // Sample data - in real app, this would come from API/database
     const [currentBudget, setCurrentBudget] = useState<MonthlyBudget>({
@@ -129,7 +116,7 @@ const Budget: React.FC = () => {
         ]
     });
 
-    const [recentSpending, setRecentSpending] = useState<SpendingEntry[]>([
+    const [recentSpending] = useState<SpendingEntry[]>([
         { id: '1', date: '2024-01-15', store: 'Metro', category: 'Produce', amount: 23.45, items: 8 },
         { id: '2', date: '2024-01-14', store: 'Walmart', category: 'Pantry Staples', amount: 45.67, items: 12 },
         { id: '3', date: '2024-01-12', store: 'Costco', category: 'Meat & Seafood', amount: 89.23, items: 6 },

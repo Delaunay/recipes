@@ -13,7 +13,6 @@ import {
   Spinner,
   Link,
   Input,
-  Select,
   IconButton,
   Heading,
 } from '@chakra-ui/react';

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, Any
 import os
 import sys
@@ -28,6 +30,24 @@ STATIC_FOLDER_DEFAULT = os.path.join(ROOT, 'static')
 STATIC_FOLDER = os.path.abspath(os.getenv("FLASK_STATIC", STATIC_FOLDER_DEFAULT))
 STATIC_UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, 'uploads')
 
+
+__annotation_registry = {}
+
+def annotation(fun):
+    global __annotation_registry
+
+    __annotation_registry[fun.__name__] = fun
+
+    return fun
+
+def annotation_registry():
+    global __annotation_registry
+    return __annotation_registry
+
+
+__annotation_registry["recipe_ids"] = lambda sesh: sesh.query(Recipe._id).all()
+
+    
 
 class RecipeApp:
     def __init__(self):
@@ -165,7 +185,7 @@ class RecipeApp:
                 return jsonify({"error": str(e)}), 400
 
         @self.app.route('/recipes/<int:recipe_id>', methods=['GET'])
-        def get_recipe(recipe_id: int) -> Dict[str, Any]:
+        def get_recipe(recipe_id: recipe_ids) -> Dict[str, Any]:
             recipe = self.db.session.get(Recipe, recipe_id)
             if not recipe:
                 return jsonify({"error": "Recipe not found"}), 404

@@ -173,7 +173,7 @@ const MealPlanning: React.FC = () => {
             });
         });
 
-        return Array.from(groceryMap.entries()).map(([key, data]) => {
+        return Array.from(groceryMap.entries()).map(([, data]) => {
             return {
                 name: data.displayName,
                 quantity: data.quantity,

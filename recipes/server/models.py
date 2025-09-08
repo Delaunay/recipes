@@ -144,23 +144,23 @@ class Task(Base):
 
 class KeyValueStore(Base):
     __tablename__ = 'key_value_store'
-    
+
     topic = Column(String(100), primary_key=True, nullable=False)
     key = Column(String(100), primary_key=True, nullable=False)
     value = Column(JSON)
     created_at = Column(DateTime, default=datetime.now())
     updated_at = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
-    
+
     # Composite primary key constraint on (topic, key)
     __table_args__ = (
         # Additional index for topic-only queries (primary key already indexes topic+key)
         Index('idx_keyvalue_topic', 'topic'),
         Index('idx_keyvalue_key', 'key'),
     )
-    
+
     def __repr__(self):
         return f'<KeyValueStore topic={self.topic} key={self.key}>'
-    
+
     def to_json(self):
         return {
             'topic': self.topic,
@@ -485,7 +485,7 @@ class ProductInventory(Base):
     name = Column(String(50), nullable=False)               # Name of the product
     quantity = Column(Float)                                # Current amount in inventory
 
-    # price = Column(Float) += price / qty 
+    # price = Column(Float) += price / qty
 
     def to_json(self):
         return {
@@ -541,7 +541,7 @@ class UnitConversion(Base):
             'category': self.category,
             'ingredient_id': self.ingredient_id,
             'extension': self.extension,
-            'is_volume': True,
+            'is_volume': self.is_volume,
         }
 
     def __repr__(self):

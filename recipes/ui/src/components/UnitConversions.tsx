@@ -18,31 +18,31 @@ import { recipeAPI, UnitConversion, Ingredient } from '../services/api';
 // Simple icon components
 const EditIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
   </svg>
 );
 
 const DeleteIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
   </svg>
 );
 
 const AddIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
   </svg>
 );
 
 const SaveIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
   </svg>
 );
 
 const CancelIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
   </svg>
 );
 
@@ -111,7 +111,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
 
   const handleCreate = async () => {
     if (isStatic) return; // Prevent creating in static mode
-    
+
     try {
       if (!formData.from_unit || !formData.to_unit || !formData.conversion_factor) {
         showNotification('Please fill in all required fields', 'error');
@@ -129,7 +129,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
       setConversions(prev => [...prev, newConversion]);
       setShowCreateForm(false);
       resetFormData();
-      
+
       showNotification('Unit conversion created successfully');
     } catch (err) {
       showNotification('Failed to create unit conversion', 'error');
@@ -139,12 +139,12 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
 
   const handleUpdate = async (id: number, updatedData: Partial<UnitConversion>) => {
     if (isStatic) return; // Prevent updating in static mode
-    
+
     try {
       const updatedConversion = await recipeAPI.updateUnitConversion(id, updatedData);
       setConversions(prev => prev.map(conv => conv.id === id ? updatedConversion : conv));
       setEditingId(null);
-      
+
       showNotification('Unit conversion updated successfully');
     } catch (err) {
       showNotification('Failed to update unit conversion', 'error');
@@ -154,7 +154,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
 
   const handleDelete = async (id: number) => {
     if (isStatic) return; // Prevent deleting in static mode
-    
+
     if (!window.confirm('Are you sure you want to delete this unit conversion?')) {
       return;
     }
@@ -162,7 +162,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
     try {
       await recipeAPI.deleteUnitConversion(id);
       setConversions(prev => prev.filter(conv => conv.id !== id));
-      
+
       showNotification('Unit conversion deleted successfully');
     } catch (err) {
       showNotification('Failed to delete unit conversion', 'error');
@@ -206,7 +206,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   // Get unique categories and ingredients for filtering
   const uniqueCategories = [...new Set(conversions.map(conv => conv.category))];
   const usedIngredientIds = [...new Set(conversions.map(conv => conv.ingredient_id).filter(Boolean))];
-  
+
   // Include the currently selected ingredient in the dropdown even if it doesn't have conversions yet
   const availableIngredientIds = [...usedIngredientIds];
   const selectedIngredientId = parseInt(filterIngredient);
@@ -216,17 +216,17 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
 
   // Filter conversions based on search and filters
   const filteredConversions = conversions.filter(conversion => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       conversion.from_unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
       conversion.to_unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getIngredientName(conversion.ingredient_id).toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesCategory = filterCategory === 'all' || conversion.category === filterCategory;
-    
-    const matchesIngredient = filterIngredient === 'all' || 
+
+    const matchesIngredient = filterIngredient === 'all' ||
       (filterIngredient === 'general' && !conversion.ingredient_id) ||
       conversion.ingredient_id?.toString() === filterIngredient;
-    
+
     return matchesSearch && matchesCategory && matchesIngredient;
   });
 
@@ -267,7 +267,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
           <Box>
             <Text fontSize="2xl" fontWeight="bold">Unit Conversions</Text>
             <Text color="gray.600">
-              {isStatic 
+              {isStatic
                 ? 'Browse unit conversion factors used in recipes'
                 : 'Manage unit conversion factors for recipes'
               }
@@ -298,7 +298,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 <Text fontSize="sm" fontWeight="medium" mb={1}>From Unit</Text>
                 <Input
                   value={formData.from_unit || ''}
-                  onChange={(e) => setFormData({...formData, from_unit: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, from_unit: e.target.value })}
                   placeholder="e.g., cup"
                 />
               </Box>
@@ -306,7 +306,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 <Text fontSize="sm" fontWeight="medium" mb={1}>To Unit</Text>
                 <Input
                   value={formData.to_unit || ''}
-                  onChange={(e) => setFormData({...formData, to_unit: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, to_unit: e.target.value })}
                   placeholder="e.g., ml"
                 />
               </Box>
@@ -316,7 +316,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                   type="number"
                   step="0.000001"
                   value={formData.conversion_factor || ''}
-                  onChange={(e) => setFormData({...formData, conversion_factor: parseFloat(e.target.value) || 1})}
+                  onChange={(e) => setFormData({ ...formData, conversion_factor: parseFloat(e.target.value) || 1 })}
                   placeholder="1.0"
                 />
                 <Text fontSize="xs" color="gray.600" mt={1}>
@@ -327,7 +327,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 <Text fontSize="sm" fontWeight="medium" mb={1}>Category</Text>
                 <Input
                   value={formData.category || ''}
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   placeholder="custom"
                 />
               </Box>
@@ -335,7 +335,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 <Text fontSize="sm" fontWeight="medium" mb={1}>Specific Ingredient (Optional)</Text>
                 <select
                   value={formData.ingredient_id?.toString() || ''}
-                  onChange={(e) => setFormData({...formData, ingredient_id: e.target.value ? parseInt(e.target.value) : undefined})}
+                  onChange={(e) => setFormData({ ...formData, ingredient_id: e.target.value ? parseInt(e.target.value) : undefined })}
                   style={{
                     width: '100%',
                     padding: '8px',
@@ -357,6 +357,11 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 </Text>
               </Box>
             </SimpleGrid>
+            <Box mt={3} p={3} bg="blue.50" borderRadius="md" borderLeft="2px solid" borderColor="blue.400">
+              <Text fontSize="sm" color="blue.700">
+                <strong>Note:</strong> The system will automatically detect if this is a volume or mass conversion based on the unit types you enter.
+              </Text>
+            </Box>
             <HStack gap={2} mt={4}>
               <Button colorScheme="blue" onClick={handleCreate}>
                 Create Conversion
@@ -436,10 +441,11 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
         {/* Conversions Grid */}
         <VStack gap={3} align="stretch">
           {/* Header */}
-          <SimpleGrid columns={{ base: 1, md: (isAuthorized && !isStatic) ? 6 : 5 }} gap={4} p={3} bg="gray.100" borderRadius="md" fontWeight="semibold" fontSize="sm">
+          <SimpleGrid columns={{ base: 1, md: (isAuthorized && !isStatic) ? 7 : 6 }} gap={4} p={3} bg="gray.100" borderRadius="md" fontWeight="semibold" fontSize="sm">
             <Text>From Unit</Text>
             <Text>To Unit</Text>
             <Text>Conversion Factor</Text>
+            <Text>Type</Text>
             <Text>Category</Text>
             <Text>Ingredient</Text>
             {isAuthorized && !isStatic && <Text>Actions</Text>}
@@ -447,12 +453,12 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
 
           {/* Conversions */}
           {filteredConversions.map((conversion) => (
-            <SimpleGrid key={conversion.id} columns={{ base: 1, md: (isAuthorized && !isStatic) ? 6 : 5 }} gap={4} p={3} borderRadius="md" border="1px solid" borderColor="gray.200" alignItems="center">
+            <SimpleGrid key={conversion.id} columns={{ base: 1, md: (isAuthorized && !isStatic) ? 7 : 6 }} gap={4} p={3} borderRadius="md" border="1px solid" borderColor="gray.200" alignItems="center">
               <Box>
                 {editingId === conversion.id && !isStatic ? (
                   <Input
                     value={formData.from_unit || ''}
-                    onChange={(e) => setFormData({...formData, from_unit: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, from_unit: e.target.value })}
                     size="sm"
                   />
                 ) : (
@@ -463,7 +469,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 {editingId === conversion.id && !isStatic ? (
                   <Input
                     value={formData.to_unit || ''}
-                    onChange={(e) => setFormData({...formData, to_unit: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, to_unit: e.target.value })}
                     size="sm"
                   />
                 ) : (
@@ -476,7 +482,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                     type="number"
                     step="0.000001"
                     value={formData.conversion_factor || ''}
-                    onChange={(e) => setFormData({...formData, conversion_factor: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, conversion_factor: parseFloat(e.target.value) || 0 })}
                     size="sm"
                   />
                 ) : (
@@ -484,10 +490,19 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 )}
               </Box>
               <Box>
+                <Badge
+                  colorScheme={conversion.is_volume ? "blue" : "orange"}
+                  variant="solid"
+                  fontSize="xs"
+                >
+                  {conversion.is_volume ? "Volume" : "Mass"}
+                </Badge>
+              </Box>
+              <Box>
                 {editingId === conversion.id && !isStatic ? (
                   <Input
                     value={formData.category || ''}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     size="sm"
                   />
                 ) : (
@@ -498,7 +513,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                 {editingId === conversion.id && !isStatic ? (
                   <select
                     value={formData.ingredient_id?.toString() || ''}
-                    onChange={(e) => setFormData({...formData, ingredient_id: e.target.value ? parseInt(e.target.value) : undefined})}
+                    onChange={(e) => setFormData({ ...formData, ingredient_id: e.target.value ? parseInt(e.target.value) : undefined })}
                     style={{
                       width: '100%',
                       padding: '4px 8px',
@@ -578,6 +593,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
           <VStack align="start" gap={1} fontSize="sm" color="blue.700">
             <Text>• <strong>Conversion Factor:</strong> Multiply the "from" unit by this number to get the "to" unit</Text>
             <Text>• <strong>Example:</strong> 1 cup = 236.588 ml, so conversion factor from cup to ml is 236.588</Text>
+            <Text>• <strong>Type:</strong> Shows whether the conversion is for Volume units (blue) or Mass units (orange)</Text>
             <Text>• <strong>General conversions:</strong> Apply to all ingredients (e.g., ml to liter)</Text>
             <Text>• <strong>Ingredient-specific:</strong> Apply only to specific ingredients (e.g., flour density conversions)</Text>
             <Text>• <strong>Categories:</strong> Help organize conversions (e.g., "volume", "mass", "custom")</Text>
@@ -588,4 +604,4 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
   );
 };
 
-export default UnitConversions; 
+export default UnitConversions;
