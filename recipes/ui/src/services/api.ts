@@ -636,7 +636,7 @@ class RecipeAPI {
   }
 
   async getIngredientById(ingredientId: number): Promise<Ingredient> {
-    return this.request<Ingredient>(`/unit/ingredient/${ingredientId}`);
+    return this.request<Ingredient>(`/ingredients/${ingredientId}`);
   }
 
   async getConversionFactor(fromUnit: string, toUnit: string): Promise<UnitConversion | null> {

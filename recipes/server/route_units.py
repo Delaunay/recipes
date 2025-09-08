@@ -256,9 +256,10 @@ def units_routes(app, db):
             return unit.to_json()
         return {}
 
-    @app.route('/unit/ingredient/<int:ingredient_id>')
-    def flask_get_ingredient(ingredient_id):
-        return get_ingredient(db, ingredient_id).to_json()
+    # Already exists as /ingredients/<int:ingredient_id>
+    # @app.route('/unit/ingredient/<int:ingredient_id>')
+    # def flask_get_ingredient(ingredient_id):
+    #     return get_ingredient(db, ingredient_id).to_json()
 
     @app.route('/unit/convert/<string:from_unit>/<string:to_unit>')
     def convert(from_unit, to_unit):
