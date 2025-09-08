@@ -19,6 +19,7 @@ import {
 } from '@chakra-ui/react';
 import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath, UnitConversion } from '../services/api';
 import { convert, getAvailableUnits } from '../utils/unit_cvt';
+import { formatQuantity, parseFractionToDecimal } from '../utils/fractions';
 import ImageUpload from './ImageUpload';
 
 // Utility functions for ingredient references
@@ -836,20 +837,24 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
               <Box minW="80px">
                 {isEditable && !isStatic ? (
                   <ContentEditable
-                    content={ingredient.quantity?.toString() || '1'}
-                    onContentChange={(e) => onUpdateIngredient(index, 'quantity', parseFloat(e.currentTarget.textContent || '1') || 1)}
+                    content={formatQuantity(ingredient.quantity || 1, ingredient.unit)}
+                    onContentChange={(e) => {
+                      const inputText = e.currentTarget.textContent || '1';
+                      const parsedQuantity = parseFractionToDecimal(inputText);
+                      onUpdateIngredient(index, 'quantity', parsedQuantity || 1);
+                    }}
                     isEditable={isEditable}
                     onKeyDown={handleKeyDown}
                   />
                 ) : (
                   <VStack align="start" gap={0}>
                     <Flex align="center" gap={1}>
-                      <Text>{displayQuantity.toFixed(2).replace(/\.?0+$/, '')}</Text>
+                      <Text>{formatQuantity(displayQuantity, displayUnit)}</Text>
                       {isLoading && <Spinner size="xs" />}
                     </Flex>
                     {converted && converted.unit !== converted.originalUnit && (
                       <Text fontSize="xs" color="gray.500">
-                        (orig: {(converted.originalQuantity * multiplier).toFixed(2).replace(/\.?0+$/, '')} {converted.originalUnit})
+                        (orig: {formatQuantity(converted.originalQuantity * multiplier, converted.originalUnit)} {converted.originalUnit})
                       </Text>
                     )}
                   </VStack>
