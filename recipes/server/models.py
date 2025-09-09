@@ -388,6 +388,10 @@ class Ingredient(Base):
     composition = Column(JSON)
     extension = Column(JSON)    # Additional info as JSON
 
+    metric_unit = Column(String(50))
+    us_customary = Column(String(50))
+    us_legal = Column(String(50))
+
     # preferred_unit = Column(String(50))
     # unit = Column(String(50))
 

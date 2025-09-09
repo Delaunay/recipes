@@ -103,19 +103,42 @@ MASS_UNITS = {
     'oz': 28.3495
 }
 
+# US CUSTOMARY
 VOLUME_UNITS = {
     'ml': 1,
     'cl': 10,
     'l': 1000,
     "cm3": 1,
     'fl oz': 29.5735,
-    'tbsp': 14.7868,
+    'tbsp': 14.7868, # 16 US tablespoons = 1 CUP
     'tsp': 4.92892,
     'cup': 236.588,
     "pint": 473.176,
     "quart": 946.353,
     "gallon": 3785.
 }
+
+# # US Legal
+# VOLUME_UNITS = {
+#     'ml': 1,
+#     "cup": 240,             # metric cup
+#     "tbsp": 240/16          # tbs 15 ml
+# }
+
+# # Imperial
+# VOLUME_UNITS = {
+#     'ml': 1,
+#     "cup": 284.131,
+#     "tbsp": 284.131/16
+# }
+
+# # Metric
+# VOLUME_UNITS = {
+#     'ml': 1,
+#     "cup": 250,
+#     "tbsp": 250/16
+# }
+
 
 DEFAULT_MASS_UNIT = "g"
 DEFAULT_VOLUME_UNIT = "ml"
