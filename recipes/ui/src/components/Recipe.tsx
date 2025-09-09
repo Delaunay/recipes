@@ -1892,6 +1892,17 @@ const Recipe: FC<RecipeProps> = ({
     };
   });
 
+  // Update document title when recipe title changes
+  useEffect(() => {
+    if (recipe.title && recipe.title !== 'New Recipe') {
+      document.title = recipe.title;
+    } else if (isEditable && !initialRecipe) {
+      document.title = 'Create Recipe';
+    } else {
+      document.title = 'Recipe';
+    }
+  }, [recipe.title, isEditable, initialRecipe]);
+
   // Load available units for each ingredient when not in edit mode
   useEffect(() => {
     if (!isEditable && recipe.ingredients && recipe.ingredients.length > 0) {

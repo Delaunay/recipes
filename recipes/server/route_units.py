@@ -284,6 +284,23 @@ def units_routes(app, db):
         )
         return jsonify([unit for (unit,) in conversions])
 
+    @app.route('/units/suggestion', methods=['GET'])
+    def get_units_suggestion():
+        return get_units_for_ingredient(None)
+
+    @app.route('/units/suggestion/<int:ingredient_id>', methods=['GET'])
+    def get_units_for_ingredient(ingredient_id=None):
+        if ingredient_id is None:
+            return all_units()
+        else:
+            units = (
+                db.session.query(RecipeIngredient.unit)
+                .filter(ingredient_id == ingredient_id)
+                .distinct()
+                .all()
+            )
+            return jsonify([unit for (unit,) in units])
+
     @app.route('/units/available/mass', methods=['GET'])
     def get_mass_units():
         conversions = (

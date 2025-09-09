@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Box, VStack, Text, Button, HStack, Heading } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
 
 const Home = () => {
   const isStatic = recipeAPI.isStaticMode();
+
+  useEffect(() => {
+    document.title = 'RecipeBook';
+  }, []);
 
   return (
     <Box py={10}>

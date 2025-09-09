@@ -14,18 +14,20 @@ const CreateRecipe = () => {
   useEffect(() => {
     if (isStatic) {
       navigate('/recipes');
+    } else {
+      document.title = 'Create Recipe';
     }
   }, [isStatic, navigate]);
 
   const handleSaveRecipe = async (recipe: RecipeData) => {
     if (isStatic) return; // Prevent saving in static mode
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const savedRecipe = await recipeAPI.createRecipe(recipe);
-      
+
       // Navigate to the newly created recipe
       navigate(`/recipes/${savedRecipe.id}`);
     } catch (err) {
@@ -60,7 +62,7 @@ const CreateRecipe = () => {
       <Button mb={4} onClick={() => navigate('/recipes')} variant="outline">
         ← Back to Recipes
       </Button>
-      
+
       <Box mb={4}>
         <Text fontSize="3xl" fontWeight="bold" mb={2}>
           Create New Recipe
@@ -76,7 +78,7 @@ const CreateRecipe = () => {
           <Text fontSize="sm" color="red.700">{error}</Text>
         </Box>
       )}
-      
+
       <Recipe
         isAuthorized={true}
         onSave={handleSaveRecipe}
@@ -85,4 +87,4 @@ const CreateRecipe = () => {
   );
 };
 
-export default CreateRecipe; 
+export default CreateRecipe;

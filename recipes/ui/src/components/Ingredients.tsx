@@ -202,11 +202,11 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
       )}
 
       {/* Ingredient Icon/Placeholder */}
-      <Box 
-        bg="gray.100" 
-        height="120px" 
-        display="flex" 
-        alignItems="center" 
+      <Box
+        bg="gray.100"
+        height="120px"
+        display="flex"
+        alignItems="center"
         justifyContent="center"
         position="relative"
       >
@@ -276,9 +276,9 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
               onKeyDown={handleKeyDown}
             />
           ) : (
-            <Text 
-              fontWeight="bold" 
-              fontSize="md" 
+            <Text
+              fontWeight="bold"
+              fontSize="md"
               overflow="hidden"
               textOverflow="ellipsis"
               whiteSpace="nowrap"
@@ -289,13 +289,13 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
 
           {/* Description (only show in non-editing mode and if exists) */}
           {ingredient.description && !isEditing && (
-            <Box 
+            <Box
               minH="40px"
               overflow="hidden"
               position="relative"
             >
-              <Text 
-                fontSize="sm" 
+              <Text
+                fontSize="sm"
                 color="gray.600"
                 overflow="hidden"
                 textOverflow="ellipsis"
@@ -332,10 +332,10 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
           {/* Action Buttons for non-editing mode */}
           {!isEditing && (
             <HStack gap={1} justify="center" mt={2}>
-              <Button 
-                size="xs" 
-                colorScheme="blue" 
-                variant="solid" 
+              <Button
+                size="xs"
+                colorScheme="blue"
+                variant="solid"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleViewDetailsById();
@@ -414,6 +414,7 @@ const Ingredients = () => {
 
   useEffect(() => {
     loadIngredients();
+    document.title = 'Ingredients';
   }, []);
 
   const loadIngredients = async () => {

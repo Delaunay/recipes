@@ -128,6 +128,7 @@ const MealPlanning: React.FC = () => {
         };
 
         loadRecipes();
+        document.title = 'Meal Planning';
         loadAvailableMealPlans();
     }, []);
 

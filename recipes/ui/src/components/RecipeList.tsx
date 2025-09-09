@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   VStack,
@@ -10,7 +10,7 @@ import {
   Heading,
   SimpleGrid,
   Image,
-  Badge
+  Badge,
 } from '@chakra-ui/react';
 import { recipeAPI, RecipeData, imagePath } from '../services/api';
 
@@ -23,6 +23,7 @@ const RecipeList = () => {
 
   useEffect(() => {
     fetchRecipes();
+    document.title = 'All Recipes';
   }, []);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ const RecipeList = () => {
     let coord = { x: 0, y: 0 };
 
     if (saved) {
-      coord = JSON.parse(saved) 
+      coord = JSON.parse(saved)
     }
     window.scrollTo(coord.x, coord.y);
   }
@@ -137,107 +138,109 @@ const RecipeList = () => {
 
         <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 }} gap={4}>
           {recipes.map((recipe) => (
-            <Box
-              key={recipe.id}
-              borderWidth="1px"
-              borderRadius="lg"
-              overflow="hidden"
-              bg="white"
-              shadow="sm"
-              _hover={{
-                shadow: "lg",
-                transform: "translateY(-2px)",
-                transition: "all 0.2s"
-              }}
-              cursor="pointer"
-              onClick={() => handleCardClick(recipe)}
-              transition="all 0.2s"
-              maxW="100%"
-            >
-              {/* Recipe Image - Square */}
-              <Box position="relative" width="100%" paddingBottom="100%" overflow="hidden">
-                {recipe.images && recipe.images.length > 0 ? (
-                  <Image
-                    src={imagePath(recipe.images[0])}
-                    alt={recipe.title}
-                    position="absolute"
-                    top="0"
-                    left="0"
-                    width="100%"
-                    height="100%"
-                    objectFit="cover"
-                  />
-                ) : (
-                  <Box
-                    position="absolute"
-                    top="0"
-                    left="0"
-                    width="100%"
-                    height="100%"
-                    bg="gray.100"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Text color="gray.500" fontSize="sm" textAlign="center">
-                      No image
-                    </Text>
-                  </Box>
-                )}
-              </Box>
-
-              {/* Recipe Details */}
-              <Box p={4}>
-                <VStack align="stretch" gap={3}>
-                  {/* Recipe Title */}
-                  <Heading size="md">
-                    {recipe.title}
-                  </Heading>
-
-                  {/* Recipe Description */}
-                  {recipe.description && (
-                    <Text fontSize="sm" color="gray.600" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                      {recipe.description}
-                    </Text>
+            <RouterLink to={`/recipes/${recipe.id}`}>
+              <Box
+                key={recipe.id}
+                borderWidth="1px"
+                borderRadius="lg"
+                overflow="hidden"
+                bg="white"
+                shadow="sm"
+                _hover={{
+                  shadow: "lg",
+                  transform: "translateY(-2px)",
+                  transition: "all 0.2s"
+                }}
+                cursor="pointer"
+                transition="all 0.2s"
+                maxW="100%"
+                h="100%"
+              >
+                {/* Recipe Image - Square */}
+                <Box position="relative" width="100%" paddingBottom="100%" overflow="hidden">
+                  {recipe.images && recipe.images.length > 0 ? (
+                    <Image
+                      src={imagePath(recipe.images[0])}
+                      alt={recipe.title}
+                      position="absolute"
+                      top="0"
+                      left="0"
+                      width="100%"
+                      height="100%"
+                      objectFit="cover"
+                    />
+                  ) : (
+                    <Box
+                      position="absolute"
+                      top="0"
+                      left="0"
+                      width="100%"
+                      height="100%"
+                      bg="gray.100"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Text color="gray.500" fontSize="sm" textAlign="center">
+                        No image
+                      </Text>
+                    </Box>
                   )}
+                </Box>
 
-                  {/* Recipe Stats */}
-                  <HStack gap={3} fontSize="sm" color="gray.500" flexWrap="wrap">
-                    {recipe.prep_time && (
-                      <Badge colorScheme="blue" variant="subtle">
-                        Prep: {recipe.prep_time}min
-                      </Badge>
-                    )}
-                    {recipe.cook_time && (
-                      <Badge colorScheme="green" variant="subtle">
-                        Cook: {recipe.cook_time}min
-                      </Badge>
-                    )}
-                    {recipe.servings && (
-                      <Badge colorScheme="purple" variant="subtle">
-                        Serves: {recipe.servings}
-                      </Badge>
-                    )}
-                  </HStack>
+                {/* Recipe Details */}
+                <Box p={4}>
+                  <VStack align="stretch" gap={3}>
+                    {/* Recipe Title */}
+                    <Heading size="md">
+                      {recipe.title}
+                    </Heading>
 
-                  {/* Categories */}
-                  {recipe.categories && recipe.categories.length > 0 && (
-                    <HStack gap={2} flexWrap="wrap">
-                      {recipe.categories.slice(0, 3).map((category) => (
-                        <Badge key={category.id} colorScheme="gray" variant="outline" fontSize="xs">
-                          {category.name}
+                    {/* Recipe Description */}
+                    {recipe.description && (
+                      <Text fontSize="sm" color="gray.600" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                        {recipe.description}
+                      </Text>
+                    )}
+
+                    {/* Recipe Stats */}
+                    <HStack gap={3} fontSize="sm" color="gray.500" flexWrap="wrap">
+                      {recipe.prep_time && (
+                        <Badge colorScheme="blue" variant="subtle">
+                          Prep: {recipe.prep_time}min
                         </Badge>
-                      ))}
-                      {recipe.categories.length > 3 && (
-                        <Badge colorScheme="gray" variant="outline" fontSize="xs">
-                          +{recipe.categories.length - 3} more
+                      )}
+                      {recipe.cook_time && (
+                        <Badge colorScheme="green" variant="subtle">
+                          Cook: {recipe.cook_time}min
+                        </Badge>
+                      )}
+                      {recipe.servings && (
+                        <Badge colorScheme="purple" variant="subtle">
+                          Serves: {recipe.servings}
                         </Badge>
                       )}
                     </HStack>
-                  )}
-                </VStack>
+
+                    {/* Categories */}
+                    {recipe.categories && recipe.categories.length > 0 && (
+                      <HStack gap={2} flexWrap="wrap">
+                        {recipe.categories.slice(0, 3).map((category) => (
+                          <Badge key={category.id} colorScheme="gray" variant="outline" fontSize="xs">
+                            {category.name}
+                          </Badge>
+                        ))}
+                        {recipe.categories.length > 3 && (
+                          <Badge colorScheme="gray" variant="outline" fontSize="xs">
+                            +{recipe.categories.length - 3} more
+                          </Badge>
+                        )}
+                      </HStack>
+                    )}
+                  </VStack>
+                </Box>
               </Box>
-            </Box>
+            </RouterLink>
           ))}
         </SimpleGrid>
       </VStack>
