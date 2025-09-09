@@ -658,6 +658,14 @@ class RecipeAPI {
   async getMassUnits(): Promise<string[]> {
     return this.request<string[]>('/units/available/mass');
   }
+
+  async getUnitSuggestions(ingredientId?: number): Promise<string[]> {
+    if (ingredientId) {
+      return this.request<string[]>(`/units/suggestion/${ingredientId}`);
+    } else {
+      return this.request<string[]>('/units/suggestion');
+    }
+  }
 }
 
 // Export a singleton instance

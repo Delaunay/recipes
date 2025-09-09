@@ -20,6 +20,7 @@ import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath, UnitCo
 import { convert, getAvailableUnits } from '../utils/unit_cvt';
 import { formatQuantity, parseFractionToDecimal } from '../utils/fractions';
 import ImageUpload from './ImageUpload';
+import UnitSelect from './UnitSelect';
 
 // Utility functions for ingredient references
 interface IngredientReference {
@@ -861,11 +862,13 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
               </Box>
               <Box minW="80px">
                 {isEditable && !isStatic ? (
-                  <ContentEditable
-                    content={ingredient.unit || 'cup'}
-                    onContentChange={(e) => onUpdateIngredient(index, 'unit', e.currentTarget.textContent || '')}
-                    isEditable={isEditable}
-                    onKeyDown={handleKeyDown}
+                  <UnitSelect
+                    value={ingredient.unit || 'cup'}
+                    onChange={(value) => onUpdateIngredient(index, 'unit', value)}
+                    ingredientId={ingredient.ingredient_id}
+                    placeholder="unit"
+                    size="sm"
+                    width="80px"
                   />
                 ) : (
                   <Box>
