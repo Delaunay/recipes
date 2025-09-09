@@ -38,6 +38,7 @@ const sidebarItems = [
   { name: 'Ingredients', href: '/ingredients' },
   { name: 'Unit Conversions', href: '/conversions' },
   { name: 'Unit Manager', href: '/unit-manager' },
+  { name: 'Settings', href: '/settings' },
 ];
 
 const Layout: FC<LayoutProps> = ({ children }) => {

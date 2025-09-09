@@ -388,9 +388,13 @@ class Ingredient(Base):
     composition = Column(JSON)
     extension = Column(JSON)    # Additional info as JSON
 
-    metric_unit = Column(String(50))
-    us_customary = Column(String(50))
-    us_legal = Column(String(50))
+    # Imperial system is Bonkers
+    unit_metric     = Column(String(50))
+    unit_us_customary = Column(String(50))
+    unit_us_legal   = Column(String(50))
+    unit_canada     = Column(String(50))
+    unit_australia  = Column(String(50))
+    unit_uk         = Column(String(50))
 
     # preferred_unit = Column(String(50))
     # unit = Column(String(50))
@@ -409,7 +413,15 @@ class Ingredient(Base):
             'description': self.description,
             'calories': self.calories,
             'density': self.density,
-            'extension': self.extension
+            'extension': self.extension,
+            "unit": {
+                "metric": self.unit_metric,
+                "unit_us_customary": self.unit_us_customary,
+                "unit_us_legal": self.unit_us_legal,
+                "unit_canada": self.unit_canada,
+                "unit_australia": self.unit_australia,
+                "unit_uk": self.unit_uk,
+            }
         }
 
 

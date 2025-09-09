@@ -590,6 +590,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
     name: string;
     quantity?: number;
     unit?: string;
+    density?: number;
   } | null>(null);
 
   // Drag and drop handlers
@@ -624,12 +625,29 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
     setDragOverIndex(null);
   };
 
-  const openConversionModal = (ingredient: RecipeIngredient) => {
+  const openConversionModal = async (ingredient: RecipeIngredient) => {
+    // Get the full ingredient data to ensure we have the density
+    let ingredientDensity = ingredient.density;
+
+    console.log('Opening conversion modal for ingredient:', ingredient.name, 'with density:', ingredientDensity);
+
+    // If no density in RecipeIngredient, try to get it from the full Ingredient data
+    if (!ingredientDensity && ingredient.ingredient_id) {
+      try {
+        const fullIngredient = await recipeAPI.getIngredientById(ingredient.ingredient_id);
+        ingredientDensity = fullIngredient.density;
+        console.log('Loaded full ingredient density:', ingredientDensity);
+      } catch (error) {
+        console.warn('Could not load full ingredient data:', error);
+      }
+    }
+
     setSelectedIngredient({
       id: ingredient.ingredient_id,
       name: ingredient.name,
       quantity: ingredient.quantity,
-      unit: ingredient.unit
+      unit: ingredient.unit,
+      density: ingredientDensity
     });
     setShowConversionModal(true);
   };
@@ -919,8 +937,8 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
                     size="sm"
                     colorScheme="blue"
                     variant="ghost"
-                    aria-label="Add unit conversion"
-                    title="Add unit conversion"
+                    aria-label="Calculate ingredient density"
+                    title="Calculate ingredient density"
                     onClick={() => openConversionModal(ingredient)}
                   >
                     <ConversionIcon />
@@ -942,64 +960,130 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
         })}
       </VStack>
 
-      {/* Unit Conversion Modal */}
-      <UnitConversionModal
+      {/* Density Calculation Modal */}
+      <DensityCalculationModal
         isOpen={showConversionModal}
         onClose={closeConversionModal}
         ingredientId={selectedIngredient?.id}
         ingredientName={selectedIngredient?.name}
-        initialQuantity={selectedIngredient?.quantity}
-        initialUnit={selectedIngredient?.unit}
+        currentDensity={selectedIngredient?.density}
       />
     </Box>
   );
 };
 
-// Unit Conversion Modal Component
-interface UnitConversionModalProps {
+// Density Calculation Modal Component
+interface DensityCalculationModalProps {
   isOpen: boolean;
   onClose: () => void;
   ingredientId?: number;
   ingredientName?: string;
-  initialQuantity?: number;
-  initialUnit?: string;
+  currentDensity?: number;
 }
 
-const UnitConversionModal: FC<UnitConversionModalProps> = ({
+const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
   isOpen,
   onClose,
   ingredientId,
   ingredientName,
-  initialQuantity,
-  initialUnit
+  currentDensity
 }) => {
-  const [fromQty, setFromQty] = useState('1');
-  const [fromUnit, setFromUnit] = useState('');
-  const [toQty, setToQty] = useState('');
-  const [toUnit, setToUnit] = useState('');
-  const [isIngredientSpecific, setIsIngredientSpecific] = useState(false);
+  console.log('DensityCalculationModal received currentDensity:', currentDensity, 'for ingredient:', ingredientName);
+  const [massQuantity, setMassQuantity] = useState('100');
+  const [massUnit, setMassUnit] = useState('g');
+  const [volumeQuantity, setVolumeQuantity] = useState('100');
+  const [volumeUnit, setVolumeUnit] = useState('ml');
+  const [calculatedDensity, setCalculatedDensity] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [massUnits, setMassUnits] = useState<string[]>([]);
+  const [volumeUnits, setVolumeUnits] = useState<string[]>([]);
+  const [unitsLoading, setUnitsLoading] = useState(false);
 
-  // Set initial values when modal opens
+  // Load available units when modal opens
   useEffect(() => {
-    if (isOpen && initialQuantity && initialUnit) {
-      setFromQty(initialQuantity.toString());
-      setFromUnit(initialUnit);
+    if (isOpen) {
+      const loadUnits = async () => {
+        setUnitsLoading(true);
+        try {
+          const [massUnitsData, volumeUnitsData] = await Promise.all([
+            recipeAPI.getMassUnits(),
+            recipeAPI.getVolumeUnits()
+          ]);
+          setMassUnits(massUnitsData);
+          setVolumeUnits(volumeUnitsData);
+
+          // Set default units if they exist in the lists
+          if (massUnitsData.length > 0 && !massUnitsData.includes(massUnit)) {
+            setMassUnit(massUnitsData.includes('g') ? 'g' : massUnitsData[0]);
+          }
+          if (volumeUnitsData.length > 0 && !volumeUnitsData.includes(volumeUnit)) {
+            setVolumeUnit(volumeUnitsData.includes('ml') ? 'ml' : volumeUnitsData[0]);
+          }
+        } catch (err) {
+          setError('Failed to load available units');
+        } finally {
+          setUnitsLoading(false);
+        }
+      };
+      loadUnits();
     }
-  }, [isOpen, initialQuantity, initialUnit]);
+  }, [isOpen]);
 
-  const handleSubmit = async () => {
-    if (!fromUnit || !toUnit || !fromQty || !toQty) {
-      setError('Please fill in all fields');
-      return;
+  // Initialize volume to match current density when modal opens
+  useEffect(() => {
+    if (isOpen && currentDensity) {
+      // Calculate volume that would give the current density with the default mass (100g)
+      // density = mass / volume, so volume = mass / density
+      const defaultMass = parseFloat(massQuantity);
+      if (defaultMass > 0) {
+        const calculatedVolume = defaultMass / currentDensity;
+        setVolumeQuantity(calculatedVolume.toFixed(2));
+      }
     }
+  }, [isOpen, currentDensity, massQuantity]);
 
-    const fromQtyNum = parseFloat(fromQty);
-    const toQtyNum = parseFloat(toQty);
+  // Calculate density whenever mass or volume changes
+  useEffect(() => {
+    const calculateDensity = async () => {
+      const massQty = parseFloat(massQuantity);
+      const volumeQty = parseFloat(volumeQuantity);
 
-    if (fromQtyNum <= 0 || toQtyNum <= 0) {
-      setError('Quantities must be greater than 0');
+      if (massQty > 0 && volumeQty > 0 && massUnit && volumeUnit) {
+        try {
+          // Get conversion factors to standard units (g and ml)
+          const [massConversion, volumeConversion] = await Promise.all([
+            recipeAPI.getConversionFactor(massUnit, 'g'),
+            recipeAPI.getConversionFactor(volumeUnit, 'ml')
+          ]);
+
+          if (massConversion && volumeConversion) {
+            // Convert to standard units (grams and ml)
+            const massInGrams = massQty * massConversion.conversion_factor;
+            const volumeInMl = volumeQty * volumeConversion.conversion_factor;
+
+            // Calculate density in g/ml
+            const density = massInGrams / volumeInMl;
+            setCalculatedDensity(density);
+          } else {
+            // Fallback: assume direct conversion if no conversion found
+            setCalculatedDensity(massQty / volumeQty);
+          }
+        } catch (err) {
+          // Fallback calculation
+          setCalculatedDensity(massQty / volumeQty);
+        }
+      } else {
+        setCalculatedDensity(null);
+      }
+    };
+
+    calculateDensity();
+  }, [massQuantity, massUnit, volumeQuantity, volumeUnit]);
+
+  const handleSave = async () => {
+    if (!calculatedDensity || !ingredientId) {
+      setError('Cannot save density - missing required data');
       return;
     }
 
@@ -1007,37 +1091,22 @@ const UnitConversionModal: FC<UnitConversionModalProps> = ({
     setError('');
 
     try {
-      // Calculate conversion factor: how many toUnits in 1 fromUnit
-      const conversionFactor = toQtyNum / fromQtyNum;
-
-      const conversion: Omit<UnitConversion, 'id'> = {
-        from_unit: fromUnit,
-        to_unit: toUnit,
-        conversion_factor: conversionFactor,
-        category: 'user_defined',
-        ingredient_id: isIngredientSpecific ? ingredientId : undefined,
-      };
-
-      await recipeAPI.createUnitConversion(conversion);
-
-      // Reset form (only conversion fields)
-      setToQty('');
-      setToUnit('');
-      setIsIngredientSpecific(false);
-
+      // Update ingredient with new density
+      await recipeAPI.updateIngredient(ingredientId, { density: calculatedDensity });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create unit conversion');
+      setError(err instanceof Error ? err.message : 'Failed to save density');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    // Only reset conversion fields, keep from fields as they're pre-populated
-    setToQty('');
-    setToUnit('');
-    setIsIngredientSpecific(false);
+    setMassQuantity('100');
+    setMassUnit('g');
+    setVolumeQuantity('100');
+    setVolumeUnit('ml');
+    setCalculatedDensity(null);
     setError('');
     onClose();
   };
@@ -1062,7 +1131,7 @@ const UnitConversionModal: FC<UnitConversionModalProps> = ({
         bg="white"
         borderRadius="md"
         p={6}
-        maxW="500px"
+        maxW="600px"
         width="100%"
         maxH="90vh"
         overflowY="auto"
@@ -1070,7 +1139,7 @@ const UnitConversionModal: FC<UnitConversionModalProps> = ({
         <VStack gap={4} align="stretch">
           <Flex justify="space-between" align="center">
             <Heading size="md">
-              Add Unit Conversion
+              Calculate Density - {ingredientName}
             </Heading>
             <IconButton
               aria-label="Close modal"
@@ -1088,47 +1157,178 @@ const UnitConversionModal: FC<UnitConversionModalProps> = ({
             </Box>
           )}
 
-          {/* Conversion Formula Display */}
-          <Box p={4} bg="gray.50" borderRadius="md">
-            <HStack align="center" justify="center" gap={3}>
-              <HStack gap={1}>
-                <Text>{fromQty}</Text>
-                <Text>{fromUnit}</Text>
-              </HStack>
-              <Text fontSize="lg" fontWeight="bold" color="blue.600">=&gt;</Text>
+          {/* Loading indicator for units */}
+          {unitsLoading && (
+            <Box p={3} bg="gray.50" borderRadius="md">
+              <Text fontSize="sm" color="gray.600">
+                Loading available units...
+              </Text>
+            </Box>
+          )}
 
-              <HStack gap={1}>
-                <Input
-                  type="number"
-                  step="any"
-                  value={toQty}
-                  onChange={(e) => setToQty(e.target.value)}
-                  placeholder="236.588"
-                  width="80px"
-                  size="sm"
-                />
-                <Input
-                  value={toUnit}
-                  onChange={(e) => setToUnit(e.target.value)}
-                  placeholder="ml"
-                  width="80px"
-                  size="sm"
-                />
-              </HStack>
+          {/* Density calculation layout */}
+          <VStack>
+            <HStack align="center" justify="space-between" gap={4}>
+              {/* Mass side */}
+              <VStack align="stretch" gap={3} flex={1}>
+                <Text fontWeight="semibold" textAlign="center" color="orange.600">
+                  Mass
+                </Text>
+                <HStack gap={2}>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={massQuantity}
+                    onChange={(e) => setMassQuantity(e.target.value)}
+                    placeholder="100"
+                    size="sm"
+                    disabled={unitsLoading}
+                  />
+                  <select
+                    value={massUnit}
+                    onChange={(e) => setMassUnit(e.target.value)}
+                    disabled={unitsLoading}
+                    style={{
+                      padding: '0.375rem 0.5rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.875rem',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    {massUnits.map(unit => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                </HStack>
+              </VStack>
+
+              <VStack align="center" gap={2} minW="50px">
+              </VStack>
+
+              {/* Volume side */}
+              <VStack align="stretch" gap={3} flex={1}>
+                <Text fontWeight="semibold" textAlign="center" color="blue.600">
+                  Volume
+                </Text>
+                <HStack gap={2}>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={volumeQuantity}
+                    onChange={(e) => setVolumeQuantity(e.target.value)}
+                    placeholder="100"
+                    size="sm"
+                    disabled={unitsLoading}
+                  />
+                  <select
+                    value={volumeUnit}
+                    onChange={(e) => setVolumeUnit(e.target.value)}
+                    disabled={unitsLoading}
+                    style={{
+                      padding: '0.375rem 0.5rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.875rem',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    {volumeUnits.map(unit => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                </HStack>
+              </VStack>
             </HStack>
-          </Box>
 
-          {/* Ingredient Specific Checkbox */}
-          <HStack align="center" gap={2}>
-            <input
-              type="checkbox"
-              checked={isIngredientSpecific}
-              onChange={(e) => setIsIngredientSpecific(e.target.checked)}
-              style={{ marginRight: '8px' }}
-            />
-            <Text fontSize="sm" fontWeight={"semibold"}>{ingredientName}</Text>
-            <Text fontSize="sm">specific</Text>
-          </HStack>
+            <HStack align="flex-end" gap={4}>
+              {/* Previous density display */}
+              {currentDensity && (
+                <VStack align="center" gap={2} minW="120px">
+                  <Text fontSize="sm" fontWeight="medium" color="blue.600">
+                    Previous Density
+                  </Text>
+                  <Box
+                    p={3}
+                    bg="blue.50"
+                    borderRadius="md"
+                    border="2px solid"
+                    borderColor="blue.200"
+                    textAlign="center"
+                  >
+                    <Text
+                      fontSize="lg"
+                      fontWeight="bold"
+                      color="blue.700"
+                    >
+                      {currentDensity.toFixed(4)}
+                    </Text>
+                    <Text fontSize="xs" color="blue.600">
+                      g/ml
+                    </Text>
+                  </Box>
+                </VStack>
+              )}
+
+              {/* Arrow - only show if there's a previous density */}
+              {currentDensity && (
+                <Box
+                  color="gray.400"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  minH="100px"
+                  px={3}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+                  </svg>
+                </Box>
+              )}
+
+              {/* New density display */}
+              <VStack align="center" gap={2} minW="120px">
+                <Text fontSize="sm" fontWeight="medium" color="gray.600">
+                  {calculatedDensity ? "New Density" : "Density"}
+                </Text>
+                <Box
+                  p={3}
+                  bg={calculatedDensity ? "green.50" : "gray.50"}
+                  borderRadius="md"
+                  border="2px solid"
+                  borderColor={calculatedDensity ? "green.200" : "gray.200"}
+                  textAlign="center"
+                >
+                  <Text
+                    fontSize="lg"
+                    fontWeight="bold"
+                    color={calculatedDensity ? "green.700" : "gray.500"}
+                  >
+                    {calculatedDensity ? calculatedDensity.toFixed(4) : "—"}
+                  </Text>
+                  <Text fontSize="xs" color="gray.600">
+                    g/ml
+                  </Text>
+                </Box>
+              </VStack>
+            </HStack>
+          </VStack>
+          {/* Help text */}
+          <Box p={3} bg="gray.50" borderRadius="md">
+            <Text fontSize="sm" color="gray.700" mb={2} fontWeight="medium">
+              💡 How to use:
+            </Text>
+            <VStack align="start" gap={1} fontSize="xs" color="gray.600">
+              <Text>• Measure the same quantity of {ingredientName} by both mass and volume</Text>
+              <Text>• Enter the measurements above using your preferred units</Text>
+              <Text>• The density will be calculated automatically in g/ml</Text>
+              <Text>• This helps convert between weight and volume measurements for this ingredient</Text>
+            </VStack>
+          </Box>
 
           <HStack gap={3} justify="flex-end">
             <Button variant="ghost" onClick={handleClose} disabled={isLoading}>
@@ -1136,10 +1336,10 @@ const UnitConversionModal: FC<UnitConversionModalProps> = ({
             </Button>
             <Button
               colorScheme="blue"
-              onClick={handleSubmit}
-              disabled={isLoading}
+              onClick={handleSave}
+              disabled={!calculatedDensity || isLoading}
             >
-              {isLoading ? 'Creating...' : 'Add Conversion'}
+              {isLoading ? 'Saving...' : 'Save Density'}
             </Button>
           </HStack>
         </VStack>
