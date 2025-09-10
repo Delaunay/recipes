@@ -991,7 +991,7 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
   console.log('DensityCalculationModal received currentDensity:', currentDensity, 'for ingredient:', ingredientName);
   const [massQuantity, setMassQuantity] = useState('100');
   const [massUnit, setMassUnit] = useState('g');
-  const [volumeQuantity, setVolumeQuantity] = useState('100');
+  const [volumeQuantity, setVolumeQuantity] = useState('250');
   const [volumeUnit, setVolumeUnit] = useState('ml');
   const [calculatedDensity, setCalculatedDensity] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -999,6 +999,7 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
   const [massUnits, setMassUnits] = useState<string[]>([]);
   const [volumeUnits, setVolumeUnits] = useState<string[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
+  const [hasInitializedMass, setHasInitializedMass] = useState(false);
 
   // Load available units when modal opens
   useEffect(() => {
@@ -1030,18 +1031,26 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
     }
   }, [isOpen]);
 
-  // Initialize volume to match current density when modal opens
+  // Initialize mass to match current density when modal opens (only once)
   useEffect(() => {
-    if (isOpen && currentDensity) {
-      // Calculate volume that would give the current density with the default mass (100g)
-      // density = mass / volume, so volume = mass / density
-      const defaultMass = parseFloat(massQuantity);
-      if (defaultMass > 0) {
-        const calculatedVolume = defaultMass / currentDensity;
-        setVolumeQuantity(calculatedVolume.toFixed(2));
+    if (isOpen && currentDensity && !hasInitializedMass) {
+      // Calculate mass that would give the current density with the default volume (100ml)
+      // density = mass / volume, so mass = density * volume
+      const defaultVolume = parseFloat(volumeQuantity);
+      if (defaultVolume > 0) {
+        const calculatedMass = currentDensity * defaultVolume;
+        setMassQuantity(calculatedMass.toFixed(2));
+        setHasInitializedMass(true);
       }
     }
-  }, [isOpen, currentDensity, massQuantity]);
+  }, [isOpen, currentDensity, volumeQuantity, hasInitializedMass]);
+
+  // Reset initialization flag when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setHasInitializedMass(false);
+    }
+  }, [isOpen]);
 
   // Calculate density whenever mass or volume changes
   useEffect(() => {
@@ -1169,45 +1178,6 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
           {/* Density calculation layout */}
           <VStack>
             <HStack align="center" justify="space-between" gap={4}>
-              {/* Mass side */}
-              <VStack align="stretch" gap={3} flex={1}>
-                <Text fontWeight="semibold" textAlign="center" color="orange.600">
-                  Mass
-                </Text>
-                <HStack gap={2}>
-                  <Input
-                    type="number"
-                    step="any"
-                    value={massQuantity}
-                    onChange={(e) => setMassQuantity(e.target.value)}
-                    placeholder="100"
-                    size="sm"
-                    disabled={unitsLoading}
-                  />
-                  <select
-                    value={massUnit}
-                    onChange={(e) => setMassUnit(e.target.value)}
-                    disabled={unitsLoading}
-                    style={{
-                      padding: '0.375rem 0.5rem',
-                      borderRadius: '0.375rem',
-                      border: '1px solid #e2e8f0',
-                      fontSize: '0.875rem',
-                      backgroundColor: 'white'
-                    }}
-                  >
-                    {massUnits.map(unit => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                </HStack>
-              </VStack>
-
-              <VStack align="center" gap={2} minW="50px">
-              </VStack>
-
               {/* Volume side */}
               <VStack align="stretch" gap={3} flex={1}>
                 <Text fontWeight="semibold" textAlign="center" color="blue.600">
@@ -1236,6 +1206,45 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
                     }}
                   >
                     {volumeUnits.map(unit => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                </HStack>
+              </VStack>
+
+              <VStack align="center" gap={2} minW="50px">
+              </VStack>
+
+              {/* Mass side */}
+              <VStack align="stretch" gap={3} flex={1}>
+                <Text fontWeight="semibold" textAlign="center" color="orange.600">
+                  Mass
+                </Text>
+                <HStack gap={2}>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={massQuantity}
+                    onChange={(e) => setMassQuantity(e.target.value)}
+                    placeholder="100"
+                    size="sm"
+                    disabled={unitsLoading}
+                  />
+                  <select
+                    value={massUnit}
+                    onChange={(e) => setMassUnit(e.target.value)}
+                    disabled={unitsLoading}
+                    style={{
+                      padding: '0.375rem 0.5rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.875rem',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    {massUnits.map(unit => (
                       <option key={unit} value={unit}>
                         {unit}
                       </option>
