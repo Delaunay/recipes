@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useCallback, useRef, useEffect, FC, FormEvent, ChangeEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, FC, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -13,6 +13,7 @@ import {
   Spinner,
   Link,
   Input,
+  Textarea,
   IconButton,
   Heading,
 } from '@chakra-ui/react';
@@ -105,6 +106,32 @@ const parseTimeCommands = (text: string): TimeCommand[] => {
   }
 
   return commands;
+};
+
+// Get target unit for ingredient based on preferred unit system
+const getTargetUnitForIngredient = async (ingredient: RecipeIngredient, targetSystem: 'metric' | 'us_customary'): Promise<string | null> => {
+  if (!ingredient.ingredient_id) {
+    // If no ingredient ID, use fallback units
+    return targetSystem === 'metric' ? 'ml' : 'cup';
+  }
+
+  try {
+    // Get the full ingredient data to access unit preferences
+    const fullIngredient = await recipeAPI.getIngredientById(ingredient.ingredient_id);
+
+    if (fullIngredient.unit) {
+      if (targetSystem === 'metric') {
+        return fullIngredient.unit.metric || 'ml';
+      } else {
+        return fullIngredient.unit.us_customary || 'cup';
+      }
+    }
+  } catch (error) {
+    console.log(`Could not load ingredient data for ${ingredient.name}:`, error);
+  }
+
+  // Fallback if ingredient data unavailable
+  return targetSystem === 'metric' ? 'ml' : 'cup';
 };
 
 // Find ingredient by partial name match
@@ -389,152 +416,7 @@ const ConversionIcon = () => (
 
 
 
-// Move ContentEditable outside to prevent recreation on every render
-interface ContentEditableProps {
-  content: string;
-  onContentChange: (e: FormEvent<HTMLDivElement>) => void;
-  className?: string;
-  placeholder?: string;
-  multiline?: boolean;
-  isEditable: boolean;
-  onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
-}
 
-const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, className, placeholder, multiline = false, isEditable, onKeyDown }) => {
-  const divRef = useRef<HTMLDivElement>(null);
-  const cursorPositionRef = useRef<number>(0);
-  const isPasteRef = useRef<boolean>(false);
-  const undoStackRef = useRef<string[]>([]);
-  const redoStackRef = useRef<string[]>([]);
-  const lastContentRef = useRef<string>('');
-
-  // Save cursor position before content changes
-  const handleInput = useCallback((e: FormEvent<HTMLDivElement>) => {
-    const currentContent = e.currentTarget.textContent || '';
-    const selection = window.getSelection();
-
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      cursorPositionRef.current = range.startOffset;
-    }
-
-    // Save to undo stack if content actually changed
-    if (currentContent !== lastContentRef.current) {
-      undoStackRef.current.push(lastContentRef.current);
-      redoStackRef.current = []; // Clear redo stack when new changes are made
-      lastContentRef.current = currentContent;
-    }
-
-    onContentChange(e);
-  }, [onContentChange]);
-
-  // Handle paste events
-  const handlePaste = useCallback(() => {
-    isPasteRef.current = true;
-    // Let the default paste behavior happen, then we'll handle cursor position
-    setTimeout(() => {
-      isPasteRef.current = false;
-    }, 0);
-  }, []);
-
-  // Handle keyboard events for undo/redo
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        // Undo
-        if (undoStackRef.current.length > 0) {
-          const previousContent = undoStackRef.current.pop()!;
-          redoStackRef.current.push(lastContentRef.current);
-          lastContentRef.current = previousContent;
-
-          if (divRef.current) {
-            divRef.current.textContent = previousContent;
-            // Trigger the input event to update the parent component
-            const inputEvent = new Event('input', { bubbles: true });
-            divRef.current.dispatchEvent(inputEvent);
-          }
-        }
-      } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
-        e.preventDefault();
-        // Redo
-        if (redoStackRef.current.length > 0) {
-          const nextContent = redoStackRef.current.pop()!;
-          undoStackRef.current.push(lastContentRef.current);
-          lastContentRef.current = nextContent;
-
-          if (divRef.current) {
-            divRef.current.textContent = nextContent;
-            // Trigger the input event to update the parent component
-            const inputEvent = new Event('input', { bubbles: true });
-            divRef.current.dispatchEvent(inputEvent);
-          }
-        }
-      }
-    }
-
-    // Call the original onKeyDown handler if provided
-    if (multiline && onKeyDown) {
-      onKeyDown(e);
-    }
-  }, [multiline, onKeyDown]);
-
-  // Initialize lastContentRef when content changes
-  useEffect(() => {
-    lastContentRef.current = content;
-  }, [content]);
-
-  // Restore cursor position after content update
-  useEffect(() => {
-    if (divRef.current && isEditable && document.activeElement === divRef.current) {
-      const textNode = divRef.current.firstChild;
-      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-        const range = document.createRange();
-        const selection = window.getSelection();
-
-        // If this was a paste operation, put cursor at the end
-        if (isPasteRef.current) {
-          const maxOffset = textNode.textContent?.length || 0;
-          cursorPositionRef.current = maxOffset;
-        }
-
-        const maxOffset = textNode.textContent?.length || 0;
-        const offset = Math.min(cursorPositionRef.current, maxOffset);
-
-        range.setStart(textNode, offset);
-        range.setEnd(textNode, offset);
-
-        if (selection) {
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      }
-    }
-  }, [content, isEditable]);
-
-  return (
-    <div
-      ref={divRef}
-      contentEditable={isEditable}
-      suppressContentEditableWarning={true}
-      onInput={handleInput}
-      onPaste={handlePaste}
-      onKeyDown={isEditable ? handleKeyDown : undefined}
-      className={className}
-      style={{
-        minHeight: multiline ? '60px' : 'auto',
-        padding: isEditable ? '8px' : '0',
-        border: isEditable ? '1px solid #e2e8f0' : 'none',
-        borderRadius: isEditable ? '4px' : '0',
-        outline: 'none',
-        backgroundColor: isEditable ? '#f7fafc' : 'transparent',
-      }}
-      data-placeholder={placeholder}
-    >
-      {content}
-    </div>
-  );
-};
 
 // RecipeImages Component
 
@@ -547,7 +429,6 @@ interface RecipeIngredientsProps {
   onRemoveIngredient: (index: number) => void;
   onUpdateIngredient: (index: number, field: keyof RecipeIngredient, value: any) => void;
   onReorderIngredients: (fromIndex: number, toIndex: number) => void;
-  handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   multiplier?: number;
   convertedIngredients: Record<number, ConvertedIngredient>;
   setConvertedIngredients: React.Dispatch<React.SetStateAction<Record<number, ConvertedIngredient>>>;
@@ -555,6 +436,8 @@ interface RecipeIngredientsProps {
   setAvailableUnits: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
   loadingUnits: Record<number, boolean>;
   setLoadingUnits: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+  preferredUnitSystem?: 'metric' | 'us_customary';
+  setPreferredUnitSystem?: (system: 'metric' | 'us_customary') => void;
 }
 
 interface ConvertedIngredient {
@@ -571,7 +454,6 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   onRemoveIngredient,
   onUpdateIngredient,
   onReorderIngredients,
-  handleKeyDown,
   multiplier = 1.0,
   convertedIngredients,
   setConvertedIngredients,
@@ -579,6 +461,8 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   setAvailableUnits,
   loadingUnits,
   setLoadingUnits,
+  preferredUnitSystem = 'metric',
+  setPreferredUnitSystem,
 }) => {
   const navigate = useNavigate();
   const isStatic = recipeAPI.isStaticMode();
@@ -797,17 +681,33 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
           )}
         </VStack>
         <Spacer />
-        {isEditable && !isStatic && (
-          <Button
-            size="sm"
-            onClick={onAddIngredient}
-            colorScheme="blue"
-            variant="outline"
-          >
-            <AddIcon />
-            Add Ingredient
-          </Button>
-        )}
+        <HStack gap={3}>
+          {!isStatic && (
+            <Box>
+              <Button
+                size="sm"
+                variant={preferredUnitSystem === 'metric' ? 'solid' : 'outline'}
+                colorScheme="blue"
+                onClick={() => setPreferredUnitSystem?.(preferredUnitSystem === 'metric' ? 'us_customary' : 'metric')}
+                fontSize="xs"
+                px={3}
+              >
+                {preferredUnitSystem === 'metric' ? '📏 Metric' : '🇺🇸 US'}
+              </Button>
+            </Box>
+          )}
+          {isEditable && !isStatic && (
+            <Button
+              size="sm"
+              onClick={onAddIngredient}
+              colorScheme="blue"
+              variant="outline"
+            >
+              <AddIcon />
+              Add Ingredient
+            </Button>
+          )}
+        </HStack>
       </Flex>
 
       <VStack gap={3} align="stretch">
@@ -854,15 +754,15 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
 
               <Box minW="80px">
                 {isEditable && !isStatic ? (
-                  <ContentEditable
-                    content={formatQuantity(ingredient.quantity || 1, ingredient.unit)}
-                    onContentChange={(e) => {
-                      const inputText = e.currentTarget.textContent || '1';
+                  <Input
+                    value={formatQuantity(ingredient.quantity || 1, ingredient.unit)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const inputText = e.target.value || '1';
                       const parsedQuantity = parseFractionToDecimal(inputText);
                       onUpdateIngredient(index, 'quantity', parsedQuantity || 1);
                     }}
-                    isEditable={isEditable}
-                    onKeyDown={handleKeyDown}
+                    size="sm"
+                    placeholder="1"
                   />
                 ) : (
                   <VStack align="start" gap={0}>
@@ -914,11 +814,11 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
               <Box flex="1">
                 <Box flex="1">
                   {isEditable && !isStatic ? (
-                    <ContentEditable
-                      content={ingredient.name}
-                      onContentChange={(e) => onUpdateIngredient(index, 'name', e.currentTarget.textContent || '')}
-                      isEditable={true}
-                      onKeyDown={handleKeyDown}
+                    <Input
+                      value={ingredient.name}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateIngredient(index, 'name', e.target.value)}
+                      size="sm"
+                      placeholder="Ingredient name"
                     />
                   ) : (
                     <Text
@@ -1368,7 +1268,6 @@ interface RecipeInstructionsProps {
   onAddInstructionImage: (index: number, imageUrl: string) => void;
   onRemoveInstructionImage: (index: number) => void;
   onReorderInstructions: (fromIndex: number, toIndex: number) => void;
-  handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
   baseNamespace?: string;
   multiplier?: number;
   convertedIngredients?: Record<number, ConvertedIngredient>;
@@ -1385,7 +1284,6 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   onAddInstructionImage,
   onRemoveInstructionImage,
   onReorderInstructions,
-  handleKeyDown,
   baseNamespace,
   multiplier = 1,
   convertedIngredients = {},
@@ -1754,13 +1652,12 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                   </HStack>
                   <VStack flex="1" align="stretch" gap={1}>
                     {isEditable && !isStatic ? (
-                      <ContentEditable
-                        content={instruction.description}
-                        onContentChange={(e) => onUpdateInstruction(index, 'description', e.currentTarget.textContent || '')}
-                        multiline={true}
+                      <Textarea
+                        value={instruction.description}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdateInstruction(index, 'description', e.target.value)}
                         placeholder="Enter instruction..."
-                        isEditable={isEditable && !isStatic}
-                        onKeyDown={handleKeyDown}
+                        minH="80px"
+                        resize="vertical"
                       />
                     ) : (
                       <InstructionTextRenderer
@@ -1777,12 +1674,11 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
                     {isEditable && !isStatic && (
                       <Box>
                         <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
-                        <ContentEditable
-                          content={instruction.duration || ''}
-                          onContentChange={(e) => onUpdateInstruction(index, 'duration', e.currentTarget.textContent || '')}
+                        <Input
+                          value={instruction.duration || ''}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateInstruction(index, 'duration', e.target.value)}
                           placeholder="e.g., 5 minutes"
-                          isEditable={isEditable}
-                          onKeyDown={handleKeyDown}
+                          size="sm"
                         />
                       </Box>
                     )}
@@ -1814,7 +1710,6 @@ interface RecipeCategoriesProps {
   onAddCategory: () => void;
   onRemoveCategory: (categoryId: number) => void;
   onUpdateCategory: (categoryId: number, field: string, value: string) => void;
-  handleKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
 }
 
 const RecipeCategories: FC<RecipeCategoriesProps> = ({
@@ -1823,7 +1718,6 @@ const RecipeCategories: FC<RecipeCategoriesProps> = ({
   onAddCategory,
   onRemoveCategory,
   onUpdateCategory,
-  handleKeyDown,
 }) => {
   const isStatic = recipeAPI.isStaticMode();
 
@@ -1852,12 +1746,11 @@ const RecipeCategories: FC<RecipeCategoriesProps> = ({
               {isEditable && !isStatic ? (
                 <>
                   <Box flex="1">
-                    <ContentEditable
-                      content={category.name}
-                      onContentChange={(e) => onUpdateCategory(category.id!, 'name', e.currentTarget.textContent || '')}
+                    <Input
+                      value={category.name}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateCategory(category.id!, 'name', e.target.value)}
                       placeholder="Category name"
-                      isEditable={isEditable}
-                      onKeyDown={handleKeyDown}
+                      size="sm"
                     />
                   </Box>
                   <Button
@@ -2045,6 +1938,23 @@ const Recipe: FC<RecipeProps> = ({
   const [loadingUnits, setLoadingUnits] = useState<Record<number, boolean>>({});
   // State for preferred temperature unit
   const [preferredTemperatureUnit] = useState<'C' | 'F'>('C');
+  // State for preferred unit system with localStorage persistence
+  const [preferredUnitSystem, setPreferredUnitSystem] = useState<'metric' | 'us_customary'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('unitSystem');
+      return (stored === 'metric' || stored === 'us_customary') ? stored : 'metric';
+    }
+    return 'metric';
+  });
+
+  // Update localStorage when unit system changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('unitSystem', preferredUnitSystem);
+    }
+  }, [preferredUnitSystem]);
+
+
 
   // Handle step navigation from URL hash
   useEffect(() => {
@@ -2186,6 +2096,81 @@ const Recipe: FC<RecipeProps> = ({
     }
   }, [isEditable, recipe.ingredients]);
 
+  // Convert ingredient units when unit system changes
+  useEffect(() => {
+    const convertIngredientUnits = async () => {
+      if (!recipe.ingredients || recipe.ingredients.length === 0) return;
+
+      const newConvertedIngredients: Record<number, ConvertedIngredient> = {};
+
+      // Process each ingredient conversion
+      const conversionPromises = recipe.ingredients.map(async (ingredient, i) => {
+        const currentUnit = ingredient.unit || 'cup';
+        const targetUnit = await getTargetUnitForIngredient(ingredient, preferredUnitSystem);
+
+        if (targetUnit && targetUnit !== currentUnit && ingredient.ingredient_id) {
+          try {
+            // Convert to the equivalent unit in the selected system
+            const convertedQuantity = await convert(
+              ingredient.quantity || 1,
+              currentUnit,
+              targetUnit,
+              ingredient.ingredient_id
+            );
+
+            return {
+              index: i,
+              conversion: {
+                quantity: convertedQuantity,
+                unit: targetUnit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: currentUnit,
+              }
+            };
+          } catch (error) {
+            console.log(`Could not convert ${currentUnit} to ${targetUnit} for ingredient ${ingredient.name}:`, error);
+            // If conversion fails, keep original unit
+            return {
+              index: i,
+              conversion: {
+                quantity: ingredient.quantity || 1,
+                unit: currentUnit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: currentUnit,
+              }
+            };
+          }
+        } else {
+          // No conversion needed or target unit same as current, keep original unit
+          return {
+            index: i,
+            conversion: {
+              quantity: ingredient.quantity || 1,
+              unit: currentUnit,
+              originalQuantity: ingredient.quantity || 1,
+              originalUnit: currentUnit,
+            }
+          };
+        }
+      });
+
+      // Wait for all conversions to complete
+      const conversions = await Promise.all(conversionPromises);
+
+      // Apply all conversions to the result object
+      conversions.forEach(({ index, conversion }) => {
+        newConvertedIngredients[index] = conversion;
+      });
+
+      setConvertedIngredients(newConvertedIngredients);
+    };
+
+    // Only convert if we're not in edit mode and have ingredients
+    if (!isEditable && recipe.ingredients && recipe.ingredients.length > 0) {
+      convertIngredientUnits();
+    }
+  }, [preferredUnitSystem, recipe.ingredients, isEditable]);
+
   const addIngredient = useCallback(() => {
     const newIngredient: RecipeIngredient = {
       name: 'New ingredient',
@@ -2317,28 +2302,6 @@ const Recipe: FC<RecipeProps> = ({
     }
   };
 
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' && e.shiftKey) {
-      e.preventDefault();
-      // Allow line breaks with Shift+Enter
-      document.execCommand('insertLineBreak');
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      (e.target as HTMLElement).blur();
-    }
-  }, []);
-
-  // Use useCallback for stable function references
-  const handleTextChange = useCallback((field: keyof RecipeData) => (e: React.FormEvent<HTMLDivElement>) => {
-    const value = e.currentTarget.textContent || '';
-    setRecipe(prev => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleNumberChange = useCallback((field: keyof RecipeData) => (e: React.FormEvent<HTMLDivElement>) => {
-    const value = parseInt(e.currentTarget.textContent || '0') || 0;
-    setRecipe(prev => ({ ...prev, [field]: value }));
-  }, []);
-
   const updateCategoryStable = useCallback((categoryId: number, field: string, value: string) => {
     setRecipe(prev => ({
       ...prev,
@@ -2417,13 +2380,22 @@ const Recipe: FC<RecipeProps> = ({
         {/* Header with Title and Controls */}
         <Flex align="center" wrap="wrap" gap={4}>
           <Box flex="1">
-            <ContentEditable
-              content={recipe.title}
-              onContentChange={handleTextChange('title')}
-              className="recipe-title"
-              isEditable={isEditable && !isStatic}
-              onKeyDown={handleKeyDown}
-            />
+            {isEditable && !isStatic ? (
+              <Input
+                value={recipe.title}
+                onChange={(e) => setRecipe(prev => ({ ...prev, title: e.target.value }))}
+                fontSize="2xl"
+                fontWeight="bold"
+                border="none"
+                px={0}
+                _focus={{ boxShadow: "0 0 0 1px #3182ce" }}
+                placeholder="Recipe title"
+              />
+            ) : (
+              <Text fontSize="2xl" fontWeight="bold" className="recipe-title">
+                {recipe.title}
+              </Text>
+            )}
           </Box>
 
           {isAuthorized && !isStatic && (
@@ -2533,30 +2505,51 @@ const Recipe: FC<RecipeProps> = ({
           <VStack align="stretch" gap={4} minW="200px">
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Prep Time (minutes)</Text>
-              <ContentEditable
-                content={recipe.prep_time?.toString() || '0'}
-                onContentChange={handleNumberChange('prep_time')}
-                isEditable={isEditable && !isStatic}
-                onKeyDown={handleKeyDown}
-              />
+              {isEditable && !isStatic ? (
+                <Input
+                  type="number"
+                  value={recipe.prep_time?.toString() || '0'}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setRecipe(prev => ({ ...prev, prep_time: parseInt(e.target.value) || 0 }))
+                  }
+                  size="sm"
+                  min="0"
+                />
+              ) : (
+                <Text>{recipe.prep_time || 0}</Text>
+              )}
             </Box>
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Cook Time (minutes)</Text>
-              <ContentEditable
-                content={recipe.cook_time?.toString() || '0'}
-                onContentChange={handleNumberChange('cook_time')}
-                isEditable={isEditable && !isStatic}
-                onKeyDown={handleKeyDown}
-              />
+              {isEditable && !isStatic ? (
+                <Input
+                  type="number"
+                  value={recipe.cook_time?.toString() || '0'}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setRecipe(prev => ({ ...prev, cook_time: parseInt(e.target.value) || 0 }))
+                  }
+                  size="sm"
+                  min="0"
+                />
+              ) : (
+                <Text>{recipe.cook_time || 0}</Text>
+              )}
             </Box>
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Servings</Text>
-              <ContentEditable
-                content={recipe.servings?.toString() || '1'}
-                onContentChange={handleNumberChange('servings')}
-                isEditable={isEditable && !isStatic}
-                onKeyDown={handleKeyDown}
-              />
+              {isEditable && !isStatic ? (
+                <Input
+                  type="number"
+                  value={recipe.servings?.toString() || '1'}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setRecipe(prev => ({ ...prev, servings: parseInt(e.target.value) || 1 }))
+                  }
+                  size="sm"
+                  min="1"
+                />
+              ) : (
+                <Text>{recipe.servings || 1}</Text>
+              )}
             </Box>
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Recipe Multiplier</Text>
@@ -2590,14 +2583,19 @@ const Recipe: FC<RecipeProps> = ({
         {(recipe.description || isEditable) && (
           <Box>
             <Text fontSize="lg" fontWeight="semibold" mb={2}>Description</Text>
-            <ContentEditable
-              content={recipe.description || ''}
-              onContentChange={handleTextChange('description')}
-              placeholder="Enter recipe description..."
-              multiline={true}
-              isEditable={isEditable && !isStatic}
-              onKeyDown={handleKeyDown}
-            />
+            {isEditable && !isStatic ? (
+              <Textarea
+                value={recipe.description || ''}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setRecipe(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter recipe description..."
+                minH="100px"
+                resize="vertical"
+              />
+            ) : (
+              <Text whiteSpace="pre-wrap">
+                {recipe.description}
+              </Text>
+            )}
           </Box>
         )}
 
@@ -2611,7 +2609,6 @@ const Recipe: FC<RecipeProps> = ({
           onRemoveIngredient={removeIngredient}
           onUpdateIngredient={updateIngredientStable}
           onReorderIngredients={reorderIngredients}
-          handleKeyDown={handleKeyDown}
           multiplier={getEffectiveMultiplier()}
           convertedIngredients={convertedIngredients}
           setConvertedIngredients={setConvertedIngredients}
@@ -2619,6 +2616,8 @@ const Recipe: FC<RecipeProps> = ({
           setAvailableUnits={setAvailableUnits}
           loadingUnits={loadingUnits}
           setLoadingUnits={setLoadingUnits}
+          preferredUnitSystem={preferredUnitSystem}
+          setPreferredUnitSystem={setPreferredUnitSystem}
         />
 
         <Box height="1px" bg="gray.200" />
@@ -2634,7 +2633,6 @@ const Recipe: FC<RecipeProps> = ({
           onAddInstructionImage={addInstructionImage}
           onRemoveInstructionImage={removeInstructionImage}
           onReorderInstructions={reorderInstructions}
-          handleKeyDown={handleKeyDown}
           baseNamespace={recipe.id ? `${recipe.id}_${recipe.title.replace(/[^a-zA-Z0-9]/g, '_')}` : undefined}
           multiplier={getEffectiveMultiplier()}
           convertedIngredients={convertedIngredients}
@@ -2648,7 +2646,6 @@ const Recipe: FC<RecipeProps> = ({
           onAddCategory={addCategory}
           onRemoveCategory={removeCategory}
           onUpdateCategory={updateCategoryStable}
-          handleKeyDown={handleKeyDown}
         />
 
         {/* Recipe ID Display (for debugging) */}

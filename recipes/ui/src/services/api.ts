@@ -58,6 +58,14 @@ interface Ingredient {
   calories?: number;
   density?: number;
   extension?: any;
+  unit: {
+    metric: string,
+    us_customary: string,
+    us_legal: string,
+    canada: string,
+    australia: string,
+    uk: string
+  }
 }
 
 interface Category {

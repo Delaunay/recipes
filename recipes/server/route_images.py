@@ -23,10 +23,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 
 def images_routes(app):
-    def allowed_file(self, filename):
+    def allowed_file(filename):
         """Check if the file extension is allowed"""
         return '.' in filename and \
-                filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS
+                filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
     def save_original_image(file, filename):
         # Save the original image without modification
@@ -74,7 +74,7 @@ def images_routes(app):
             if file.filename == '':
                 return jsonify({"error": "No file selected"}), 400
 
-            if not self.allowed_file(file.filename):
+            if not allowed_file(file.filename):
                 return jsonify({"error": "File type not allowed. Please use: png, jpg, jpeg, gif, webp"}), 400
 
             # Get namespace from form data
@@ -102,6 +102,7 @@ def images_routes(app):
             
             return jsonify({"error": "missing namespace"}), 500
         except Exception as e:
+            traceback.print_exc()
             return jsonify({"error": str(e)}), 500
 
     @app.route('/uploads/<path:filepath>')

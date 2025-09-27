@@ -286,7 +286,10 @@ def units_routes(app, db):
 
     @app.route('/unit/convert/<string:from_unit>/<string:to_unit>')
     def convert(from_unit, to_unit):
-        return conversion_factor(db, from_unit, to_unit).to_json()
+        conversion = conversion_factor(db, from_unit, to_unit)
+        if conversion is not None:
+            return conversion.to_json()
+        return {}
 
     @app.route('/units/available', methods=['GET'])
     def all_units() -> List[str]:

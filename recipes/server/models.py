@@ -315,6 +315,7 @@ class Recipe(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     author_id = Column(Integer, ForeignKey('users._id'))
 
+    component = Column(Boolean)
     extension = Column(JSON)
 
     # Relationships
@@ -339,6 +340,7 @@ class Recipe(Base):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'author_id': self.author_id,
             'extension': self.extension,
+            "component": self.component,
 
             'ingredients': [ri.to_json() for ri in self.recipe_ingredients] if self.recipe_ingredients else [],
             'categories': [category.to_json() for category in self.categories] if self.categories else []
@@ -372,6 +374,32 @@ class IngredientComposition(Base):
             'extension': self.extension
         }
 
+class BlogPost:
+    """Full blog post to display"""
+    pass
+
+class BlogBlock:
+    """Renderable block of a blog post"""
+    # SpreadSheet like info
+    # Plots + Spreadsheet
+    # Text | Article
+    # Images
+    # Layout that hold more blocks
+    # list ? or this is part of a markdown display
+    # code block
+    # video
+    # audio
+    # file attachment
+    # Latex
+    # timeline 
+    # mermaid plot
+    # widget
+    # references
+    # footnote
+    # heading + paragraph
+    pass
+
+
 class Ingredient(Base):
     __tablename__ = 'ingredients'
 
@@ -387,14 +415,15 @@ class Ingredient(Base):
 
     composition = Column(JSON)
     extension = Column(JSON)    # Additional info as JSON
+    recipe_id = Column(Integer, ForeignKey('recipes._id'), nullable=True)
 
     # Imperial system is Bonkers
-    unit_metric     = Column(String(50))
+    unit_metric       = Column(String(50))
     unit_us_customary = Column(String(50))
-    unit_us_legal   = Column(String(50))
-    unit_canada     = Column(String(50))
-    unit_australia  = Column(String(50))
-    unit_uk         = Column(String(50))
+    unit_us_legal     = Column(String(50))
+    unit_canada       = Column(String(50))
+    unit_australia    = Column(String(50))
+    unit_uk           = Column(String(50))
 
     # preferred_unit = Column(String(50))
     # unit = Column(String(50))
@@ -402,6 +431,7 @@ class Ingredient(Base):
     # Relationships
     recipe_ingredients = relationship('RecipeIngredient', back_populates='ingredient')
     compositions = relationship('IngredientComposition', back_populates='ingredient')
+    # recipe = relationship('Recipe', back_populates='recipes')
 
     def __repr__(self):
         return f'<Ingredient {self.name}>'
@@ -414,13 +444,14 @@ class Ingredient(Base):
             'calories': self.calories,
             'density': self.density,
             'extension': self.extension,
+            "recipe_id": self.recipe_id,
             "unit": {
                 "metric": self.unit_metric,
-                "unit_us_customary": self.unit_us_customary,
-                "unit_us_legal": self.unit_us_legal,
-                "unit_canada": self.unit_canada,
-                "unit_australia": self.unit_australia,
-                "unit_uk": self.unit_uk,
+                "us_customary": self.unit_us_customary,
+                "us_legal": self.unit_us_legal,
+                "canada": self.unit_canada,
+                "australia": self.unit_australia,
+                "uk": self.unit_uk,
             }
         }
 
