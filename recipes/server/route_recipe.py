@@ -20,11 +20,25 @@ from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIn
 
 
 def recipes_routes(app, db):
+
+    @app.route('/ingredient/search/<string:name>', methods=['GET'])
+    def search_ingredient(name: str):
+        # this the condition recipe_id is none
+        ingredients = db.session.query(Ingredient).filter(Ingredient.name.like(f'%{name}%')).all()
+        recipes = db.session.query(Recipe).filter(Recipe.title.like(f'%{name}%')).all()
+
+        # Convert to JSON format and combine results
+        result =  [] +\
+            [{'id': ing._id, 'name': ing.name, 'type': "ingredient"} for ing in ingredients] +\
+            [{'id': recipe._id, 'name': recipe.title, 'type': "recipe"} for recipe in recipes]
+
+        return jsonify(result)
+
     @app.route('/recipes', methods=['GET'])
     def get_recipes() -> Dict[str, Any]:
         recipes = db.session.query(Recipe).all()
         return jsonify([recipe.to_json() for recipe in recipes])
-    
+
     @app.route('/recipes/<int:start>/<int:end>', methods=['GET'])
     def get_recipes_range(start: int, end: int) -> Dict[str, Any]:
         recipes = db.session.query(Recipe).offset(start).limit(end - start).all()
@@ -53,17 +67,28 @@ def recipes_routes(app, db):
             # Handle ingredients if provided
             if 'ingredients' in data:
                 for ing_data in data['ingredients']:
-                    # Find or create ingredient
-                    ingredient = db.session.query(Ingredient).filter_by(name=ing_data['name']).first()
-                    if not ingredient:
-                        ingredient = Ingredient(name=ing_data['name'])
-                        db.session.add(ingredient)
-                        db.session.flush()
+                    ingredient_id = None
+                    ingredient_recipe_id = None
+
+                    # Check if this is a recipe used as ingredient
+                    if 'recipe_id' in ing_data and ing_data['recipe_id']:
+                        ingredient_recipe_id = ing_data['recipe_id']
+                    elif 'ingredient_id' in ing_data and ing_data['ingredient_id']:
+                        ingredient_id = ing_data['ingredient_id']
+                    else:
+                        # Find or create ingredient by name
+                        ingredient = db.session.query(Ingredient).filter_by(name=ing_data['name']).first()
+                        if not ingredient:
+                            ingredient = Ingredient(name=ing_data['name'])
+                            db.session.add(ingredient)
+                            db.session.flush()
+                        ingredient_id = ingredient._id
 
                     # Create RecipeIngredient with quantity and unit
                     recipe_ingredient = RecipeIngredient(
                         recipe_id=recipe._id,
-                        ingredient_id=ingredient._id,
+                        ingredient_id=ingredient_id,
+                        ingredient_recipe_id=ingredient_recipe_id,
                         quantity=ing_data.get('quantity', 1.0),
                         unit=ing_data.get('unit', 'piece')
                     )
@@ -139,17 +164,28 @@ def recipes_routes(app, db):
                     db.session.delete(recipe_ingredient)
 
                 for ing_data in data['ingredients']:
-                    # Find or create ingredient
-                    ingredient = db.session.query(Ingredient).filter_by(name=ing_data['name']).first()
-                    if not ingredient:
-                        ingredient = Ingredient(name=ing_data['name'])
-                        db.session.add(ingredient)
-                        db.session.flush()
+                    ingredient_id = None
+                    ingredient_recipe_id = None
+
+                    # Check if this is a recipe used as ingredient
+                    if 'recipe_id' in ing_data and ing_data['recipe_id']:
+                        ingredient_recipe_id = ing_data['recipe_id']
+                    elif 'ingredient_id' in ing_data and ing_data['ingredient_id']:
+                        ingredient_id = ing_data['ingredient_id']
+                    else:
+                        # Find or create ingredient by name
+                        ingredient = db.session.query(Ingredient).filter_by(name=ing_data['name']).first()
+                        if not ingredient:
+                            ingredient = Ingredient(name=ing_data['name'])
+                            db.session.add(ingredient)
+                            db.session.flush()
+                        ingredient_id = ingredient._id
 
                     # Create new RecipeIngredient with quantity and unit
                     recipe_ingredient = RecipeIngredient(
                         recipe_id=recipe._id,
-                        ingredient_id=ingredient._id,
+                        ingredient_id=ingredient_id,
+                        ingredient_recipe_id=ingredient_recipe_id,
                         quantity=ing_data.get('quantity', 1.0),
                         unit=ing_data.get('unit', 'piece')
                     )

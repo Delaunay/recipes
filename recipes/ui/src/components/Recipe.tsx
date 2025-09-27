@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, FC, ChangeEvent } from 'react';
+import React, { useState, useCallback, useRef, useEffect, FC, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -418,6 +418,560 @@ const ConversionIcon = () => (
 
 
 
+// IngredientNameInput Component - Input with suggestions for ingredient names
+interface IngredientNameInputProps {
+  value: string;
+  onChange: (value: string, ingredientId?: number, recipeId?: number) => void;
+  placeholder?: string;
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "2xs" | "xs";
+}
+
+const IngredientNameInput: FC<IngredientNameInputProps> = ({
+  value,
+  onChange,
+  placeholder = "Ingredient name",
+  size = "sm"
+}) => {
+  const [suggestions, setSuggestions] = useState<Array<{ id: number, name: string, type: 'ingredient' | 'recipe' }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Update input value when prop changes
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
+  // Debounced search function
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (inputValue.length >= 2) {
+        setIsLoading(true);
+        try {
+          const results = await recipeAPI.searchIngredients(inputValue);
+          setSuggestions(results);
+          setShowSuggestions(true);
+        } catch (error) {
+          console.error('Error searching ingredients:', error);
+          setSuggestions([]);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [inputValue]);
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    onChange(newValue); // Always call onChange for typing
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionClick = (suggestion: { id: number, name: string, type: 'ingredient' | 'recipe' }) => {
+    setInputValue(suggestion.name);
+    setShowSuggestions(false);
+
+    if (suggestion.type === 'ingredient') {
+      // For ingredients, set the name and ingredient_id
+      onChange(suggestion.name, suggestion.id);
+    } else if (suggestion.type === 'recipe') {
+      // For recipes, set the name and recipe_id (we'll handle this in the parent)
+      onChange(suggestion.name, undefined, suggestion.id);
+    }
+  };
+
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node) &&
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <Box position="relative" width="100%">
+      <Input
+        ref={inputRef}
+        value={inputValue}
+        onChange={handleInputChange}
+        size={size}
+        placeholder={placeholder}
+        onFocus={() => {
+          if (suggestions.length > 0) {
+            setShowSuggestions(true);
+          }
+        }}
+      />
+
+      {isLoading && (
+        <Box position="absolute" right="8px" top="50%" transform="translateY(-50%)">
+          <Spinner size="xs" />
+        </Box>
+      )}
+
+      {showSuggestions && suggestions.length > 0 && (
+        <Box
+          ref={suggestionsRef}
+          position="absolute"
+          top="100%"
+          left={0}
+          right={0}
+          bg="white"
+          border="1px solid"
+          borderColor="gray.200"
+          borderRadius="md"
+          shadow="md"
+          zIndex={1000}
+          maxH="200px"
+          overflowY="auto"
+        >
+          {suggestions.map((suggestion, index) => (
+            <Box
+              key={`${suggestion.type}-${suggestion.id}`}
+              p={2}
+              cursor="pointer"
+              _hover={{ bg: "gray.50" }}
+              onClick={() => handleSuggestionClick(suggestion)}
+              borderBottom={index < suggestions.length - 1 ? "1px solid" : "none"}
+              borderColor="gray.100"
+            >
+              <HStack justify="space-between">
+                <Text fontSize="sm">{suggestion.name}</Text>
+                <Badge
+                  size="sm"
+                  colorScheme={suggestion.type === 'ingredient' ? 'green' : 'blue'}
+                  variant="subtle"
+                >
+                  {suggestion.type}
+                </Badge>
+              </HStack>
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+// IngredientItem Component - Represents a single ingredient in a list
+interface IngredientItemProps {
+  ingredient: RecipeIngredient;
+  index: number;
+  multiplier: number;
+  convertedIngredients: Record<number, ConvertedIngredient>;
+  setConvertedIngredients: React.Dispatch<React.SetStateAction<Record<number, ConvertedIngredient>>>;
+  isEditable: boolean;
+  onUpdateIngredient?: (index: number, field: keyof RecipeIngredient, value: any) => void;
+  onRemoveIngredient?: (index: number) => void;
+  onReorderIngredients?: (fromIndex: number, toIndex: number) => void;
+  showActions: boolean;
+  draggedIndex: number | null;
+  dragOverIndex: number | null;
+  onDragStart: (e: React.DragEvent, index: number) => void;
+  onDragOver: (e: React.DragEvent, index: number) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent, index: number) => void;
+  onDragEnd: () => void;
+  baseIndex?: number;
+}
+
+const IngredientItem: FC<IngredientItemProps> = ({
+  ingredient,
+  index,
+  multiplier,
+  convertedIngredients,
+  setConvertedIngredients,
+  isEditable,
+  onUpdateIngredient,
+  onRemoveIngredient,
+  onReorderIngredients,
+  showActions,
+  draggedIndex,
+  dragOverIndex,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  baseIndex = 0,
+}) => {
+  const navigate = useNavigate();
+  const isStatic = recipeAPI.isStaticMode();
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<{
+    id?: number;
+    name: string;
+    quantity?: number;
+    unit?: string;
+    density?: number;
+  } | null>(null);
+
+  // Local state for this ingredient's units
+  const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+  const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+
+  const actualIndex = baseIndex + index;
+  const converted = convertedIngredients[actualIndex];
+  const baseQuantity = converted?.quantity || ingredient.quantity || 1;
+  const displayQuantity = baseQuantity * multiplier;
+  const displayUnit = converted?.unit || ingredient.unit || 'cup';
+
+  const openConversionModal = async (ingredient: RecipeIngredient) => {
+    let ingredientDensity = ingredient.density;
+
+    if (!ingredientDensity && ingredient.ingredient_id) {
+      try {
+        const fullIngredient = await recipeAPI.getIngredientById(ingredient.ingredient_id);
+        ingredientDensity = fullIngredient.density;
+      } catch (error) {
+        console.warn('Could not load full ingredient data:', error);
+      }
+    }
+
+    setSelectedIngredient({
+      id: ingredient.ingredient_id,
+      name: ingredient.name,
+      quantity: ingredient.quantity,
+      unit: ingredient.unit,
+      density: ingredientDensity
+    });
+    setShowConversionModal(true);
+  };
+
+  const closeConversionModal = () => {
+    setShowConversionModal(false);
+    setSelectedIngredient(null);
+  };
+
+  // Load available units for this ingredient when not in edit mode
+  useEffect(() => {
+    if (!isEditable && ingredient) {
+      const loadAvailableUnits = async () => {
+        const currentUnit = ingredient.unit || 'cup';
+
+        try {
+          // Get available units based on unit type and ingredient density
+          const availableUnitsFromAPI = await getAvailableUnits(currentUnit, ingredient.ingredient_id);
+
+          // Always include the current unit first, then add other available units
+          const units = [currentUnit];
+          availableUnitsFromAPI.forEach(unit => {
+            if (unit !== currentUnit && !units.includes(unit)) {
+              units.push(unit);
+            }
+          });
+
+          setAvailableUnits(units);
+
+          // Initialize converted ingredient with original values if not already set
+          if (!convertedIngredients[actualIndex]) {
+            setConvertedIngredients(prev => ({
+              ...prev,
+              [actualIndex]: {
+                quantity: ingredient.quantity || 1,
+                unit: currentUnit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: currentUnit,
+              }
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading available units:', error);
+          // Fallback to common units if API fails
+          const fallbackUnits = ['ml', 'cl', 'l', 'tsp', 'tbsp', 'cup', 'fl oz', 'pint', 'quart', 'gallon', 'g', 'kg', 'mg', 'oz', 'lb'];
+
+          const units = [currentUnit];
+          fallbackUnits.forEach(unit => {
+            if (unit !== currentUnit && !units.includes(unit)) {
+              units.push(unit);
+            }
+          });
+
+          setAvailableUnits(units);
+
+          if (!convertedIngredients[actualIndex]) {
+            setConvertedIngredients(prev => ({
+              ...prev,
+              [actualIndex]: {
+                quantity: ingredient.quantity || 1,
+                unit: currentUnit,
+                originalQuantity: ingredient.quantity || 1,
+                originalUnit: currentUnit,
+              }
+            }));
+          }
+        }
+      };
+
+      loadAvailableUnits();
+    }
+  }, [isEditable, ingredient, actualIndex, convertedIngredients, setConvertedIngredients]);
+
+  // Handle unit conversion
+  const handleUnitChange = async (newUnit: string) => {
+    if (!ingredient.unit) return;
+
+    const originalQuantity = converted?.originalQuantity || ingredient.quantity || 1;
+    const originalUnit = converted?.originalUnit || ingredient.unit;
+
+    if (originalUnit === newUnit) {
+      setConvertedIngredients((prev: Record<number, ConvertedIngredient>) => ({
+        ...prev,
+        [actualIndex]: {
+          quantity: originalQuantity,
+          unit: originalUnit,
+          originalQuantity: originalQuantity,
+          originalUnit: originalUnit,
+        }
+      }));
+      return;
+    }
+
+    setIsLoadingUnits(true);
+
+    try {
+      const convertedQuantity = await convert(
+        originalQuantity,
+        originalUnit,
+        newUnit,
+        ingredient.ingredient_id
+      );
+
+      setConvertedIngredients((prev: Record<number, ConvertedIngredient>) => ({
+        ...prev,
+        [actualIndex]: {
+          quantity: convertedQuantity,
+          unit: newUnit,
+          originalQuantity: originalQuantity,
+          originalUnit: originalUnit,
+        }
+      }));
+    } catch (error) {
+      console.error('Error converting unit:', error);
+      setConvertedIngredients((prev: Record<number, ConvertedIngredient>) => ({
+        ...prev,
+        [actualIndex]: {
+          quantity: originalQuantity,
+          unit: originalUnit,
+          originalQuantity: originalQuantity,
+          originalUnit: originalUnit,
+        }
+      }));
+    } finally {
+      setIsLoadingUnits(false);
+    }
+  };
+
+  return (
+    <>
+      <HStack
+        gap={4}
+        align="center"
+        bg={dragOverIndex === index ? "blue.50" : "transparent"}
+        border={dragOverIndex === index ? "2px dashed" : "1px solid"}
+        borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
+        opacity={draggedIndex === index ? 0.5 : 1}
+        transition="all 0.2s"
+        onDragOver={(e) => onDragOver(e, index)}
+        onDragLeave={onDragLeave}
+        onDrop={(e) => onDrop(e, index)}
+        onDragEnd={onDragEnd}
+      >
+        {/* Drag Handle - Left Side */}
+        {isEditable && !isStatic && onReorderIngredients && (
+          <Box
+            minW="24px"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            color="gray.400"
+            _hover={{ color: "gray.600" }}
+            cursor="grab"
+            draggable={true}
+            onDragStart={(e) => onDragStart(e, index)}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <DragHandleIcon />
+          </Box>
+        )}
+
+        <Box minW="80px">
+          {isEditable && !isStatic && onUpdateIngredient ? (
+            <Input
+              value={formatQuantity(ingredient.quantity || 1, ingredient.unit)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const inputText = e.target.value || '1';
+                const parsedQuantity = parseFractionToDecimal(inputText);
+                onUpdateIngredient(index, 'quantity', parsedQuantity || 1);
+              }}
+              size="sm"
+              placeholder="1"
+            />
+          ) : (
+            <VStack align="start" gap={0}>
+              <Flex align="center" gap={1}>
+                <Text>{formatQuantity(displayQuantity, displayUnit)}</Text>
+                {isLoadingUnits && <Spinner size="xs" />}
+              </Flex>
+              {converted && converted.unit !== converted.originalUnit && (
+                <Text fontSize="xs" color="gray.500">
+                  (orig: {formatQuantity(converted.originalQuantity * multiplier, converted.originalUnit)} {converted.originalUnit})
+                </Text>
+              )}
+            </VStack>
+          )}
+        </Box>
+
+        <Box minW="80px">
+          {isEditable && !isStatic && onUpdateIngredient ? (
+            <UnitSelect
+              value={ingredient.unit || 'cup'}
+              onChange={(value) => onUpdateIngredient(index, 'unit', value)}
+              ingredientId={ingredient.ingredient_id}
+              placeholder="unit"
+              size="sm"
+              width="80px"
+            />
+          ) : (
+            <Box>
+              <select
+                value={displayUnit}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => handleUnitChange(e.target.value)}
+                disabled={isLoadingUnits || availableUnits.length === 0}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid #e2e8f0',
+                  fontSize: '14px',
+                  minWidth: '80px'
+                }}
+              >
+                {availableUnits.map((unit: string) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
+            </Box>
+          )}
+        </Box>
+
+        <Box flex="1">
+          {isEditable && !isStatic && onUpdateIngredient ? (
+            <IngredientNameInput
+              value={ingredient.name}
+              onChange={(value: string, ingredientId?: number, recipeId?: number) => {
+                // Update the ingredient name
+                onUpdateIngredient(index, 'name', value);
+
+                // Set ingredient_id if an ingredient was selected
+                if (ingredientId !== undefined) {
+                  onUpdateIngredient(index, 'ingredient_id', ingredientId);
+                  // Clear recipe_id if it exists
+                  if (ingredient.recipe_id) {
+                    onUpdateIngredient(index, 'recipe_id', undefined);
+                  }
+                }
+
+                // Set recipe_id if a recipe was selected
+                if (recipeId !== undefined) {
+                  onUpdateIngredient(index, 'recipe_id', recipeId);
+                  // Clear ingredient_id if it exists
+                  if (ingredient.ingredient_id) {
+                    onUpdateIngredient(index, 'ingredient_id', undefined);
+                  }
+                }
+              }}
+              size="sm"
+              placeholder="Ingredient name"
+            />
+          ) : (
+            <HStack>
+              <Text
+                color="blue.600"
+                _hover={{ textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => {
+                  if (ingredient.ingredient_id) {
+                    navigate(`/ingredients/${ingredient.ingredient_id}`);
+                  } else if (ingredient.recipe_id) {
+                    navigate(`/recipes/${ingredient.recipe_id}`);
+                  }
+                }}
+              >
+                {ingredient.name}
+              </Text>
+              {ingredient.recipe_id && (
+                <Badge colorScheme="blue" size="sm" variant="subtle">
+                  recipe
+                </Badge>
+              )}
+              {ingredient.ingredient_id && (
+                <Badge colorScheme="green" size="sm" variant="subtle">
+                  ingredient
+                </Badge>
+              )}
+            </HStack>
+          )}
+        </Box>
+
+        {showActions && (
+          <HStack gap={1}>
+            {!isStatic && (
+              <IconButton
+                size="sm"
+                colorScheme="blue"
+                variant="ghost"
+                aria-label="Calculate ingredient density"
+                title="Calculate ingredient density"
+                onClick={() => openConversionModal(ingredient)}
+              >
+                <ConversionIcon />
+              </IconButton>
+            )}
+            {isEditable && !isStatic && onRemoveIngredient && (
+              <Button
+                size="sm"
+                colorScheme="red"
+                variant="ghost"
+                onClick={() => onRemoveIngredient(index)}
+              >
+                <DeleteIcon />
+              </Button>
+            )}
+          </HStack>
+        )}
+      </HStack>
+
+      {/* Density Calculation Modal */}
+      <DensityCalculationModal
+        isOpen={showConversionModal}
+        onClose={closeConversionModal}
+        ingredientId={selectedIngredient?.id}
+        ingredientName={selectedIngredient?.name}
+        currentDensity={selectedIngredient?.density}
+      />
+    </>
+  );
+};
+
 // RecipeImages Component
 
 
@@ -464,18 +1018,9 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   preferredUnitSystem = 'metric',
   setPreferredUnitSystem,
 }) => {
-  const navigate = useNavigate();
   const isStatic = recipeAPI.isStaticMode();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [showConversionModal, setShowConversionModal] = useState(false);
-  const [selectedIngredient, setSelectedIngredient] = useState<{
-    id?: number;
-    name: string;
-    quantity?: number;
-    unit?: string;
-    density?: number;
-  } | null>(null);
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -509,37 +1054,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
     setDragOverIndex(null);
   };
 
-  const openConversionModal = async (ingredient: RecipeIngredient) => {
-    // Get the full ingredient data to ensure we have the density
-    let ingredientDensity = ingredient.density;
 
-    console.log('Opening conversion modal for ingredient:', ingredient.name, 'with density:', ingredientDensity);
-
-    // If no density in RecipeIngredient, try to get it from the full Ingredient data
-    if (!ingredientDensity && ingredient.ingredient_id) {
-      try {
-        const fullIngredient = await recipeAPI.getIngredientById(ingredient.ingredient_id);
-        ingredientDensity = fullIngredient.density;
-        console.log('Loaded full ingredient density:', ingredientDensity);
-      } catch (error) {
-        console.warn('Could not load full ingredient data:', error);
-      }
-    }
-
-    setSelectedIngredient({
-      id: ingredient.ingredient_id,
-      name: ingredient.name,
-      quantity: ingredient.quantity,
-      unit: ingredient.unit,
-      density: ingredientDensity
-    });
-    setShowConversionModal(true);
-  };
-
-  const closeConversionModal = () => {
-    setShowConversionModal(false);
-    setSelectedIngredient(null);
-  };
 
   // Load available units for each ingredient when not in edit mode
   useEffect(() => {
@@ -608,66 +1123,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
     }
   }, [isEditable, ingredients]);
 
-  // Handle unit conversion using new JavaScript implementation
-  const handleUnitChange = async (ingredientIndex: number, newUnit: string) => {
-    const ingredient = ingredients[ingredientIndex];
-    if (!ingredient.unit) return;
 
-    const converted = convertedIngredients[ingredientIndex];
-    // Always use the original measurements for conversion
-    const originalQuantity = converted?.originalQuantity || ingredient.quantity || 1;
-    const originalUnit = converted?.originalUnit || ingredient.unit;
-
-    // If selecting the same unit as original, no conversion needed
-    if (originalUnit === newUnit) {
-      setConvertedIngredients(prev => ({
-        ...prev,
-        [ingredientIndex]: {
-          quantity: originalQuantity,
-          unit: originalUnit,
-          originalQuantity: originalQuantity,
-          originalUnit: originalUnit,
-        }
-      }));
-      return;
-    }
-
-    setLoadingUnits(prev => ({ ...prev, [ingredientIndex]: true }));
-
-    try {
-      // Use new JavaScript convert function
-      const convertedQuantity = await convert(
-        originalQuantity,
-        originalUnit,
-        newUnit,
-        ingredient.ingredient_id
-      );
-
-      setConvertedIngredients(prev => ({
-        ...prev,
-        [ingredientIndex]: {
-          quantity: convertedQuantity,
-          unit: newUnit,
-          originalQuantity: originalQuantity,
-          originalUnit: originalUnit,
-        }
-      }));
-    } catch (error) {
-      console.error('Error converting unit:', error);
-      // On error, keep the original unit
-      setConvertedIngredients(prev => ({
-        ...prev,
-        [ingredientIndex]: {
-          quantity: originalQuantity,
-          unit: originalUnit,
-          originalQuantity: originalQuantity,
-          originalUnit: originalUnit,
-        }
-      }));
-    } finally {
-      setLoadingUnits(prev => ({ ...prev, [ingredientIndex]: false }));
-    }
-  };
 
   return (
     <Box>
@@ -711,163 +1167,30 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
       </Flex>
 
       <VStack gap={3} align="stretch">
-        {ingredients.map((ingredient, index) => {
-          const converted = convertedIngredients[index];
-          const baseQuantity = converted?.quantity || ingredient.quantity || 1;
-          const displayQuantity = baseQuantity * multiplier;
-          const displayUnit = converted?.unit || ingredient.unit || 'cup';
-          const units = availableUnits[index] || [];
-          const isLoading = loadingUnits[index];
-
-          return (
-            <HStack
-              key={index}
-              gap={4}
-              align="center"
-              bg={dragOverIndex === index ? "blue.50" : "transparent"}
-              border={dragOverIndex === index ? "2px dashed" : "1px solid"}
-              borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
-              opacity={draggedIndex === index ? 0.5 : 1}
-              transition="all 0.2s"
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragEnd={handleDragEnd}
-            >
-              {/* Drag Handle - Left Side */}
-              {isEditable && !isStatic && (
-                <Box
-                  minW="24px"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  color="gray.400"
-                  _hover={{ color: "gray.600" }}
-                  cursor="grab"
-                  draggable={true}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <DragHandleIcon />
-                </Box>
-              )}
-
-              <Box minW="80px">
-                {isEditable && !isStatic ? (
-                  <Input
-                    value={formatQuantity(ingredient.quantity || 1, ingredient.unit)}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      const inputText = e.target.value || '1';
-                      const parsedQuantity = parseFractionToDecimal(inputText);
-                      onUpdateIngredient(index, 'quantity', parsedQuantity || 1);
-                    }}
-                    size="sm"
-                    placeholder="1"
-                  />
-                ) : (
-                  <VStack align="start" gap={0}>
-                    <Flex align="center" gap={1}>
-                      <Text>{formatQuantity(displayQuantity, displayUnit)}</Text>
-                      {isLoading && <Spinner size="xs" />}
-                    </Flex>
-                    {converted && converted.unit !== converted.originalUnit && (
-                      <Text fontSize="xs" color="gray.500">
-                        (orig: {formatQuantity(converted.originalQuantity * multiplier, converted.originalUnit)} {converted.originalUnit})
-                      </Text>
-                    )}
-                  </VStack>
-                )}
-              </Box>
-              <Box minW="80px">
-                {isEditable && !isStatic ? (
-                  <UnitSelect
-                    value={ingredient.unit || 'cup'}
-                    onChange={(value) => onUpdateIngredient(index, 'unit', value)}
-                    ingredientId={ingredient.ingredient_id}
-                    placeholder="unit"
-                    size="sm"
-                    width="80px"
-                  />
-                ) : (
-                  <Box>
-                    <select
-                      value={displayUnit}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) => handleUnitChange(index, e.target.value)}
-                      disabled={isLoading || units.length === 0}
-                      style={{
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid #e2e8f0',
-                        fontSize: '14px',
-                        minWidth: '80px'
-                      }}
-                    >
-                      {units.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </select>
-                  </Box>
-                )}
-              </Box>
-              <Box flex="1">
-                <Box flex="1">
-                  {isEditable && !isStatic ? (
-                    <Input
-                      value={ingredient.name}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateIngredient(index, 'name', e.target.value)}
-                      size="sm"
-                      placeholder="Ingredient name"
-                    />
-                  ) : (
-                    <Text
-                      color="blue.600"
-                      _hover={{ textDecoration: 'underline', cursor: 'pointer' }}
-                      onClick={() => ingredient.ingredient_id && navigate(`/ingredients/${ingredient.ingredient_id}`)}
-                    >
-                      {ingredient.name}
-                    </Text>
-                  )}
-                </Box>
-              </Box>
-              <HStack gap={1}>
-                {!isStatic && (
-                  <IconButton
-                    size="sm"
-                    colorScheme="blue"
-                    variant="ghost"
-                    aria-label="Calculate ingredient density"
-                    title="Calculate ingredient density"
-                    onClick={() => openConversionModal(ingredient)}
-                  >
-                    <ConversionIcon />
-                  </IconButton>
-                )}
-                {isEditable && !isStatic && (
-                  <Button
-                    size="sm"
-                    colorScheme="red"
-                    variant="ghost"
-                    onClick={() => onRemoveIngredient(index)}
-                  >
-                    <DeleteIcon />
-                  </Button>
-                )}
-              </HStack>
-            </HStack>
-          );
-        })}
+        {ingredients.map((ingredient, index) => (
+          <IngredientItem
+            key={index}
+            ingredient={ingredient}
+            index={index}
+            multiplier={multiplier}
+            convertedIngredients={convertedIngredients}
+            setConvertedIngredients={setConvertedIngredients}
+            isEditable={isEditable}
+            onUpdateIngredient={onUpdateIngredient}
+            onRemoveIngredient={onRemoveIngredient}
+            onReorderIngredients={onReorderIngredients}
+            showActions={true}
+            draggedIndex={draggedIndex}
+            dragOverIndex={dragOverIndex}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
+            baseIndex={0}
+          />
+        ))}
       </VStack>
-
-      {/* Density Calculation Modal */}
-      <DensityCalculationModal
-        isOpen={showConversionModal}
-        onClose={closeConversionModal}
-        ingredientId={selectedIngredient?.id}
-        ingredientName={selectedIngredient?.name}
-        currentDensity={selectedIngredient?.density}
-      />
     </Box>
   );
 };
@@ -1257,46 +1580,17 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
   );
 };
 
-// RecipeInstructions Component
-interface RecipeInstructionsProps {
-  instructions: Instruction[];
-  ingredients: RecipeIngredient[];
-  isEditable: boolean;
-  onAddInstruction: () => void;
-  onRemoveInstruction: (index: number) => void;
-  onUpdateInstruction: (index: number, field: keyof Instruction, value: string) => void;
-  onAddInstructionImage: (index: number, imageUrl: string) => void;
-  onRemoveInstructionImage: (index: number) => void;
-  onReorderInstructions: (fromIndex: number, toIndex: number) => void;
-  baseNamespace?: string;
-  multiplier?: number;
-  convertedIngredients?: Record<number, ConvertedIngredient>;
-  preferredTemperatureUnit?: 'C' | 'F';
+// StepTimer Component - Pure timer overlay component
+interface StepTimerProps { }
+
+interface StepTimerRef {
+  startTimer: (timerId: string, time: number, unit: string) => void;
 }
 
-const RecipeInstructions: FC<RecipeInstructionsProps> = ({
-  instructions,
-  ingredients,
-  isEditable,
-  onAddInstruction,
-  onRemoveInstruction,
-  onUpdateInstruction,
-  onAddInstructionImage,
-  onRemoveInstructionImage,
-  onReorderInstructions,
-  baseNamespace,
-  multiplier = 1,
-  convertedIngredients = {},
-  preferredTemperatureUnit = 'C',
-}) => {
-
-  const isStatic = recipeAPI.isStaticMode();
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-
-  // Timer state management
+const StepTimer = React.forwardRef<StepTimerRef, StepTimerProps>((props, ref) => {
+  // Local timer state
   const [activeTimers, setActiveTimers] = useState<Record<string, ActiveTimer>>({});
-  const [currentStepTimer, setCurrentStepTimer] = useState<{ stepIndex: number; timerId: string } | null>(null);
+  const [currentTimer, setCurrentTimer] = useState<string | null>(null);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
   // Initialize audio context on first user interaction
@@ -1400,10 +1694,6 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
     initAudioContext();
     const totalSeconds = timeToSeconds(time, unit);
 
-    // Extract step index from timerId (format: "timer-{time}-{unit}-step-{stepIndex}-cmd-{cmdIndex}")
-    const stepMatch = timerId.match(/step-(\d+)/);
-    const stepIndex = stepMatch ? parseInt(stepMatch[1], 10) : -1;
-
     setActiveTimers(prev => ({
       ...prev,
       [timerId]: {
@@ -1416,10 +1706,8 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
       }
     }));
 
-    if (stepIndex >= 0 && stepIndex < instructions.length) {
-      setCurrentStepTimer({ stepIndex, timerId });
-    }
-  }, [timeToSeconds, initAudioContext, instructions]);
+    setCurrentTimer(timerId);
+  }, [timeToSeconds, initAudioContext]);
 
   const toggleTimer = useCallback((timerId: string) => {
     setActiveTimers(prev => ({
@@ -1449,7 +1737,7 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   }, []);
 
   const closeTimer = useCallback(() => {
-    setCurrentStepTimer(null);
+    setCurrentTimer(null);
   }, []);
 
   const addMinuteToTimer = useCallback((timerId: string) => {
@@ -1470,6 +1758,289 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
       };
     });
   }, []);
+
+  // Expose the timer start function to parent via ref
+  React.useImperativeHandle(ref, () => ({
+    startTimer: handleTimerStart
+  }), [handleTimerStart]);
+
+  // Only render overlay when there's an active timer
+  if (!currentTimer || !activeTimers[currentTimer]) {
+    return null;
+  }
+
+  return (
+    <Box
+      position="absolute"
+      top={0}
+      left={0}
+      right={0}
+      bottom={0}
+      zIndex={10}
+    >
+      <TimerOverlay
+        timer={activeTimers[currentTimer]}
+        onToggle={() => toggleTimer(currentTimer)}
+        onReset={() => resetTimer(currentTimer)}
+        onClose={closeTimer}
+        onAddMinute={() => addMinuteToTimer(currentTimer)}
+      />
+    </Box>
+  );
+});
+
+// InstructionStep Component - Represents a single instruction step
+interface InstructionStepProps {
+  instruction: Instruction;
+  index: number;
+  ingredients: RecipeIngredient[];
+  multiplier: number;
+  convertedIngredients: Record<number, ConvertedIngredient>;
+  preferredTemperatureUnit: 'C' | 'F';
+  isEditable: boolean;
+  onUpdateInstruction?: (index: number, field: keyof Instruction, value: string) => void;
+  onRemoveInstruction?: (index: number) => void;
+  onAddInstructionImage?: (index: number, imageUrl: string) => void;
+  onRemoveInstructionImage?: (index: number) => void;
+  onReorderInstructions?: (fromIndex: number, toIndex: number) => void;
+  baseNamespace?: string;
+  showActions: boolean;
+  draggedIndex: number | null;
+  dragOverIndex: number | null;
+  onDragStart: (e: React.DragEvent, index: number) => void;
+  onDragOver: (e: React.DragEvent, index: number) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent, index: number) => void;
+  onDragEnd: () => void;
+}
+
+const InstructionStep: FC<InstructionStepProps> = ({
+  instruction,
+  index,
+  ingredients,
+  multiplier,
+  convertedIngredients,
+  preferredTemperatureUnit,
+  isEditable,
+  onUpdateInstruction,
+  onRemoveInstruction,
+  onAddInstructionImage,
+  onRemoveInstructionImage,
+  onReorderInstructions,
+  baseNamespace,
+  showActions,
+  draggedIndex,
+  dragOverIndex,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+}) => {
+  const isStatic = recipeAPI.isStaticMode();
+  const timerRef = useRef<{ startTimer: (timerId: string, time: number, unit: string) => void } | null>(null);
+
+  // Timer start handler that communicates with StepTimer
+  const handleTimerStart = useCallback((timerId: string, time: number, unit: string) => {
+    if (timerRef.current) {
+      timerRef.current.startTimer(timerId, time, unit);
+    }
+  }, []);
+
+  return (
+    <VStack
+      id={`step-${instruction.step}`}
+      align="stretch"
+      gap={3}
+      p={4}
+      borderRadius="md"
+      bg={dragOverIndex === index ? "blue.50" : "gray.50"}
+      border={dragOverIndex === index ? "2px dashed" : "1px solid"}
+      borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
+      opacity={draggedIndex === index ? 0.5 : 1}
+      transition="all 0.2s"
+      onDragOver={(e) => onDragOver(e, index)}
+      onDragLeave={onDragLeave}
+      onDrop={(e) => onDrop(e, index)}
+      onDragEnd={onDragEnd}
+    >
+      <HStack align="flex-start" gap={4}>
+        {/* Drag Handle - Left Side */}
+        {isEditable && !isStatic && onReorderInstructions && (
+          <Box
+            minW="24px"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            color="gray.400"
+            _hover={{ color: "gray.600" }}
+            cursor="grab"
+            draggable={true}
+            onDragStart={(e) => onDragStart(e, index)}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <DragHandleIcon />
+          </Box>
+        )}
+
+        {/* Step Image - Left Side */}
+        <Box minW="200px" maxW="200px" position="relative">
+          {isEditable && !isStatic && onAddInstructionImage && onRemoveInstructionImage ? (
+            <VStack align="stretch" gap={2}>
+              <Text fontSize="xs" color="gray.600" fontWeight="medium">
+                Step Image (optional)
+              </Text>
+              <ImageUpload
+                onImageUpload={(imageUrl) => onAddInstructionImage(index, imageUrl)}
+                onImageRemove={() => onRemoveInstructionImage(index)}
+                existingImages={instruction.image ? [instruction.image] : []}
+                multiple={false}
+                maxImages={1}
+                disabled={false}
+                namespace={baseNamespace ? `${baseNamespace}/step_${instruction.step}` : undefined}
+              />
+            </VStack>
+          ) : (
+            <>
+              {/* Step Image */}
+              {instruction.image ? (
+                <Image
+                  src={imagePath(instruction.image)}
+                  alt={`Step ${instruction.step} image`}
+                  width="200px"
+                  height="150px"
+                  objectFit="cover"
+                  borderRadius="md"
+                  border="1px solid"
+                  borderColor="gray.200"
+                />
+              ) : (
+                <Box
+                  width="200px"
+                  height="150px"
+                  bg="gray.100"
+                  borderRadius="md"
+                  border="2px dashed"
+                  borderColor="gray.300"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Text color="gray.500" fontSize="sm" textAlign="center">
+                    No image
+                  </Text>
+                </Box>
+              )}
+
+              {/* Timer Overlay */}
+              <StepTimer ref={timerRef} />
+            </>
+          )}
+        </Box>
+
+        {/* Step Content - Right Side */}
+        <VStack flex="1" align="stretch" gap={2}>
+          <VStack align="flex-start" gap={1}>
+            <HStack gap={2} align="center">
+              <Link
+                href={`#step-${instruction.step}`}
+                colorScheme="blue"
+                cursor="pointer"
+                display="flex"
+                alignItems="center"
+                gap={1}
+                fontSize="md"
+              >
+                Step {instruction.step}
+              </Link>
+              {instruction.duration}
+            </HStack>
+            <VStack flex="1" align="stretch" gap={1}>
+              {isEditable && !isStatic && onUpdateInstruction ? (
+                <Textarea
+                  value={instruction.description}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdateInstruction(index, 'description', e.target.value)}
+                  placeholder="Enter instruction..."
+                  minH="80px"
+                  resize="vertical"
+                />
+              ) : (
+                <InstructionTextRenderer
+                  text={instruction.description}
+                  ingredients={ingredients}
+                  multiplier={multiplier}
+                  convertedIngredients={convertedIngredients}
+                  preferredTemperatureUnit={preferredTemperatureUnit}
+                  onTimerStart={handleTimerStart}
+                  activeTimers={{}}
+                  stepIndex={index}
+                />
+              )}
+              {isEditable && !isStatic && onUpdateInstruction && (
+                <Box>
+                  <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
+                  <Input
+                    value={instruction.duration || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateInstruction(index, 'duration', e.target.value)}
+                    placeholder="e.g., 5 minutes"
+                    size="sm"
+                  />
+                </Box>
+              )}
+            </VStack>
+            {isEditable && !isStatic && showActions && onRemoveInstruction && (
+              <Button
+                size="sm"
+                colorScheme="red"
+                variant="ghost"
+                onClick={() => onRemoveInstruction(index)}
+              >
+                <DeleteIcon />
+              </Button>
+            )}
+          </VStack>
+        </VStack>
+      </HStack>
+    </VStack>
+  );
+};
+
+// RecipeInstructions Component
+interface RecipeInstructionsProps {
+  instructions: Instruction[];
+  ingredients: RecipeIngredient[];
+  isEditable: boolean;
+  onAddInstruction: () => void;
+  onRemoveInstruction: (index: number) => void;
+  onUpdateInstruction: (index: number, field: keyof Instruction, value: string) => void;
+  onAddInstructionImage: (index: number, imageUrl: string) => void;
+  onRemoveInstructionImage: (index: number) => void;
+  onReorderInstructions: (fromIndex: number, toIndex: number) => void;
+  baseNamespace?: string;
+  multiplier?: number;
+  convertedIngredients?: Record<number, ConvertedIngredient>;
+  preferredTemperatureUnit?: 'C' | 'F';
+}
+
+const RecipeInstructions: FC<RecipeInstructionsProps> = ({
+  instructions,
+  ingredients,
+  isEditable,
+  onAddInstruction,
+  onRemoveInstruction,
+  onUpdateInstruction,
+  onAddInstructionImage,
+  onRemoveInstructionImage,
+  onReorderInstructions,
+  baseNamespace,
+  multiplier = 1,
+  convertedIngredients = {},
+  preferredTemperatureUnit = 'C',
+}) => {
+
+  const isStatic = recipeAPI.isStaticMode();
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -1535,168 +2106,30 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
 
       <VStack gap={4} align="stretch">
         {instructions.map((instruction, index) => (
-          <VStack
+          <InstructionStep
             key={index}
-            id={`step-${instruction.step}`}
-            align="stretch"
-            gap={3}
-            p={4}
-            borderRadius="md"
-            bg={dragOverIndex === index ? "blue.50" : "gray.50"}
-            border={dragOverIndex === index ? "2px dashed" : "1px solid"}
-            borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
-            opacity={draggedIndex === index ? 0.5 : 1}
-            transition="all 0.2s"
-            onDragOver={(e) => handleDragOver(e, index)}
+            instruction={instruction}
+            index={index}
+            ingredients={ingredients}
+            multiplier={multiplier}
+            convertedIngredients={convertedIngredients}
+            preferredTemperatureUnit={preferredTemperatureUnit}
+            isEditable={isEditable}
+            onUpdateInstruction={onUpdateInstruction}
+            onRemoveInstruction={onRemoveInstruction}
+            onAddInstructionImage={onAddInstructionImage}
+            onRemoveInstructionImage={onRemoveInstructionImage}
+            onReorderInstructions={onReorderInstructions}
+            baseNamespace={baseNamespace}
+            showActions={true}
+            draggedIndex={draggedIndex}
+            dragOverIndex={dragOverIndex}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, index)}
+            onDrop={handleDrop}
             onDragEnd={handleDragEnd}
-          >
-            <HStack align="flex-start" gap={4}>
-              {/* Drag Handle - Left Side */}
-              {isEditable && !isStatic && (
-                <Box
-                  minW="24px"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  color="gray.400"
-                  _hover={{ color: "gray.600" }}
-                  cursor="grab"
-                  draggable={true}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <DragHandleIcon />
-                </Box>
-              )}
-
-              {/* Step Image - Left Side */}
-              <Box minW="200px" maxW="200px" position="relative">
-                {isEditable && !isStatic ? (
-                  <VStack align="stretch" gap={2}>
-                    <Text fontSize="xs" color="gray.600" fontWeight="medium">
-                      Step Image (optional)
-                    </Text>
-                    <ImageUpload
-                      onImageUpload={(imageUrl) => onAddInstructionImage(index, imageUrl)}
-                      onImageRemove={() => onRemoveInstructionImage(index)}
-                      existingImages={instruction.image ? [instruction.image] : []}
-                      multiple={false}
-                      maxImages={1}
-                      disabled={false}
-                      namespace={baseNamespace ? `${baseNamespace}/step_${instruction.step}` : undefined}
-                    />
-                  </VStack>
-                ) : (
-                  <>
-                    {instruction.image ? (
-                      <Image
-                        src={imagePath(instruction.image)}
-                        alt={`Step ${instruction.step} image`}
-                        width="200px"
-                        height="150px"
-                        objectFit="cover"
-                        borderRadius="md"
-                        border="1px solid"
-                        borderColor="gray.200"
-                      />
-                    ) : (
-                      <Box
-                        width="200px"
-                        height="150px"
-                        bg="gray.100"
-                        borderRadius="md"
-                        border="2px dashed"
-                        borderColor="gray.300"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                      >
-                        <Text color="gray.500" fontSize="sm" textAlign="center">
-                          No image
-                        </Text>
-                      </Box>
-                    )}
-
-                    {/* Timer Overlay */}
-                    {currentStepTimer?.stepIndex === index && currentStepTimer.timerId && activeTimers[currentStepTimer.timerId] && (
-                      <TimerOverlay
-                        timer={activeTimers[currentStepTimer.timerId]}
-                        onToggle={() => toggleTimer(currentStepTimer.timerId)}
-                        onReset={() => resetTimer(currentStepTimer.timerId)}
-                        onClose={closeTimer}
-                        onAddMinute={() => addMinuteToTimer(currentStepTimer.timerId)}
-                      />
-                    )}
-                  </>
-                )}
-              </Box>
-
-              {/* Step Content - Right Side */}
-              <VStack flex="1" align="stretch" gap={2}>
-                <VStack align="flex-start" gap={1}>
-                  <HStack gap={2} align="center">
-                    <Link
-                      href={`#step-${instruction.step}`}
-                      colorScheme="blue"
-                      cursor="pointer"
-                      display="flex"
-                      alignItems="center"
-                      gap={1}
-                      fontSize="md"
-                    >
-                      Step {instruction.step}
-                    </Link>
-                    {instruction.duration}
-                  </HStack>
-                  <VStack flex="1" align="stretch" gap={1}>
-                    {isEditable && !isStatic ? (
-                      <Textarea
-                        value={instruction.description}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdateInstruction(index, 'description', e.target.value)}
-                        placeholder="Enter instruction..."
-                        minH="80px"
-                        resize="vertical"
-                      />
-                    ) : (
-                      <InstructionTextRenderer
-                        text={instruction.description}
-                        ingredients={ingredients}
-                        multiplier={multiplier}
-                        convertedIngredients={convertedIngredients}
-                        preferredTemperatureUnit={preferredTemperatureUnit}
-                        onTimerStart={handleTimerStart}
-                        activeTimers={activeTimers}
-                        stepIndex={index}
-                      />
-                    )}
-                    {isEditable && !isStatic && (
-                      <Box>
-                        <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
-                        <Input
-                          value={instruction.duration || ''}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateInstruction(index, 'duration', e.target.value)}
-                          placeholder="e.g., 5 minutes"
-                          size="sm"
-                        />
-                      </Box>
-                    )}
-                  </VStack>
-                  {isEditable && !isStatic && (
-                    <Button
-                      size="sm"
-                      colorScheme="red"
-                      variant="ghost"
-                      onClick={() => onRemoveInstruction(index)}
-                    >
-                      <DeleteIcon />
-                    </Button>
-                  )}
-                </VStack>
-              </VStack>
-            </HStack>
-          </VStack>
+          />
         ))}
       </VStack>
     </Box>
@@ -2283,7 +2716,9 @@ const Recipe: FC<RecipeProps> = ({
           ...ing,
           name: ing.name,
           quantity: ing.quantity || 1,
-          unit: ing.unit || 'unit'
+          unit: ing.unit || 'unit',
+          ingredient_id: ing.ingredient_id,
+          recipe_id: ing.recipe_id  // Explicitly include recipe_id for recipes used as ingredients
         })) || [],
         // Ensure categories exist
         categories: recipe.categories || [],

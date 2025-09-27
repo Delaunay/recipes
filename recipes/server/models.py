@@ -203,7 +203,8 @@ class RecipeIngredient(Base):
 
     _id = Column(Integer, primary_key=True)
     recipe_id = Column(Integer, ForeignKey('recipes._id'), nullable=False)
-    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
+    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=True)  # Make nullable since we can have recipe instead
+    ingredient_recipe_id = Column(Integer, ForeignKey('recipes._id'), nullable=True)  # Reference to another recipe used as ingredient
     quantity = Column(Float, nullable=False)
     unit = Column(String(50), nullable=False)
 
@@ -212,21 +213,40 @@ class RecipeIngredient(Base):
     product = Column(String(50))
 
     # Relationships
-    recipe = relationship('Recipe', back_populates='recipe_ingredients')
+    recipe = relationship('Recipe', back_populates='recipe_ingredients', foreign_keys=[recipe_id])
     ingredient = relationship('Ingredient', back_populates='recipe_ingredients')
+    ingredient_recipe = relationship('Recipe', foreign_keys=[ingredient_recipe_id])  # Recipe used as ingredient
 
     def __repr__(self):
-        return f'<RecipeIngredient {self.quantity} {self.unit} of ingredient {self.ingredient_id} in recipe {self.recipe_id}>'
+        if self.ingredient_id:
+            return f'<RecipeIngredient {self.quantity} {self.unit} of ingredient {self.ingredient_id} in recipe {self.recipe_id}>'
+        elif self.ingredient_recipe_id:
+            return f'<RecipeIngredient {self.quantity} {self.unit} of recipe {self.ingredient_recipe_id} in recipe {self.recipe_id}>'
+        else:
+            return f'<RecipeIngredient {self.quantity} {self.unit} (no ingredient/recipe specified) in recipe {self.recipe_id}>'
 
     def to_json(self):
+        # Determine the name based on whether it's an ingredient or recipe
+        name = None
+        recipe = {}
+
+        if self.ingredient:
+            name = self.ingredient.name
+            
+        elif self.ingredient_recipe:
+            name = self.ingredient_recipe.title
+            recipe = self.ingredient_recipe.to_json()
+
         return {
             # 'id': self._id,
             'recipe_id': self.recipe_id,
             'ingredient_id': self.ingredient_id,
+            'ingredient_recipe_id': self.ingredient_recipe_id,  # Add the new field
+            "recipe": recipe,
             'quantity': self.quantity,
             'unit': self.unit,
-            'name': self.ingredient.name if self.ingredient else None,
-            'id': self._id
+            'name': name,
+            'id': self._id,
         }
 
 recipe_categories = Table(
@@ -320,7 +340,7 @@ class Recipe(Base):
 
     # Relationships
     author = relationship('User', back_populates='recipes')
-    recipe_ingredients = relationship('RecipeIngredient', back_populates='recipe')
+    recipe_ingredients = relationship('RecipeIngredient', back_populates='recipe', foreign_keys="RecipeIngredient.recipe_id")
     categories = relationship('Category', secondary=recipe_categories, back_populates='recipes')
 
     def __repr__(self):
@@ -391,7 +411,7 @@ class BlogBlock:
     # audio
     # file attachment
     # Latex
-    # timeline 
+    # timeline
     # mermaid plot
     # widget
     # references
@@ -415,7 +435,6 @@ class Ingredient(Base):
 
     composition = Column(JSON)
     extension = Column(JSON)    # Additional info as JSON
-    recipe_id = Column(Integer, ForeignKey('recipes._id'), nullable=True)
 
     # Imperial system is Bonkers
     unit_metric       = Column(String(50))
@@ -444,7 +463,6 @@ class Ingredient(Base):
             'calories': self.calories,
             'density': self.density,
             'extension': self.extension,
-            "recipe_id": self.recipe_id,
             "unit": {
                 "metric": self.unit_metric,
                 "us_customary": self.unit_us_customary,

@@ -43,6 +43,7 @@ interface Instruction {
 
 interface RecipeIngredient {
   ingredient_id?: number;
+  recipe_id?: number; // Add recipe_id for when a recipe is selected as ingredient
   name: string;
   description?: string;
   calories?: number;
@@ -673,6 +674,11 @@ class RecipeAPI {
     } else {
       return this.request<string[]>('/units/suggestion');
     }
+  }
+
+  // Search for ingredients and recipes by name
+  async searchIngredients(name: string): Promise<Array<{ id: number, name: string, type: 'ingredient' | 'recipe' }>> {
+    return this.request<Array<{ id: number, name: string, type: 'ingredient' | 'recipe' }>>(`/ingredient/search/${encodeURIComponent(name)}`);
   }
 }
 
