@@ -106,19 +106,6 @@ const RecipeList = () => {
     }
   };
 
-  const getCheckboxState = () => {
-    switch (componentFilter) {
-      case 'all': return false;
-      case 'dishes': return false;
-      case 'components': return true;
-      default: return false;
-    }
-  };
-
-  const getCheckboxIndeterminate = () => {
-    return componentFilter === 'all';
-  };
-
 
 
   const restoreScrollPosition = () => {
@@ -265,10 +252,10 @@ const RecipeList = () => {
             <HStack width="100%">
               <Text fontSize="3xl" fontWeight="bold" mb={2}>
                 Recipes
-                
+
               </Text>
               <Text fontSize="lg" color="gray.600">
-                  {filteredRecipes.length} of {recipes.length}
+                {filteredRecipes.length} of {recipes.length}
               </Text>
             </HStack>
             {!isStatic && (
@@ -280,7 +267,7 @@ const RecipeList = () => {
 
           <HStack justify="space-between" width="100%">
             {/* Filter Controls */}
-            <Box  bg="gray.50" borderRadius="md" width="100%">
+            <Box bg="gray.50" borderRadius="md" width="100%">
               <Flex gap={6} wrap="wrap" align="center">
                 <Box>
                   <HStack>
