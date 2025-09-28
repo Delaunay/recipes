@@ -62,10 +62,7 @@ const RecipeList = () => {
     window.scrollTo(coord.x, coord.y);
   }
 
-  const handleCardClick = (recipe: RecipeData) => {
-    saveScrollPosition()
-    navigate(`/recipes/${recipe.id}`);
-  };
+
 
   if (loading) {
     return (

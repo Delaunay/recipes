@@ -44,12 +44,14 @@ interface Instruction {
 interface RecipeIngredient {
   ingredient_id?: number;
   recipe_id?: number; // Add recipe_id for when a recipe is selected as ingredient
+  ingredient_recipe_id?: number; // Reference to another recipe used as ingredient (from backend)
   name: string;
   description?: string;
   calories?: number;
   density?: number;
   quantity?: number;
   unit?: string;
+  recipe?: any; // Full recipe object when ingredient_recipe_id is set
 }
 
 interface Ingredient {

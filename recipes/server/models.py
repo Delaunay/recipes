@@ -230,10 +230,17 @@ class RecipeIngredient(Base):
         name = None
         recipe = {}
 
-        if self.ingredient:
+        if self.ingredient_recipe_id == self.recipe_id:
+            print("infinite recursion")
+            return {
+                "name": "recursion"
+            }
+
+        if self.ingredient_id and self.ingredient:
             name = self.ingredient.name
-            
-        elif self.ingredient_recipe:
+
+        elif self.ingredient_recipe_id and self.ingredient_recipe:
+
             name = self.ingredient_recipe.title
             recipe = self.ingredient_recipe.to_json()
 
@@ -287,32 +294,6 @@ class User(Base):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             # 'recipes': [recipe.to_json() for recipe in self.recipes] if self.recipes else []
         }
-
-
-class ComposedRecipe(Base):
-    __tablename__ = 'composed'
-
-
-    _id = Column(Integer, primary_key=True)
-    title = Column(String(100), nullable=False)
-    description = Column(Text)
-
-    # [image, image, image]
-    images = Column(JSON)
-
-    prep_time = Column(Integer)  # in minutes
-    cook_time = Column(Integer)  # in minutes
-    servings = Column(Integer)
-    created_at = Column(DateTime, default=datetime.now())
-    updated_at = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
-    author_id = Column(Integer, ForeignKey('users._id'))
-
-    extension = Column(JSON)
-
-    # steps = relationship('Recipe', back_populates='author')
-
-# Composed recipe map to multiple Recipe
-# add a many to many relationship table
 
 
 class Recipe(Base):

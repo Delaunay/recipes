@@ -71,8 +71,12 @@ def recipes_routes(app, db):
                     ingredient_recipe_id = None
 
                     # Check if this is a recipe used as ingredient
-                    if 'recipe_id' in ing_data and ing_data['recipe_id']:
-                        ingredient_recipe_id = ing_data['recipe_id']
+                    if 'ingredient_recipe_id' in ing_data and ing_data['ingredient_recipe_id']:
+                        # CRITICAL: Never allow a recipe to reference itself as an ingredient
+                        if ing_data['ingredient_recipe_id'] == recipe._id:
+                            return jsonify({"error": "A recipe cannot reference itself as an ingredient"}), 400
+                        ingredient_recipe_id = ing_data['ingredient_recipe_id']
+
                     elif 'ingredient_id' in ing_data and ing_data['ingredient_id']:
                         ingredient_id = ing_data['ingredient_id']
                     else:
@@ -168,8 +172,11 @@ def recipes_routes(app, db):
                     ingredient_recipe_id = None
 
                     # Check if this is a recipe used as ingredient
-                    if 'recipe_id' in ing_data and ing_data['recipe_id']:
-                        ingredient_recipe_id = ing_data['recipe_id']
+                    if 'ingredient_recipe_id' in ing_data and ing_data['ingredient_recipe_id']:
+                        # CRITICAL: Never allow a recipe to reference itself as an ingredient
+                        if ing_data['ingredient_recipe_id'] == recipe._id:
+                            return jsonify({"error": "A recipe cannot reference itself as an ingredient"}), 400
+                        ingredient_recipe_id = ing_data['ingredient_recipe_id']
                     elif 'ingredient_id' in ing_data and ing_data['ingredient_id']:
                         ingredient_id = ing_data['ingredient_id']
                     else:

@@ -437,6 +437,14 @@ const Ingredients = () => {
       const newIngredient = await recipeAPI.createIngredient({
         name: 'New Ingredient',
         description: 'Enter description...',
+        unit: {
+          metric: '',
+          us_customary: '',
+          us_legal: '',
+          canada: '',
+          australia: '',
+          uk: ''
+        }
       });
       setIngredients(prev => [...prev, newIngredient]);
     } catch (err) {

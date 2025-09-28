@@ -17,7 +17,7 @@ import {
   IconButton,
   Heading,
 } from '@chakra-ui/react';
-import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath, UnitConversion } from '../services/api';
+import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath } from '../services/api';
 import { convert, getAvailableUnits } from '../utils/unit_cvt';
 import { formatQuantity, parseFractionToDecimal } from '../utils/fractions';
 import ImageUpload from './ImageUpload';
@@ -421,7 +421,7 @@ const ConversionIcon = () => (
 // IngredientNameInput Component - Input with suggestions for ingredient names
 interface IngredientNameInputProps {
   value: string;
-  onChange: (value: string, ingredientId?: number, recipeId?: number) => void;
+  onChange: (value: string, ingredientId?: number, ingredientRecipeId?: number) => void;
   placeholder?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "2xs" | "xs";
 }
@@ -484,7 +484,7 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
       // For ingredients, set the name and ingredient_id
       onChange(suggestion.name, suggestion.id);
     } else if (suggestion.type === 'recipe') {
-      // For recipes, set the name and recipe_id (we'll handle this in the parent)
+      // For recipes, set the name and ingredient_recipe_id
       onChange(suggestion.name, undefined, suggestion.id);
     }
   };
@@ -878,22 +878,22 @@ const IngredientItem: FC<IngredientItemProps> = ({
           {isEditable && !isStatic && onUpdateIngredient ? (
             <IngredientNameInput
               value={ingredient.name}
-              onChange={(value: string, ingredientId?: number, recipeId?: number) => {
+              onChange={(value: string, ingredientId?: number, ingredientRecipeId?: number) => {
                 // Update the ingredient name
                 onUpdateIngredient(index, 'name', value);
 
                 // Set ingredient_id if an ingredient was selected
                 if (ingredientId !== undefined) {
                   onUpdateIngredient(index, 'ingredient_id', ingredientId);
-                  // Clear recipe_id if it exists
-                  if (ingredient.recipe_id) {
-                    onUpdateIngredient(index, 'recipe_id', undefined);
+                  // Clear ingredient_recipe_id if it exists
+                  if (ingredient.ingredient_recipe_id) {
+                    onUpdateIngredient(index, 'ingredient_recipe_id', undefined);
                   }
                 }
 
-                // Set recipe_id if a recipe was selected
-                if (recipeId !== undefined) {
-                  onUpdateIngredient(index, 'recipe_id', recipeId);
+                // Set ingredient_recipe_id if a recipe was selected
+                if (ingredientRecipeId !== undefined) {
+                  onUpdateIngredient(index, 'ingredient_recipe_id', ingredientRecipeId);
                   // Clear ingredient_id if it exists
                   if (ingredient.ingredient_id) {
                     onUpdateIngredient(index, 'ingredient_id', undefined);
@@ -904,31 +904,19 @@ const IngredientItem: FC<IngredientItemProps> = ({
               placeholder="Ingredient name"
             />
           ) : (
-            <HStack>
-              <Text
-                color="blue.600"
-                _hover={{ textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => {
-                  if (ingredient.ingredient_id) {
-                    navigate(`/ingredients/${ingredient.ingredient_id}`);
-                  } else if (ingredient.recipe_id) {
-                    navigate(`/recipes/${ingredient.recipe_id}`);
-                  }
-                }}
-              >
-                {ingredient.name}
-              </Text>
-              {ingredient.recipe_id && (
-                <Badge colorScheme="blue" size="sm" variant="subtle">
-                  recipe
-                </Badge>
-              )}
-              {ingredient.ingredient_id && (
-                <Badge colorScheme="green" size="sm" variant="subtle">
-                  ingredient
-                </Badge>
-              )}
-            </HStack>
+            <Text
+              color="blue.600"
+              _hover={{ textDecoration: 'underline', cursor: 'pointer' }}
+              onClick={() => {
+                if (ingredient.ingredient_id) {
+                  navigate(`/ingredients/${ingredient.ingredient_id}`);
+                } else if (ingredient.ingredient_recipe_id) {
+                  navigate(`/recipes/${ingredient.ingredient_recipe_id}`);
+                }
+              }}
+            >
+              {ingredient.name}
+            </Text>
           )}
         </Box>
 
@@ -1587,7 +1575,7 @@ interface StepTimerRef {
   startTimer: (timerId: string, time: number, unit: string) => void;
 }
 
-const StepTimer = React.forwardRef<StepTimerRef, StepTimerProps>((props, ref) => {
+const StepTimer = React.forwardRef<StepTimerRef, StepTimerProps>((_props, ref) => {
   // Local timer state
   const [activeTimers, setActiveTimers] = useState<Record<string, ActiveTimer>>({});
   const [currentTimer, setCurrentTimer] = useState<string | null>(null);
@@ -2136,6 +2124,232 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
   );
 };
 
+// ComposedRecipeDisplay Component - Shows ingredients and instructions grouped by recipe
+interface ComposedRecipeDisplayProps {
+  recipe: RecipeData;
+  multiplier?: number;
+  convertedIngredients?: Record<number, ConvertedIngredient>;
+  preferredTemperatureUnit?: 'C' | 'F';
+}
+
+const ComposedRecipeDisplay: FC<ComposedRecipeDisplayProps> = ({
+  recipe,
+  multiplier = 1,
+  convertedIngredients = {},
+  preferredTemperatureUnit = 'C'
+}) => {
+  // Group ingredients by their source recipe
+  const groupedIngredients = React.useMemo(() => {
+    const groups: {
+      topLevel: RecipeIngredient[];
+      subRecipes: { [recipeId: number]: { recipe: any; ingredients: RecipeIngredient[]; originalIngredient: RecipeIngredient } };
+    } = {
+      topLevel: [],
+      subRecipes: {}
+    };
+
+    recipe.ingredients?.forEach((ingredient) => {
+      if (ingredient.ingredient_recipe_id && (ingredient as any).recipe) {
+        const recipeId = ingredient.ingredient_recipe_id;
+        if (!groups.subRecipes[recipeId]) {
+          groups.subRecipes[recipeId] = {
+            recipe: (ingredient as any).recipe,
+            ingredients: [],
+            originalIngredient: ingredient
+          };
+        }
+
+        // Add sub-recipe ingredients to the group with scaling
+        if ((ingredient as any).recipe.ingredients) {
+          (ingredient as any).recipe.ingredients.forEach((subIngredient: any) => {
+            groups.subRecipes[recipeId].ingredients.push({
+              ...subIngredient,
+              name: subIngredient.name,
+              quantity: (subIngredient.quantity || 1) * (ingredient.quantity || 1),
+              unit: subIngredient.unit || 'unit'
+            });
+          });
+        }
+      } else {
+        // Top-level ingredient
+        groups.topLevel.push(ingredient);
+      }
+    });
+
+    return groups;
+  }, [recipe.ingredients, multiplier]);
+
+  // Group instructions by their source recipe
+  const groupedInstructions = React.useMemo(() => {
+    const groups: {
+      subRecipes: { [recipeId: number]: { recipe: any; instructions: any[] } };
+      topLevel: any[];
+    } = {
+      subRecipes: {},
+      topLevel: recipe.instructions || []
+    };
+
+    recipe.ingredients?.forEach((ingredient) => {
+      if (ingredient.ingredient_recipe_id && (ingredient as any).recipe) {
+        const recipeId = ingredient.ingredient_recipe_id;
+        if (!groups.subRecipes[recipeId]) {
+          groups.subRecipes[recipeId] = {
+            recipe: (ingredient as any).recipe,
+            instructions: (ingredient as any).recipe.instructions || []
+          };
+        }
+      }
+    });
+
+    return groups;
+  }, [recipe.ingredients, recipe.instructions]);
+
+  return (
+    <VStack gap={8} align="stretch">
+      {/* Ingredients Section */}
+      <Box>
+        <Text fontSize="lg" fontWeight="semibold" mb={4}>Ingredients</Text>
+
+        {/* Top-level ingredients */}
+        {groupedIngredients.topLevel.length > 0 && (
+          <Box mb={8}>
+            <Text fontSize="md" fontWeight="medium" color="blue.600" mb={4} borderBottom="2px solid" borderColor="blue.200" pb={2}>
+              {recipe.title}
+            </Text>
+            <VStack gap={3} align="stretch">
+              {groupedIngredients.topLevel.map((ingredient, index) => (
+                <IngredientItem
+                  key={index}
+                  ingredient={ingredient}
+                  index={index}
+                  multiplier={multiplier}
+                  convertedIngredients={convertedIngredients}
+                  setConvertedIngredients={() => { }}
+                  isEditable={false}
+                  showActions={false}
+                  draggedIndex={null}
+                  dragOverIndex={null}
+                  onDragStart={() => { }}
+                  onDragOver={() => { }}
+                  onDragLeave={() => { }}
+                  onDrop={() => { }}
+                  onDragEnd={() => { }}
+                  baseIndex={0}
+                />
+              ))}
+            </VStack>
+          </Box>
+        )}
+
+        {/* Sub-recipe ingredients */}
+        {Object.entries(groupedIngredients.subRecipes).map(([recipeId, group]) => (
+          <Box key={recipeId} mb={8}>
+            <HStack mb={4} align="center">
+              <Text fontSize="md" fontWeight="medium" color="green.600" borderBottom="2px solid" borderColor="green.200" pb={2}>
+                {group.recipe.title}
+              </Text>
+              <Badge colorScheme="green" size="sm">
+                {formatQuantity(group.originalIngredient.quantity || 1, group.originalIngredient.unit || 'unit')} × recipe
+              </Badge>
+            </HStack>
+            <VStack gap={3} align="stretch">
+              {group.ingredients.map((ingredient, index) => (
+                <IngredientItem
+                  key={index}
+                  ingredient={ingredient}
+                  index={index}
+                  multiplier={multiplier}
+                  convertedIngredients={{}}
+                  setConvertedIngredients={() => { }}
+                  isEditable={false}
+                  showActions={false}
+                  draggedIndex={null}
+                  dragOverIndex={null}
+                  onDragStart={() => { }}
+                  onDragOver={() => { }}
+                  onDragLeave={() => { }}
+                  onDrop={() => { }}
+                  onDragEnd={() => { }}
+                  baseIndex={0}
+                />
+              ))}
+            </VStack>
+          </Box>
+        ))}
+      </Box>
+
+      <Box height="1px" bg="gray.200" />
+
+      {/* Instructions Section */}
+      <Box>
+        <Text fontSize="lg" fontWeight="semibold" mb={4}>Instructions</Text>
+
+        {/* Sub-recipe instructions first */}
+        {Object.entries(groupedInstructions.subRecipes).map(([recipeId, group]) => (
+          <Box key={recipeId} mb={8}>
+            <Text fontSize="md" fontWeight="medium" color="green.600" mb={4} borderBottom="2px solid" borderColor="green.200" pb={2}>
+              {group.recipe.title}
+            </Text>
+            <VStack gap={4} align="stretch">
+              {group.instructions.map((instruction, index) => (
+                <InstructionStep
+                  key={index}
+                  instruction={instruction}
+                  index={index}
+                  ingredients={group.recipe.ingredients || []}
+                  multiplier={multiplier}
+                  convertedIngredients={{}}
+                  preferredTemperatureUnit={preferredTemperatureUnit}
+                  isEditable={false}
+                  showActions={false}
+                  draggedIndex={null}
+                  dragOverIndex={null}
+                  onDragStart={() => { }}
+                  onDragOver={() => { }}
+                  onDragLeave={() => { }}
+                  onDrop={() => { }}
+                  onDragEnd={() => { }}
+                />
+              ))}
+            </VStack>
+          </Box>
+        ))}
+
+        {/* Top-level instructions last */}
+        {groupedInstructions.topLevel.length > 0 && (
+          <Box mb={8}>
+            <Text fontSize="md" fontWeight="medium" color="blue.600" mb={4} borderBottom="2px solid" borderColor="blue.200" pb={2}>
+              {recipe.title}
+            </Text>
+            <VStack gap={4} align="stretch">
+              {groupedInstructions.topLevel.map((instruction, index) => (
+                <InstructionStep
+                  key={index}
+                  instruction={instruction}
+                  index={index}
+                  ingredients={recipe.ingredients || []}
+                  multiplier={multiplier}
+                  convertedIngredients={convertedIngredients}
+                  preferredTemperatureUnit={preferredTemperatureUnit}
+                  isEditable={false}
+                  showActions={false}
+                  draggedIndex={null}
+                  dragOverIndex={null}
+                  onDragStart={() => { }}
+                  onDragOver={() => { }}
+                  onDragLeave={() => { }}
+                  onDrop={() => { }}
+                  onDragEnd={() => { }}
+                />
+              ))}
+            </VStack>
+          </Box>
+        )}
+      </Box>
+    </VStack>
+  );
+};
+
 // RecipeCategories Component
 interface RecipeCategoriesProps {
   categories: any[];
@@ -2362,6 +2576,7 @@ const Recipe: FC<RecipeProps> = ({
   const isStatic = recipeAPI.isStaticMode();
   const [isEditable, setIsEditable] = useState(!initialRecipe && !isStatic); // New recipe starts in edit mode, but not in static mode
   const [recipeMultiplier, setRecipeMultiplier] = useState<number | string>(1.0); // Default multiplier is 1.0
+  const [showComposedView, setShowComposedView] = useState(true); // Toggle for composed recipe view - default to grouped view
 
   // State for converted ingredient values (shared between components)
   const [convertedIngredients, setConvertedIngredients] = useState<Record<number, ConvertedIngredient>>({});
@@ -2425,6 +2640,11 @@ const Recipe: FC<RecipeProps> = ({
     return isNaN(numValue) || numValue <= 0 ? 1.0 : numValue;
   };
 
+  // Helper to check if recipe has composed ingredients (sub-recipes)
+  const hasComposedIngredients = () => {
+    return recipe.ingredients?.some(ingredient => ingredient.ingredient_recipe_id && ingredient.recipe) || false;
+  };
+
   // Helper to generate temporary IDs for new categories
   const generateTempId = () => Math.floor(Math.random() * 1000000) * -1; // Negative numbers for temp IDs
 
@@ -2441,10 +2661,14 @@ const Recipe: FC<RecipeProps> = ({
       images: [],
     };
 
-    return {
+    // Ensure recipe has proper structure
+    const transformedRecipe = {
       ...baseRecipe,
-      categories: baseRecipe.categories || []
+      categories: baseRecipe.categories || [],
+      ingredients: baseRecipe.ingredients || []
     };
+
+    return transformedRecipe;
   });
 
   // Update document title when recipe title changes
@@ -2706,6 +2930,18 @@ const Recipe: FC<RecipeProps> = ({
 
   const handleSave = () => {
     if (onSave) {
+      // Validate that no recipe references itself as an ingredient (only for existing recipes)
+      if (recipe.id) {
+        const selfReferencingIngredients = recipe.ingredients?.filter(ing =>
+          (ing.ingredient_recipe_id === recipe.id)
+        ) || [];
+
+        if (selfReferencingIngredients.length > 0) {
+          alert("Error: A recipe cannot reference itself as an ingredient. Please remove the self-reference.");
+          return;
+        }
+      }
+
       // Ensure we have the proper data structure for the API
       const recipeToSave: RecipeData = {
         ...recipe,
@@ -2713,12 +2949,14 @@ const Recipe: FC<RecipeProps> = ({
         instructions: recipe.instructions || [],
         // Ensure ingredients exist and have proper structure
         ingredients: recipe.ingredients?.map(ing => ({
-          ...ing,
           name: ing.name,
           quantity: ing.quantity || 1,
           unit: ing.unit || 'unit',
-          ingredient_id: ing.ingredient_id,
-          recipe_id: ing.recipe_id  // Explicitly include recipe_id for recipes used as ingredients
+          // Include ingredient_id if it exists
+          ...(ing.ingredient_id && { ingredient_id: ing.ingredient_id }),
+          // Include ingredient_recipe_id if it exists (for recipes used as ingredients)
+          // CRITICAL: Never allow self-reference for existing recipes (already validated above)
+          ...(ing.ingredient_recipe_id && (!recipe.id || ing.ingredient_recipe_id !== recipe.id) && { ingredient_recipe_id: ing.ingredient_recipe_id }),
         })) || [],
         // Ensure categories exist
         categories: recipe.categories || [],
@@ -2846,6 +3084,21 @@ const Recipe: FC<RecipeProps> = ({
                   {isEditable ? 'View' : 'Edit'}
                 </Button>
               </Flex>
+
+              {/* Composed View Toggle - only show if recipe has sub-recipes */}
+              {!isEditable && hasComposedIngredients() && (
+                <Flex align="center" gap={2}>
+                  <Text fontSize="sm">Composed View</Text>
+                  <Button
+                    size="sm"
+                    variant={showComposedView ? 'solid' : 'outline'}
+                    colorScheme="green"
+                    onClick={() => setShowComposedView(!showComposedView)}
+                  >
+                    {showComposedView ? 'Grouped' : 'Flat'}
+                  </Button>
+                </Flex>
+              )}
 
               {isEditable && (
                 <HStack gap={2}>
@@ -3036,43 +3289,60 @@ const Recipe: FC<RecipeProps> = ({
 
         <Box height="1px" bg="gray.200" />
 
-        {/* Ingredients Component */}
-        <RecipeIngredients
-          ingredients={recipe.ingredients || []}
-          isEditable={isEditable}
-          onAddIngredient={addIngredient}
-          onRemoveIngredient={removeIngredient}
-          onUpdateIngredient={updateIngredientStable}
-          onReorderIngredients={reorderIngredients}
-          multiplier={getEffectiveMultiplier()}
-          convertedIngredients={convertedIngredients}
-          setConvertedIngredients={setConvertedIngredients}
-          availableUnits={availableUnits}
-          setAvailableUnits={setAvailableUnits}
-          loadingUnits={loadingUnits}
-          setLoadingUnits={setLoadingUnits}
-          preferredUnitSystem={preferredUnitSystem}
-          setPreferredUnitSystem={setPreferredUnitSystem}
-        />
+        {/* Conditional rendering: Composed view or regular view */}
+        {!isEditable && showComposedView && hasComposedIngredients() ? (
+          /* Composed Recipe Display */
+          <>
 
-        <Box height="1px" bg="gray.200" />
+            <ComposedRecipeDisplay
+              recipe={recipe}
+              multiplier={getEffectiveMultiplier()}
+              convertedIngredients={convertedIngredients}
+              preferredTemperatureUnit={preferredTemperatureUnit}
+            />
+          </>
+        ) : (
+          /* Regular Ingredients and Instructions */
+          <>
+            {/* Ingredients Component */}
+            <RecipeIngredients
+              ingredients={recipe.ingredients || []}
+              isEditable={isEditable}
+              onAddIngredient={addIngredient}
+              onRemoveIngredient={removeIngredient}
+              onUpdateIngredient={updateIngredientStable}
+              onReorderIngredients={reorderIngredients}
+              multiplier={getEffectiveMultiplier()}
+              convertedIngredients={convertedIngredients}
+              setConvertedIngredients={setConvertedIngredients}
+              availableUnits={availableUnits}
+              setAvailableUnits={setAvailableUnits}
+              loadingUnits={loadingUnits}
+              setLoadingUnits={setLoadingUnits}
+              preferredUnitSystem={preferredUnitSystem}
+              setPreferredUnitSystem={setPreferredUnitSystem}
+            />
 
-        {/* Instructions Component */}
-        <RecipeInstructions
-          instructions={recipe.instructions || []}
-          ingredients={recipe.ingredients || []}
-          isEditable={isEditable}
-          onAddInstruction={addInstruction}
-          onRemoveInstruction={removeInstruction}
-          onUpdateInstruction={updateInstructionStable}
-          onAddInstructionImage={addInstructionImage}
-          onRemoveInstructionImage={removeInstructionImage}
-          onReorderInstructions={reorderInstructions}
-          baseNamespace={recipe.id ? `${recipe.id}_${recipe.title.replace(/[^a-zA-Z0-9]/g, '_')}` : undefined}
-          multiplier={getEffectiveMultiplier()}
-          convertedIngredients={convertedIngredients}
-          preferredTemperatureUnit={preferredTemperatureUnit}
-        />
+            <Box height="1px" bg="gray.200" />
+
+            {/* Instructions Component */}
+            <RecipeInstructions
+              instructions={recipe.instructions || []}
+              ingredients={recipe.ingredients || []}
+              isEditable={isEditable}
+              onAddInstruction={addInstruction}
+              onRemoveInstruction={removeInstruction}
+              onUpdateInstruction={updateInstructionStable}
+              onAddInstructionImage={addInstructionImage}
+              onRemoveInstructionImage={removeInstructionImage}
+              onReorderInstructions={reorderInstructions}
+              baseNamespace={recipe.id ? `${recipe.id}_${recipe.title.replace(/[^a-zA-Z0-9]/g, '_')}` : undefined}
+              multiplier={getEffectiveMultiplier()}
+              convertedIngredients={convertedIngredients}
+              preferredTemperatureUnit={preferredTemperatureUnit}
+            />
+          </>
+        )}
 
         {/* Categories Component */}
         <RecipeCategories

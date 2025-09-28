@@ -21,3 +21,8 @@ CHECK (
     (ingredient_id IS NOT NULL AND ingredient_recipe_id IS NULL) OR
     (ingredient_id IS NULL AND ingredient_recipe_id IS NOT NULL)
 );
+
+-- CRITICAL: Add constraint to prevent a recipe from referencing itself as an ingredient
+ALTER TABLE recipe_ingredients
+ADD CONSTRAINT chk_recipe_ingredients_no_self_reference
+CHECK (recipe_id != ingredient_recipe_id);
