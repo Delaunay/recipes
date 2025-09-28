@@ -969,10 +969,7 @@ interface RecipeIngredientsProps {
   multiplier?: number;
   convertedIngredients: Record<number, ConvertedIngredient>;
   setConvertedIngredients: React.Dispatch<React.SetStateAction<Record<number, ConvertedIngredient>>>;
-  availableUnits: Record<number, string[]>;
   setAvailableUnits: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
-  loadingUnits: Record<number, boolean>;
-  setLoadingUnits: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
   preferredUnitSystem?: 'metric' | 'us_customary';
   setPreferredUnitSystem?: (system: 'metric' | 'us_customary') => void;
 }
@@ -994,10 +991,7 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   multiplier = 1.0,
   convertedIngredients,
   setConvertedIngredients,
-  availableUnits,
   setAvailableUnits,
-  loadingUnits,
-  setLoadingUnits,
   preferredUnitSystem = 'metric',
   setPreferredUnitSystem,
 }) => {
@@ -2576,9 +2570,7 @@ const Recipe: FC<RecipeProps> = ({
   // State for converted ingredient values (shared between components)
   const [convertedIngredients, setConvertedIngredients] = useState<Record<number, ConvertedIngredient>>({});
   // State for available units for each ingredient
-  const [availableUnits, setAvailableUnits] = useState<Record<number, string[]>>({});
-  // Loading state for unit conversions
-  const [loadingUnits, setLoadingUnits] = useState<Record<number, boolean>>({});
+  const [, setAvailableUnits] = useState<Record<number, string[]>>({});
   // State for preferred temperature unit
   const [preferredTemperatureUnit] = useState<'C' | 'F'>('C');
   // State for preferred unit system with localStorage persistence
@@ -3329,10 +3321,7 @@ const Recipe: FC<RecipeProps> = ({
               multiplier={getEffectiveMultiplier()}
               convertedIngredients={convertedIngredients}
               setConvertedIngredients={setConvertedIngredients}
-              availableUnits={availableUnits}
               setAvailableUnits={setAvailableUnits}
-              loadingUnits={loadingUnits}
-              setLoadingUnits={setLoadingUnits}
               preferredUnitSystem={preferredUnitSystem}
               setPreferredUnitSystem={setPreferredUnitSystem}
             />

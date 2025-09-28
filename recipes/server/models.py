@@ -263,13 +263,6 @@ recipe_categories = Table(
     Column('category_id', Integer, ForeignKey('categories._id'))
 )
 
-composed_recipe_recipes = Table(
-    'composed_recipe_recipes',
-    Base.metadata,
-    Column('composed_recipe_id', Integer, ForeignKey('composed._id')),
-    Column('recipe_id', Integer, ForeignKey('recipes._id'))
-)
-
 
 class User(Base):
     __tablename__ = 'users'
