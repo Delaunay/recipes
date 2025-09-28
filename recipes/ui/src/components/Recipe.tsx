@@ -619,6 +619,16 @@ const IngredientItem: FC<IngredientItemProps> = ({
     density?: number;
   } | null>(null);
 
+  // Local state for raw quantity text input (only used in edit mode)
+  const [rawQuantityText, setRawQuantityText] = useState<string>(
+    formatQuantity(ingredient.quantity || 1, ingredient.unit)
+  );
+
+  // Update raw quantity text when ingredient changes
+  useEffect(() => {
+    setRawQuantityText(formatQuantity(ingredient.quantity || 1, ingredient.unit));
+  }, [ingredient.quantity, ingredient.unit]);
+
   // Local state for this ingredient's units
   const [availableUnits, setAvailableUnits] = useState<string[]>([]);
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
@@ -811,11 +821,25 @@ const IngredientItem: FC<IngredientItemProps> = ({
         <Box minW="80px">
           {isEditable && !isStatic && onUpdateIngredient ? (
             <Input
-              value={formatQuantity(ingredient.quantity || 1, ingredient.unit)}
+              value={rawQuantityText}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const inputText = e.target.value || '1';
+                setRawQuantityText(e.target.value);
+              }}
+              onBlur={() => {
+                // Parse and validate quantity when user finishes editing
+                const inputText = rawQuantityText.trim() || '1';
                 const parsedQuantity = parseFractionToDecimal(inputText);
-                onUpdateIngredient(index, 'quantity', parsedQuantity || 1);
+                if (parsedQuantity && parsedQuantity > 0) {
+                  onUpdateIngredient(index, 'quantity', parsedQuantity);
+                } else {
+                  // If invalid, revert to previous valid value
+                  setRawQuantityText(formatQuantity(ingredient.quantity || 1, ingredient.unit));
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur(); // Trigger onBlur validation
+                }
               }}
               size="sm"
               placeholder="1"
@@ -2927,6 +2951,16 @@ const Recipe: FC<RecipeProps> = ({
           alert("Error: A recipe cannot reference itself as an ingredient. Please remove the self-reference.");
           return;
         }
+      }
+
+      // Validate all ingredient quantities are valid numbers
+      const invalidIngredients = recipe.ingredients?.filter(ing =>
+        !ing.quantity || isNaN(ing.quantity) || ing.quantity <= 0
+      ) || [];
+
+      if (invalidIngredients.length > 0) {
+        alert("Error: Some ingredients have invalid quantities. Please check all quantity fields contain valid numbers greater than 0.");
+        return;
       }
 
       // Ensure we have the proper data structure for the API

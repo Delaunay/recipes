@@ -309,7 +309,7 @@ class Recipe(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     author_id = Column(Integer, ForeignKey('users._id'))
 
-    component = Column(Boolean)
+    component = Column(Boolean, default=False)
     extension = Column(JSON)
 
     # Relationships

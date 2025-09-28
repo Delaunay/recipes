@@ -36,6 +36,7 @@ def recipes_routes(app, db):
 
     @app.route('/recipes', methods=['GET'])
     def get_recipes() -> Dict[str, Any]:
+        # recipes = db.session.query(Recipe).filter(Recipe.component == False).all()
         recipes = db.session.query(Recipe).all()
         return jsonify([recipe.to_json() for recipe in recipes])
 

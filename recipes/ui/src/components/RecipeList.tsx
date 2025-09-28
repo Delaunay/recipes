@@ -11,13 +11,21 @@ import {
   SimpleGrid,
   Image,
   Badge,
+  Input,
+  Flex,
 } from '@chakra-ui/react';
 import { recipeAPI, RecipeData, imagePath } from '../services/api';
 
+// Component filter states
+type ComponentFilter = 'all' | 'components' | 'dishes';
+
 const RecipeList = () => {
   const [recipes, setRecipes] = useState<RecipeData[]>([]);
+  const [filteredRecipes, setFilteredRecipes] = useState<RecipeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [componentFilter, setComponentFilter] = useState<ComponentFilter>('dishes');
+  const [tagFilter, setTagFilter] = useState<string>('');
   const navigate = useNavigate();
   const isStatic = recipeAPI.isStaticMode();
 
@@ -34,6 +42,37 @@ const RecipeList = () => {
     [loading, recipes.length]
   )
 
+  // Filter recipes whenever filters or recipes change
+  useEffect(() => {
+    let filtered = [...recipes];
+
+    // Apply component filter
+    if (componentFilter === 'components') {
+      filtered = filtered.filter(recipe => recipe.component === true);
+    } else if (componentFilter === 'dishes') {
+      filtered = filtered.filter(recipe => recipe.component !== true);
+    }
+
+    // Apply tag filter
+    if (tagFilter.trim()) {
+      const searchTerm = tagFilter.toLowerCase().trim();
+      filtered = filtered.filter(recipe => {
+        // Search in categories
+        const categoryMatch = recipe.categories?.some(category =>
+          category.name.toLowerCase().includes(searchTerm)
+        ) || false;
+
+        // Also search in title and description for broader matching
+        const titleMatch = recipe.title.toLowerCase().includes(searchTerm);
+        const descriptionMatch = recipe.description?.toLowerCase().includes(searchTerm) || false;
+
+        return categoryMatch || titleMatch || descriptionMatch;
+      });
+    }
+
+    setFilteredRecipes(filtered);
+  }, [recipes, componentFilter, tagFilter]);
+
   const fetchRecipes = async () => {
     try {
       setLoading(true);
@@ -46,6 +85,38 @@ const RecipeList = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleComponentFilterChange = () => {
+    if (componentFilter === 'all') {
+      setComponentFilter('dishes');
+    } else if (componentFilter === 'dishes') {
+      setComponentFilter('components');
+    } else {
+      setComponentFilter('all');
+    }
+  };
+
+  const getComponentFilterLabel = () => {
+    switch (componentFilter) {
+      case 'all': return 'All Recipes';
+      case 'dishes': return 'Full Dishes Only';
+      case 'components': return 'Components Only';
+      default: return 'All Recipes';
+    }
+  };
+
+  const getCheckboxState = () => {
+    switch (componentFilter) {
+      case 'all': return false;
+      case 'dishes': return false;
+      case 'components': return true;
+      default: return false;
+    }
+  };
+
+  const getCheckboxIndeterminate = () => {
+    return componentFilter === 'all';
   };
 
 
@@ -100,6 +171,80 @@ const RecipeList = () => {
     );
   }
 
+  if (filteredRecipes.length === 0 && recipes.length > 0) {
+    return (
+      <Box py={6}>
+        <VStack gap={6} align="stretch">
+          {/* Filter Controls */}
+          <Box p={4} bg="gray.50" borderRadius="md">
+            <Text fontSize="lg" fontWeight="semibold" mb={3}>Filters</Text>
+            <Flex gap={6} wrap="wrap" align="center">
+              <Box>
+                <HStack>
+                  <Box
+                    as="button"
+                    onClick={handleComponentFilterChange}
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                    p={2}
+                    borderRadius="md"
+                    _hover={{ bg: "gray.100" }}
+                    cursor="pointer"
+                  >
+                    <Box
+                      w={4}
+                      h={4}
+                      border="2px solid"
+                      borderColor={componentFilter === 'components' ? "blue.500" : "gray.300"}
+                      borderRadius="sm"
+                      bg={componentFilter === 'components' ? "blue.500" : componentFilter === 'all' ? "gray.200" : "white"}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      {componentFilter === 'components' && (
+                        <Box w={2} h={2} bg="white" borderRadius="xs" />
+                      )}
+                      {componentFilter === 'all' && (
+                        <Box w={2} h={1} bg="gray.600" />
+                      )}
+                    </Box>
+                    <Text fontSize="sm">{getComponentFilterLabel()}</Text>
+                  </Box>
+                </HStack>
+              </Box>
+              <Box flex="1" minW="200px">
+                <Input
+                  placeholder="Filter by tags, title, or description..."
+                  value={tagFilter}
+                  onChange={(e) => setTagFilter(e.target.value)}
+                  bg="white"
+                />
+              </Box>
+            </Flex>
+          </Box>
+
+          <Box textAlign="center" py={10}>
+            <Text fontSize="lg" color="gray.600" mb={4}>
+              No recipes match your current filters.
+            </Text>
+            <Button
+              onClick={() => {
+                setComponentFilter('all');
+                setTagFilter('');
+              }}
+              colorScheme="blue"
+              variant="outline"
+            >
+              Clear Filters
+            </Button>
+          </Box>
+        </VStack>
+      </Box>
+    );
+  }
+
   return (
     <Box py={6}>
       <VStack gap={6} align="stretch">
@@ -116,24 +261,84 @@ const RecipeList = () => {
         )}
 
         <Box>
-          <Text fontSize="3xl" fontWeight="bold" mb={2}>
-            All Recipes
-          </Text>
-          <HStack justify="space-between">
-            <Text fontSize="lg" color="gray.600">
-              {recipes.length} recipe{recipes.length !== 1 ? 's' : ''} found
-            </Text>
+          <HStack justify="space-between" width="100%">
+            <HStack width="100%">
+              <Text fontSize="3xl" fontWeight="bold" mb={2}>
+                Recipes
+                
+              </Text>
+              <Text fontSize="lg" color="gray.600">
+                  {filteredRecipes.length} of {recipes.length}
+              </Text>
+            </HStack>
             {!isStatic && (
               <Button colorScheme="blue" onClick={() => navigate('/create')}>
                 Create New Recipe
               </Button>
             )}
           </HStack>
+
+          <HStack justify="space-between" width="100%">
+            {/* Filter Controls */}
+            <Box  bg="gray.50" borderRadius="md" width="100%">
+              <Flex gap={6} wrap="wrap" align="center">
+                <Box>
+                  <HStack>
+                    <Box
+                      as="button"
+                      onClick={handleComponentFilterChange}
+                      display="flex"
+                      alignItems="center"
+                      gap={2}
+                      p={2}
+                      borderRadius="md"
+                      _hover={{ bg: "gray.100" }}
+                      cursor="pointer"
+                    >
+                      <Box
+                        w={4}
+                        h={4}
+                        border="2px solid"
+                        borderColor={componentFilter === 'components' ? "blue.500" : "gray.300"}
+                        borderRadius="sm"
+                        bg={componentFilter === 'components' ? "blue.500" : componentFilter === 'all' ? "gray.200" : "white"}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        {componentFilter === 'components' && (
+                          <Box w={2} h={2} bg="white" borderRadius="xs" />
+                        )}
+                        {componentFilter === 'all' && (
+                          <Box w={2} h={1} bg="gray.600" />
+                        )}
+                      </Box>
+                      <Text fontSize="sm">{getComponentFilterLabel()}</Text>
+                    </Box>
+                  </HStack>
+                </Box>
+                <Box flex="1">
+                  <Input
+                    placeholder="Filter"
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value)}
+                    bg="white"
+                  />
+                </Box>
+              </Flex>
+            </Box>
+          </HStack>
         </Box>
 
         <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5, '2xl': 6 }} gap={4}>
-          {recipes.map((recipe) => (
-            <RouterLink to={`/recipes/${recipe.id}`}>
+          {filteredRecipes.map((recipe) => (
+            <RouterLink
+              to={`/recipes/${recipe.id}`}
+              onClick={() => {
+                // Save scroll position before navigating
+                sessionStorage.setItem('scroll_recipe', JSON.stringify({ x: window.scrollX, y: window.scrollY }));
+              }}
+            >
               <Box
                 key={recipe.id}
                 borderWidth="1px"
