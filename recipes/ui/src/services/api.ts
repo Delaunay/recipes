@@ -31,6 +31,7 @@ interface RecipeData {
   ingredients?: Array<RecipeIngredient>;
   categories?: Array<Category>;
   author_id?: number;
+  component?: boolean;
 }
 
 interface Instruction {

@@ -48,9 +48,7 @@ const RecipeList = () => {
     }
   };
 
-  const saveScrollPosition = () => {
-    sessionStorage.setItem("scroll_recipe", JSON.stringify({ x: window.pageXOffset, y: window.pageYOffset }))
-  }
+
 
   const restoreScrollPosition = () => {
     const saved = sessionStorage.getItem(`scroll_recipe`);

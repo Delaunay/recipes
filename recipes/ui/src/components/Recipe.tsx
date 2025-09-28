@@ -436,18 +436,22 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [inputValue, setInputValue] = useState(value);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const isUserInputRef = useRef(false);
 
   // Update input value when prop changes
   useEffect(() => {
+    isUserInputRef.current = false; // Mark as programmatic change
     setInputValue(value);
+    setShowSuggestions(false); // Don't show suggestions on programmatic changes
   }, [value]);
 
-  // Debounced search function
+  // Debounced search function - only when focused
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
-      if (inputValue.length >= 2) {
+      if (isFocused && inputValue.length >= 2) {
         setIsLoading(true);
         try {
           const results = await recipeAPI.searchIngredients(inputValue);
@@ -466,11 +470,12 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [inputValue]);
+  }, [inputValue, isFocused]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    isUserInputRef.current = true; // Mark as user input
     setInputValue(newValue);
     onChange(newValue); // Always call onChange for typing
   };
@@ -489,22 +494,7 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
     }
   };
 
-  // Handle click outside to close suggestions
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node) &&
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   return (
     <Box position="relative" width="100%">
@@ -515,9 +505,14 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
         size={size}
         placeholder={placeholder}
         onFocus={() => {
-          if (suggestions.length > 0) {
-            setShowSuggestions(true);
-          }
+          setIsFocused(true);
+        }}
+        onBlur={() => {
+          setIsFocused(false);
+          // Small delay to allow suggestion clicks to register
+          setTimeout(() => {
+            setShowSuggestions(false);
+          }, 150);
         }}
       />
 
@@ -974,10 +969,10 @@ interface RecipeIngredientsProps {
   multiplier?: number;
   convertedIngredients: Record<number, ConvertedIngredient>;
   setConvertedIngredients: React.Dispatch<React.SetStateAction<Record<number, ConvertedIngredient>>>;
-  availableUnits: Record<number, string[]>;
+  _availableUnits: Record<number, string[]>;
   setAvailableUnits: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
-  loadingUnits: Record<number, boolean>;
-  setLoadingUnits: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+  _loadingUnits: Record<number, boolean>;
+  _setLoadingUnits: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
   preferredUnitSystem?: 'metric' | 'us_customary';
   setPreferredUnitSystem?: (system: 'metric' | 'us_customary') => void;
 }
@@ -999,10 +994,10 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   multiplier = 1.0,
   convertedIngredients,
   setConvertedIngredients,
-  availableUnits,
+  _availableUnits,
   setAvailableUnits,
-  loadingUnits,
-  setLoadingUnits,
+  _loadingUnits,
+  _setLoadingUnits,
   preferredUnitSystem = 'metric',
   setPreferredUnitSystem,
 }) => {
@@ -3191,6 +3186,25 @@ const Recipe: FC<RecipeProps> = ({
 
           {/* Recipe Info - Right Side */}
           <VStack align="stretch" gap={4} minW="200px">
+            {isEditable && !isStatic && (
+              <Box>
+                <HStack gap={2}>
+                  <input
+                    type="checkbox"
+                    checked={recipe.component || false}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setRecipe(prev => ({ ...prev, component: e.target.checked }))
+                    }
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      accentColor: '#3182ce'
+                    }}
+                  />
+                  <Text fontSize="sm">Component Recipe</Text>
+                </HStack>
+              </Box>
+            )}
             <Box>
               <Text fontSize="sm" fontWeight="medium" mb={1}>Prep Time (minutes)</Text>
               {isEditable && !isStatic ? (
@@ -3315,10 +3329,10 @@ const Recipe: FC<RecipeProps> = ({
               multiplier={getEffectiveMultiplier()}
               convertedIngredients={convertedIngredients}
               setConvertedIngredients={setConvertedIngredients}
-              availableUnits={availableUnits}
+              _availableUnits={availableUnits}
               setAvailableUnits={setAvailableUnits}
-              loadingUnits={loadingUnits}
-              setLoadingUnits={setLoadingUnits}
+              _loadingUnits={loadingUnits}
+              _setLoadingUnits={setLoadingUnits}
               preferredUnitSystem={preferredUnitSystem}
               setPreferredUnitSystem={setPreferredUnitSystem}
             />

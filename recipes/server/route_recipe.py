@@ -58,7 +58,8 @@ def recipes_routes(app, db):
                 cook_time=data.get('cook_time'),
                 servings=data.get('servings'),
                 images=data.get('images', []),
-                author_id=data.get('author_id', 1)  # Default author for now
+                author_id=data.get('author_id', 1),  # Default author for now
+                component=data.get('component', False)
             )
 
             db.session.add(recipe)
@@ -160,6 +161,7 @@ def recipes_routes(app, db):
             recipe.cook_time = data.get('cook_time', recipe.cook_time)
             recipe.servings = data.get('servings', recipe.servings)
             recipe.images = data.get('images', recipe.images)
+            recipe.component = data.get('component', recipe.component)
 
             # Handle ingredients update
             if 'ingredients' in data:

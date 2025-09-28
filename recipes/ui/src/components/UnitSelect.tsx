@@ -3,6 +3,7 @@ import {
     Box,
     Input,
     VStack,
+    Text,
     Spinner
 } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
@@ -100,7 +101,7 @@ const UnitSelect: React.FC<UnitSelectProps> = ({
         setShowSuggestions(false);
     };
 
-    const handleInputBlur = (_e: React.FocusEvent<HTMLInputElement>) => {
+    const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         // Small delay to allow suggestion clicks to register
         setTimeout(() => {
             if (!dropdownRef.current?.contains(document.activeElement)) {
