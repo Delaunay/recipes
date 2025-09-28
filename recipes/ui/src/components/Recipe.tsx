@@ -586,6 +586,8 @@ interface IngredientItemProps {
   onDrop: (e: React.DragEvent, index: number) => void;
   onDragEnd: () => void;
   baseIndex?: number;
+  isChecked?: boolean;
+  onToggleCheck?: (index: number) => void;
 }
 
 const IngredientItem: FC<IngredientItemProps> = ({
@@ -607,6 +609,8 @@ const IngredientItem: FC<IngredientItemProps> = ({
   onDrop,
   onDragEnd,
   baseIndex = 0,
+  isChecked = false,
+  onToggleCheck,
 }) => {
   const navigate = useNavigate();
   const isStatic = recipeAPI.isStaticMode();
@@ -793,13 +797,36 @@ const IngredientItem: FC<IngredientItemProps> = ({
         bg={dragOverIndex === index ? "blue.50" : "transparent"}
         border={dragOverIndex === index ? "2px dashed" : "1px solid"}
         borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
-        opacity={draggedIndex === index ? 0.5 : 1}
+        opacity={draggedIndex === index ? 0.5 : (isChecked ? 0.6 : 1)}
         transition="all 0.2s"
         onDragOver={(e) => onDragOver(e, index)}
         onDragLeave={onDragLeave}
         onDrop={(e) => onDrop(e, index)}
         onDragEnd={onDragEnd}
+        textDecoration={isChecked ? "line-through" : "none"}
+        color={isChecked ? "gray.500" : "inherit"}
       >
+        {/* Checkbox for crossing out ingredients (view mode only) */}
+        {!isEditable && !isStatic && onToggleCheck && (
+          <Box
+            minW="24px"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={() => onToggleCheck(index)}
+              style={{
+                width: '16px',
+                height: '16px',
+                cursor: 'pointer'
+              }}
+            />
+          </Box>
+        )}
+
         {/* Drag Handle - Left Side */}
         {isEditable && !isStatic && onReorderIngredients && (
           <Box
@@ -818,7 +845,7 @@ const IngredientItem: FC<IngredientItemProps> = ({
           </Box>
         )}
 
-        <Box minW="80px">
+        <Box minW="80px" width="5%">
           {isEditable && !isStatic && onUpdateIngredient ? (
             <Input
               value={rawQuantityText}
@@ -846,8 +873,8 @@ const IngredientItem: FC<IngredientItemProps> = ({
             />
           ) : (
             <VStack align="start" gap={0}>
-              <Flex align="center" gap={1}>
-                <Text>{formatQuantity(displayQuantity, displayUnit)}</Text>
+              <Flex align="center" gap={1} width="100%">
+                <Text textAlign="right" width="100%">{formatQuantity(displayQuantity, displayUnit)}</Text>
                 {isLoadingUnits && <Spinner size="xs" />}
               </Flex>
               {converted && converted.unit !== converted.originalUnit && (
@@ -996,6 +1023,7 @@ interface RecipeIngredientsProps {
   setAvailableUnits: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
   preferredUnitSystem?: 'metric' | 'us_customary';
   setPreferredUnitSystem?: (system: 'metric' | 'us_customary') => void;
+  recipeId?: number;
 }
 
 interface ConvertedIngredient {
@@ -1018,10 +1046,52 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   setAvailableUnits,
   preferredUnitSystem = 'metric',
   setPreferredUnitSystem,
+  recipeId,
 }) => {
   const isStatic = recipeAPI.isStaticMode();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Checkbox state management for crossing out ingredients
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(() => {
+    if (typeof window !== 'undefined' && recipeId) {
+      const stored = localStorage.getItem(`recipe-${recipeId}-checked-ingredients`);
+      if (stored) {
+        try {
+          return new Set(JSON.parse(stored));
+        } catch (e) {
+          console.error('Error parsing checked ingredients from localStorage:', e);
+        }
+      }
+    }
+    return new Set();
+  });
+
+  // Save checked ingredients to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && recipeId) {
+      localStorage.setItem(
+        `recipe-${recipeId}-checked-ingredients`,
+        JSON.stringify(Array.from(checkedIngredients))
+      );
+    }
+  }, [checkedIngredients, recipeId]);
+
+  const toggleIngredientCheck = (index: number) => {
+    setCheckedIngredients(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const clearAllChecks = () => {
+    setCheckedIngredients(new Set());
+  };
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -1139,6 +1209,18 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
         </VStack>
         <Spacer />
         <HStack gap={3}>
+          {!isEditable && !isStatic && checkedIngredients.size > 0 && (
+            <Button
+              size="sm"
+              onClick={clearAllChecks}
+              colorScheme="gray"
+              variant="outline"
+              fontSize="xs"
+              px={3}
+            >
+              ✓ Clear All
+            </Button>
+          )}
           {!isStatic && (
             <Box>
               <Button
@@ -1189,6 +1271,8 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
             onDrop={handleDrop}
             onDragEnd={handleDragEnd}
             baseIndex={0}
+            isChecked={checkedIngredients.has(index)}
+            onToggleCheck={toggleIngredientCheck}
           />
         ))}
       </VStack>
@@ -1940,9 +2024,9 @@ const InstructionStep: FC<InstructionStepProps> = ({
         </Box>
 
         {/* Step Content - Right Side */}
-        <VStack flex="1" align="stretch" gap={2}>
-          <VStack align="flex-start" gap={1}>
-            <HStack gap={2} align="center">
+        <VStack flex="1" align="stretch" gap={2} height="100%">
+          <VStack align="flex-start" gap={1} height="100%">
+            <HStack gap={2} align="center" justify="space-between" width="100%">
               <Link
                 href={`#step-${instruction.step}`}
                 colorScheme="blue"
@@ -1951,12 +2035,39 @@ const InstructionStep: FC<InstructionStepProps> = ({
                 alignItems="center"
                 gap={1}
                 fontSize="md"
+                fontWeight={"semibold"}
               >
-                Step {instruction.step}
+                # Step {instruction.step}
               </Link>
-              {instruction.duration}
+
+              <HStack>
+                {isEditable && !isStatic && onUpdateInstruction ? (
+                  <HStack>
+                    <Text fontSize="xs" color="gray.600" mb={1}>Duration</Text>
+                    <Input
+                      value={instruction.duration || ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateInstruction(index, 'duration', e.target.value)}
+                      placeholder="e.g., 5 minutes"
+                      size="sm"
+                    />
+                  </HStack>
+                ) : (<Text>{instruction.duration}</Text>)
+                }
+
+                {isEditable && !isStatic && showActions && onRemoveInstruction && (
+                  <Button
+                    size="sm"
+                    colorScheme="red"
+                    variant="ghost"
+                    onClick={() => onRemoveInstruction(index)}
+                  >
+                    <DeleteIcon />
+                  </Button>
+                )}
+              </HStack>
             </HStack>
-            <VStack flex="1" align="stretch" gap={1}>
+
+            <VStack flex="1" align="stretch" gap={1} width="100%" height="100%">
               {isEditable && !isStatic && onUpdateInstruction ? (
                 <Textarea
                   value={instruction.description}
@@ -1964,6 +2075,7 @@ const InstructionStep: FC<InstructionStepProps> = ({
                   placeholder="Enter instruction..."
                   minH="80px"
                   resize="vertical"
+                  width="100%"
                 />
               ) : (
                 <InstructionTextRenderer
@@ -1977,28 +2089,7 @@ const InstructionStep: FC<InstructionStepProps> = ({
                   stepIndex={index}
                 />
               )}
-              {isEditable && !isStatic && onUpdateInstruction && (
-                <Box>
-                  <Text fontSize="xs" color="gray.600" mb={1}>Duration (optional)</Text>
-                  <Input
-                    value={instruction.duration || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdateInstruction(index, 'duration', e.target.value)}
-                    placeholder="e.g., 5 minutes"
-                    size="sm"
-                  />
-                </Box>
-              )}
             </VStack>
-            {isEditable && !isStatic && showActions && onRemoveInstruction && (
-              <Button
-                size="sm"
-                colorScheme="red"
-                variant="ghost"
-                onClick={() => onRemoveInstruction(index)}
-              >
-                <DeleteIcon />
-              </Button>
-            )}
           </VStack>
         </VStack>
       </HStack>
@@ -2078,18 +2169,6 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
     <Box>
       <Flex align="center" mb={4}>
         <Text fontSize="lg" fontWeight="semibold">Instructions</Text>
-        <Spacer />
-        {isEditable && !isStatic && (
-          <Button
-            size="sm"
-            onClick={onAddInstruction}
-            colorScheme="blue"
-            variant="outline"
-          >
-            <AddIcon />
-            Add Step
-          </Button>
-        )}
       </Flex>
 
       {isEditable && !isStatic && (
@@ -2132,6 +2211,21 @@ const RecipeInstructions: FC<RecipeInstructionsProps> = ({
             onDragEnd={handleDragEnd}
           />
         ))}
+
+        {/* Add Step button at the end of instructions in edit mode */}
+        {isEditable && !isStatic && (
+          <Box display="flex" justifyContent="center" mt={4}>
+            <Button
+              size="sm"
+              onClick={onAddInstruction}
+              colorScheme="blue"
+              variant="outline"
+            >
+              <AddIcon />
+              Add Step
+            </Button>
+          </Box>
+        )}
       </VStack>
     </Box>
   );
@@ -2248,6 +2342,8 @@ const ComposedRecipeDisplay: FC<ComposedRecipeDisplayProps> = ({
                   onDrop={() => { }}
                   onDragEnd={() => { }}
                   baseIndex={0}
+                  isChecked={false}
+                  onToggleCheck={undefined}
                 />
               ))}
             </VStack>
@@ -2284,6 +2380,8 @@ const ComposedRecipeDisplay: FC<ComposedRecipeDisplayProps> = ({
                   onDrop={() => { }}
                   onDragEnd={() => { }}
                   baseIndex={0}
+                  isChecked={false}
+                  onToggleCheck={undefined}
                 />
               ))}
             </VStack>
@@ -3358,6 +3456,7 @@ const Recipe: FC<RecipeProps> = ({
               setAvailableUnits={setAvailableUnits}
               preferredUnitSystem={preferredUnitSystem}
               setPreferredUnitSystem={setPreferredUnitSystem}
+              recipeId={recipe.id}
             />
 
             <Box height="1px" bg="gray.200" />
