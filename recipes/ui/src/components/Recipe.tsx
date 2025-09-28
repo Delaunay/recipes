@@ -969,10 +969,10 @@ interface RecipeIngredientsProps {
   multiplier?: number;
   convertedIngredients: Record<number, ConvertedIngredient>;
   setConvertedIngredients: React.Dispatch<React.SetStateAction<Record<number, ConvertedIngredient>>>;
-  _availableUnits: Record<number, string[]>;
+  availableUnits: Record<number, string[]>;
   setAvailableUnits: React.Dispatch<React.SetStateAction<Record<number, string[]>>>;
-  _loadingUnits: Record<number, boolean>;
-  _setLoadingUnits: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+  loadingUnits: Record<number, boolean>;
+  setLoadingUnits: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
   preferredUnitSystem?: 'metric' | 'us_customary';
   setPreferredUnitSystem?: (system: 'metric' | 'us_customary') => void;
 }
@@ -994,10 +994,10 @@ const RecipeIngredients: FC<RecipeIngredientsProps> = ({
   multiplier = 1.0,
   convertedIngredients,
   setConvertedIngredients,
-  _availableUnits,
+  availableUnits,
   setAvailableUnits,
-  _loadingUnits,
-  _setLoadingUnits,
+  loadingUnits,
+  setLoadingUnits,
   preferredUnitSystem = 'metric',
   setPreferredUnitSystem,
 }) => {
@@ -3329,10 +3329,10 @@ const Recipe: FC<RecipeProps> = ({
               multiplier={getEffectiveMultiplier()}
               convertedIngredients={convertedIngredients}
               setConvertedIngredients={setConvertedIngredients}
-              _availableUnits={availableUnits}
+              availableUnits={availableUnits}
               setAvailableUnits={setAvailableUnits}
-              _loadingUnits={loadingUnits}
-              _setLoadingUnits={setLoadingUnits}
+              loadingUnits={loadingUnits}
+              setLoadingUnits={setLoadingUnits}
               preferredUnitSystem={preferredUnitSystem}
               setPreferredUnitSystem={setPreferredUnitSystem}
             />
