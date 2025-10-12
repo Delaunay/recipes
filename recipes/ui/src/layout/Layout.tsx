@@ -57,6 +57,7 @@ const sidebarSections = [
     title: 'Settings',
     items: [
       { name: 'Settings', href: '/settings' },
+      { name: 'API Tester', href: '/api-tester' },
     ]
   },
 ];

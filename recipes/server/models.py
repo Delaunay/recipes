@@ -353,7 +353,7 @@ class IngredientComposition(Base):
     unit = Column(String(50))
     daily_value = Column(Float, default=0)
     source = Column(String(50))
-    
+
     extension = Column(JSON)
 
     ingredient = relationship('Ingredient')
@@ -370,7 +370,8 @@ class IngredientComposition(Base):
             'quantity': self.quantity,
             'unit': self.unit,
             'extension': self.extension,
-            'daily_value': self.daily_value
+            'daily_value': self.daily_value,
+            'source': self.source
         }
 
 class BlogPost:

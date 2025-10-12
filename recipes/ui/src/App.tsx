@@ -21,6 +21,7 @@ import Pantry from './components/Pantry';
 import Budget from './components/Budget';
 import Settings from './components/Settings';
 import RecipeComparison from './components/RecipeComparison';
+import ApiTester from './components/ApiTester';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -48,6 +49,7 @@ function App() {
             <Route path="/unit-manager" element={<UnitManager />} />
             <Route path="/compare" element={<RecipeComparison />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/api-tester" element={<ApiTester />} />
           </Routes>
         </Layout>
       </Router>
