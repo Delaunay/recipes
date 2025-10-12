@@ -20,25 +20,45 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const sidebarItems = [
-  { name: 'Home', href: '/' },
-  { name: 'Recipes', href: '/recipes' },
-  { name: 'Receipts', href: '/receipts' },
-  { name: 'Pantry', href: '/pantry' },
-  { name: 'Budget', href: '/budget' },
-  { name: 'Planning', href: '/planning' },
-
-  // Planning is about selecting recipes for a meal plan
-  //   - Budgeting
-  //   - Shopping list
-  //   - Calories intake
-  //   - Nutrients
-  { name: 'Calendar', href: '/calendar' },
-  { name: 'Tasks', href: '/tasks' },
-  { name: 'Ingredients', href: '/ingredients' },
-  { name: 'Unit Conversions', href: '/conversions' },
-  { name: 'Unit Manager', href: '/unit-manager' },
-  { name: 'Settings', href: '/settings' },
+const sidebarSections = [
+  {
+    title: 'Cooking',
+    items: [
+      { name: 'Recipes', href: '/recipes' },
+      { name: 'Meal Plan', href: '/planning' },
+      { name: 'Ingredients', href: '/ingredients' },
+      { name: 'Compare Recipes', href: '/compare' },
+    ]
+  },
+  {
+    title: 'Inventory & Shopping',
+    items: [
+      { name: 'Receipts', href: '/receipts' },
+      { name: 'Pantry', href: '/pantry' },
+      { name: 'Budget', href: '/budget' },
+    ]
+  },
+  {
+    title: 'Planning',
+    items: [
+      { name: 'Calendar', href: '/calendar' },
+      { name: 'Tasks', href: '/tasks' },
+      { name: 'Projects', href: '/projects' },
+    ]
+  },
+  {
+    title: 'Units',
+    items: [
+      { name: 'Unit Conversions', href: '/conversions' },
+      { name: 'Unit Manager', href: '/unit-manager' },
+    ]
+  },
+  {
+    title: 'Settings',
+    items: [
+      { name: 'Settings', href: '/settings' },
+    ]
+  },
 ];
 
 const Layout: FC<LayoutProps> = ({ children }) => {
@@ -79,20 +99,25 @@ const Layout: FC<LayoutProps> = ({ children }) => {
         <div className="sidebar-header">
           <h2 className="sidebar-title">
             <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }} onClick={closeMobileMenu}>
-              RecipeBook
+              Lifestyle
             </Link>
           </h2>
         </div>
         <nav className="sidebar-nav">
-          {sidebarItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`nav-item ${location.pathname === item.href ? 'active' : ''}`}
-              onClick={closeMobileMenu}
-            >
-              {item.name}
-            </Link>
+          {sidebarSections.map((section) => (
+            <div key={section.title} className="nav-section">
+              <div className="nav-section-title">{section.title}</div>
+              {section.items.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`nav-item ${location.pathname === item.href ? 'active' : ''}`}
+                  onClick={closeMobileMenu}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
       </div>

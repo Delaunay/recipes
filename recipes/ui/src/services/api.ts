@@ -59,23 +59,39 @@ interface Ingredient {
   id?: number;
   name: string;
   description?: string;
+  price_high?: number;
+  price_low?: number;
+  price_medium?: number;
   calories?: number;
   density?: number;
+  composition?: any;
   extension?: any;
-  unit: {
-    metric: string,
-    us_customary: string,
-    us_legal: string,
-    canada: string,
-    australia: string,
-    uk: string
-  }
+  item_avg_weight?: number;
+  unit?: {
+    metric?: string;
+    us_customary?: string;
+    us_legal?: string;
+    canada?: string;
+    australia?: string;
+    uk?: string;
+  };
 }
 
 interface Category {
   id?: number;
   name: string;
   description?: string;
+}
+
+interface IngredientComposition {
+  id?: number;
+  ingredient_id: number;
+  name?: string;
+  kind?: string;
+  quantity?: number;
+  unit?: string;
+  daily_value?: number;
+  extension?: any;
 }
 
 interface UnitConversion {
@@ -372,6 +388,40 @@ class RecipeAPI {
 
   async getIngredientUnitsUsed(ingredientId: number): Promise<IngredientUnitsUsed> {
     return this.request<IngredientUnitsUsed>(`/ingredients/${ingredientId}/units-used`);
+  }
+
+  // Ingredient Composition methods
+  async getIngredientCompositions(ingredientId: number): Promise<IngredientComposition[]> {
+    return this.request<IngredientComposition[]>(`/ingredients/${ingredientId}/compositions`);
+  }
+
+  async createIngredientComposition(ingredientId: number, composition: Omit<IngredientComposition, 'id' | 'ingredient_id'>): Promise<IngredientComposition> {
+    if (isStaticMode()) {
+      throw new Error('Creating compositions is not supported in static mode');
+    }
+    return this.request<IngredientComposition>(`/ingredients/${ingredientId}/compositions`, {
+      method: 'POST',
+      body: JSON.stringify(composition),
+    });
+  }
+
+  async updateIngredientComposition(compositionId: number, composition: Partial<IngredientComposition>): Promise<IngredientComposition> {
+    if (isStaticMode()) {
+      throw new Error('Updating compositions is not supported in static mode');
+    }
+    return this.request<IngredientComposition>(`/ingredients/compositions/${compositionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(composition),
+    });
+  }
+
+  async deleteIngredientComposition(compositionId: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting compositions is not supported in static mode');
+    }
+    return this.request<{ message: string }>(`/ingredients/compositions/${compositionId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Category methods
@@ -694,6 +744,7 @@ export type {
   RecipeIngredient,
   Category,
   Instruction,
+  IngredientComposition,
   UnitConversion,
   ConversionMatrix,
   UnitsUsedInRecipes,

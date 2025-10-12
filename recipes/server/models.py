@@ -347,9 +347,11 @@ class IngredientComposition(Base):
     _id = Column(Integer, primary_key=True)
     ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
 
-    name = Column(String(50), unique=True, nullable=False)
-    quantity = Column(Float, nullable=False)
-    unit = Column(String(50), nullable=False)
+    kind = Column(String(50))
+    name = Column(String(50))
+    quantity = Column(Float)
+    unit = Column(String(50))
+    daily_value = Column(Float, default=0)
 
     extension = Column(JSON)
 
@@ -362,10 +364,12 @@ class IngredientComposition(Base):
         return {
             'id': self._id,
             'ingredient_id': self.ingredient_id,
+            'kind': self.kind,
             'name': self.name,
             'quantity': self.quantity,
             'unit': self.unit,
-            'extension': self.extension
+            'extension': self.extension,
+            'daily_value': self.daily_value
         }
 
 class BlogPost:
@@ -410,6 +414,9 @@ class Ingredient(Base):
     composition = Column(JSON)
     extension = Column(JSON)    # Additional info as JSON
 
+    # in grams
+    item_avg_weight = Column(Float)
+
     # Imperial system is Bonkers
     unit_metric       = Column(String(50))
     unit_us_customary = Column(String(50))
@@ -434,9 +441,14 @@ class Ingredient(Base):
             'id': self._id,
             'name': self.name,
             'description': self.description,
+            'price_high': self.price_high,
+            'price_low': self.price_low,
+            'price_medium': self.price_medium,
             'calories': self.calories,
             'density': self.density,
+            'composition': self.composition,
             'extension': self.extension,
+            'item_avg_weight': self.item_avg_weight,
             "unit": {
                 "metric": self.unit_metric,
                 "us_customary": self.unit_us_customary,

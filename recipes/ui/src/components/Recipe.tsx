@@ -421,7 +421,7 @@ const ConversionIcon = () => (
 // IngredientNameInput Component - Input with suggestions for ingredient names
 interface IngredientNameInputProps {
   value: string;
-  onChange: (value: string, ingredientId?: number, ingredientRecipeId?: number) => void;
+  onChange: (value: string, ingredientId?: number, ingredientRecipeId?: number, clearIds?: boolean) => void;
   placeholder?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "2xs" | "xs";
 }
@@ -477,7 +477,21 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
     const newValue = e.target.value;
     isUserInputRef.current = true; // Mark as user input
     setInputValue(newValue);
-    onChange(newValue); // Always call onChange for typing
+
+    // Check if the typed value exactly matches any suggestion
+    const exactMatch = suggestions.find(s => s.name.toLowerCase() === newValue.toLowerCase());
+
+    if (exactMatch) {
+      // Auto-select the exact match
+      if (exactMatch.type === 'ingredient') {
+        onChange(exactMatch.name, exactMatch.id, undefined, false);
+      } else if (exactMatch.type === 'recipe') {
+        onChange(exactMatch.name, undefined, exactMatch.id, false);
+      }
+    } else {
+      // No exact match - update name and signal to clear IDs
+      onChange(newValue, undefined, undefined, true);
+    }
   };
 
   // Handle suggestion selection
@@ -487,10 +501,10 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
 
     if (suggestion.type === 'ingredient') {
       // For ingredients, set the name and ingredient_id
-      onChange(suggestion.name, suggestion.id);
+      onChange(suggestion.name, suggestion.id, undefined, false);
     } else if (suggestion.type === 'recipe') {
       // For recipes, set the name and ingredient_recipe_id
-      onChange(suggestion.name, undefined, suggestion.id);
+      onChange(suggestion.name, undefined, suggestion.id, false);
     }
   };
 
@@ -924,9 +938,20 @@ const IngredientItem: FC<IngredientItemProps> = ({
           {isEditable && !isStatic && onUpdateIngredient ? (
             <IngredientNameInput
               value={ingredient.name}
-              onChange={(value: string, ingredientId?: number, ingredientRecipeId?: number) => {
+              onChange={(value: string, ingredientId?: number, ingredientRecipeId?: number, clearIds?: boolean) => {
                 // Update the ingredient name
                 onUpdateIngredient(index, 'name', value);
+
+                // If clearIds flag is set, clear both IDs
+                if (clearIds) {
+                  if (ingredient.ingredient_id) {
+                    onUpdateIngredient(index, 'ingredient_id', undefined);
+                  }
+                  if (ingredient.ingredient_recipe_id) {
+                    onUpdateIngredient(index, 'ingredient_recipe_id', undefined);
+                  }
+                  return;
+                }
 
                 // Set ingredient_id if an ingredient was selected
                 if (ingredientId !== undefined) {

@@ -20,6 +20,7 @@ import GroceryReceipts from './components/GroceryReceipts';
 import Pantry from './components/Pantry';
 import Budget from './components/Budget';
 import Settings from './components/Settings';
+import RecipeComparison from './components/RecipeComparison';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -45,6 +46,7 @@ function App() {
             <Route path="/ingredients/:identifier" element={<IngredientDetail />} />
             <Route path="/conversions" element={<UnitConversions />} />
             <Route path="/unit-manager" element={<UnitManager />} />
+            <Route path="/compare" element={<RecipeComparison />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>
