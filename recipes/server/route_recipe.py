@@ -20,7 +20,6 @@ from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIn
 
 
 def recipes_routes(app, db):
-
     @app.route('/ingredient/search/<string:name>', methods=['GET'])
     def search_ingredient(name: str):
         # this the condition recipe_id is none
@@ -245,3 +244,12 @@ def recipes_routes(app, db):
         except Exception as e:
             db.session.rollback()
             return jsonify({"error": str(e)}), 400
+
+
+    @app.route('/recipes/nutrition/<int:recipe_id>', methods=['GET'])
+    def get_recipe_nutrition(recipe_id: int):
+        # Fetch all the ingredients nutrition
+        # convert all the ingredients in g
+        # based on nutrition aggregates everything
+        # this should get scrapped by the static website generator as this is quite slow
+        pass
