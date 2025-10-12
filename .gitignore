@@ -89,3 +89,7 @@ static_build/
 website/
 static/
 scratch/
+
+
+recipes/data/usda
+recipes/data/cnf

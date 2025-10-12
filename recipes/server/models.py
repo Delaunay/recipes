@@ -352,7 +352,8 @@ class IngredientComposition(Base):
     quantity = Column(Float)
     unit = Column(String(50))
     daily_value = Column(Float, default=0)
-
+    source = Column(String(50))
+    
     extension = Column(JSON)
 
     ingredient = relationship('Ingredient')
