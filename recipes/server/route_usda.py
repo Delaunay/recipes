@@ -6,7 +6,9 @@ import sys
 import uuid
 from pathlib import Path
 from datetime import datetime, timedelta
+from dataclasses import asdict
 import traceback
+import time
 
 from PIL import Image
 from flask import Flask, jsonify, request, send_from_directory
@@ -26,10 +28,120 @@ USDA_FOLDER = os.path.join(HERE, "..", "data", "usda")
 
 
 def usda_routes(app, *args):
-    # from usda_fdc import FdcClient
+    from usda_fdc.client import FdcClient
+    from usda_fdc.analysis.recipe import parse_ingredient
+    from usda_fdc.analysis import analyze_food, DriType, Gender
+    from usda_fdc.analysis.recipe import create_recipe, analyze_recipe
 
+    class RateLimitedClient(FdcClient):
+        def __init__(self, api_key, requests_per_minute=10, **kwargs):
+            super().__init__(api_key, **kwargs)
+            self.requests_per_minute = requests_per_minute
+            self.interval = 60 / requests_per_minute
+            self.last_request_time = 0
+
+        def _make_request(self, endpoint, method="GET", params=None, data=None):
+            # Wait if needed
+            current_time = time.time()
+            time_since_last = current_time - self.last_request_time
+
+            if time_since_last < self.interval:
+                time.sleep(self.interval - time_since_last)
+
+            # Make the request
+            result = super()._make_request(endpoint, method, params, data)
+
+            # Update last request time
+            self.last_request_time = time.time()
+
+            return result
+ 
     api_key = os.getenv("FDC_API_KEY")
+    # client = RateLimitedClient(api_key, requests_per_minute=1000/60)
+    client = RateLimitedClient(api_key)
 
+    @app.route('/api/usda/search/<string:name>', methods=['GET'])
+    def search_usda_foods(name):
+        # page_number
+        # page_size
+        print("1")
+        rows: SearchResult = client.search(name, data_type="Foundation")
+        print("2")
+    
+        results = []
+        for row in rows.foods:
+            results.append(asdict(row)) 
+
+        return results
+
+    @app.route('/api/usda/food/<int:fdc_id>', methods=['GET'])
+    def get_food(fdc_id):
+        # page_number
+        # page_size
+        food: Food = client.get_food(fdc_id, nutrients=None)
+        return asdict(food)
+
+    @app.route('/api/usda/parse/<string:name>', methods=['GET'])
+    def parse_ingredient(name):
+        # this is just a regex
+        ingredient = parse_ingredient("1 cup flour", client)
+
+        print(f"Food: {ingredient.food.description}")
+        print(f"Weight: {ingredient.weight_g:.1f}g")
+
+        food_id = search_results.foods[0].fdc_id
+        food = client.get_food(food_id)
+
+        weight_g = estimate_weight(food, quantity, unit)
+
+        Ingredient(
+            food=food,
+            weight_g=weight_g,
+            description=text
+        )
+    
+
+    @app.route('/api/usda/analyze/<fdc_id>', methods=['GET'])
+    def analyze_ingredient(fdc_id):
+        food = client.get_food(fdc_id)
+
+        # Dietary Reference Intakes
+        #   DriType.RDA: Recommended Dietary Allowance
+        #   DriType.AI: Adequate Intake
+        #   DriType.UL: Tolerable Upper Intake Level
+        #   DriType.EAR: Estimated Average Requirement
+        #   DriType.AMDR: Acceptable Macronutrient Distribution Range
+
+        analysis = analyze_food(
+            food,
+            dri_type=DriType.RDA, 
+            gender=Gender.MALE,
+            serving_size=100.0
+        )
+
+        return results
+
+    @app.route('/api/usda/recipe/<recipe_id>', methods=['GET'])
+    def analyze_recipe(recipe_id):
+        # Create a recipe
+        recipe = create_recipe(
+            name="Fruit Salad",
+            ingredient_texts=[
+                "1 apple",
+                "1 banana",
+                "100g strawberries"
+            ],
+            client=client,
+            servings=2
+        )
+
+        # Analyze the recipe
+        analysis = analyze_recipe(recipe)
+
+        # Access the analysis results
+        per_serving = analysis.per_serving_analysis
+
+        return results
 
 
 def usda_csv_routes(app, db):
@@ -91,6 +203,7 @@ def usda_csv_routes(app, db):
         Returns:
             Complete food information with nutrients
         """
+        print("WTF")
         try:
             food_details = usda_reader.get_food_details(fdc_id)
 

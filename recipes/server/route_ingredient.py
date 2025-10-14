@@ -120,10 +120,6 @@ def ingredient_routes(app, db):
     @app.route('/ingredients/<int:ingredient_id>/compositions', methods=['GET'])
     def get_ingredient_compositions(ingredient_id: int) -> Dict[str, Any]:
         """Get all compositions for a specific ingredient"""
-        ingredient = db.session.get(Ingredient, ingredient_id)
-        if not ingredient:
-            return jsonify({"error": "Ingredient not found"}), 404
-
         compositions = db.session.query(IngredientComposition).filter_by(ingredient_id=ingredient_id).all()
         return jsonify([comp.to_json() for comp in compositions])
 

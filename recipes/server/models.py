@@ -208,6 +208,9 @@ class RecipeIngredient(Base):
     quantity = Column(Float, nullable=False)
     unit = Column(String(50), nullable=False)
 
+    # 
+    fdc_id = Column(Integer)
+
     # Product usually used for this ingredient
     # used to fetch the price
     product = Column(String(50))
@@ -345,7 +348,8 @@ class IngredientComposition(Base):
     __tablename__ = 'ingredient_compositions'
 
     _id = Column(Integer, primary_key=True)
-    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
+    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=True)
+    recipe_id = Column(Integer, ForeignKey('recipes._id'), nullable=True)
 
     kind = Column(String(50))
     name = Column(String(50))
@@ -355,6 +359,7 @@ class IngredientComposition(Base):
     source = Column(String(50))
 
     extension = Column(JSON)
+    # fdc_id = Column(Integer)
 
     ingredient = relationship('Ingredient')
 
@@ -365,40 +370,56 @@ class IngredientComposition(Base):
         return {
             'id': self._id,
             'ingredient_id': self.ingredient_id,
+            'recipe_id': self.recipe_id,
             'kind': self.kind,
             'name': self.name,
             'quantity': self.quantity,
             'unit': self.unit,
             'extension': self.extension,
             'daily_value': self.daily_value,
-            'source': self.source
+            'source': self.source,
+            # 'fdc_id': self.fdc_id
         }
 
-class BlogPost:
-    """Full blog post to display"""
-    pass
+def article_schema():
+    class Article(Base):
+        """Full blog post to display"""
+        __tablename__ = 'article'
+        
+        _id = Column(Integer, primary_key=True)
+        title = Column(String, 50)
+        namespace = Column(String, 255)
+        tags = Column(JSON) 
+        extension = Column(JSON) 
 
-class BlogBlock:
-    """Renderable block of a blog post"""
-    # SpreadSheet like info
-    # Plots + Spreadsheet
-    # Text | Article
-    # Images
-    # Layout that hold more blocks
-    # list ? or this is part of a markdown display
-    # code block
-    # video
-    # audio
-    # file attachment
-    # Latex
-    # timeline
-    # mermaid plot
-    # widget
-    # references
-    # footnote
-    # heading + paragraph
-    pass
 
+    class ArticleBlock(Base):
+        """Renderable block of a blog post"""
+        __tablename__ = 'article_block'
+
+        _id = Column(Integer, primary_key=True)
+        title = Column(String, 50)
+
+        page_id = Column(Integer, ForeignKey('recipes._id'), nullable=True)
+        kind = Column(String, 25)
+        extension = Column(JSON)
+        # SpreadSheet like info
+        # Plots + Spreadsheet
+        # Text | Article
+        # Images
+        # Layout that hold more blocks
+        # list ? or this is part of a markdown display
+        # code block
+        # video
+        # audio
+        # file attachment
+        # Latex
+        # timeline
+        # mermaid plot
+        # widget
+        # references
+        # footnote
+        # heading + paragraph
 
 class Ingredient(Base):
     __tablename__ = 'ingredients'
@@ -407,6 +428,7 @@ class Ingredient(Base):
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text)
 
+    fdc_id = Column(Integer)
     price_high = Column(Float)
     price_low = Column(Float)
     price_medium = Column(Float)
@@ -432,7 +454,7 @@ class Ingredient(Base):
 
     # Relationships
     recipe_ingredients = relationship('RecipeIngredient', back_populates='ingredient')
-    compositions = relationship('IngredientComposition', back_populates='ingredient')
+    compositions = relationship('IngredientComposition', back_populates='ingredient', foreign_keys='IngredientComposition.ingredient_id')
     # recipe = relationship('Recipe', back_populates='recipes')
 
     def __repr__(self):
@@ -451,6 +473,7 @@ class Ingredient(Base):
             'composition': self.composition,
             'extension': self.extension,
             'item_avg_weight': self.item_avg_weight,
+            "fdc_id": self.fdc_id,
             "unit": {
                 "metric": self.unit_metric,
                 "us_customary": self.unit_us_customary,
@@ -494,7 +517,7 @@ class IngredientSubstitution(Base):
     original = Column(String(50), nullable=False)           # Original ingredient we want to replace
     replacement = Column(String(50), nullable=False)        # New ingredient replacing it
     ratio = Column(Float, default=1)                        # replacement ratio if not =
-
+    
     def to_json(self):
         return {
             'id': self._id,
@@ -518,6 +541,7 @@ class Product(Base):
     organic = Column(Boolean)                               # Organic or not
     created_at = Column(DateTime, default=datetime.utcnow)  # Date of purchase
     ingredient = Column(String(50))                         # Ingredient this is usually used for
+    fdc_id = Column(Integer)
 
     def to_json(self):
         return {
