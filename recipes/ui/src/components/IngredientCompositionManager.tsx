@@ -1,16 +1,19 @@
 import { useState, useEffect, FC } from 'react';
-import { Box, Flex, Spinner, Text } from '@chakra-ui/react';
+import { Box, Flex, Spinner, Text, Button, VStack } from '@chakra-ui/react';
 import { recipeAPI, IngredientComposition } from '../services/api';
 import NutritionFacts from './NutritionFacts';
 
 interface IngredientCompositionManagerProps {
     ingredientId: number;
+    fdcId?: number;
 }
 
-const IngredientCompositionManager: FC<IngredientCompositionManagerProps> = ({ ingredientId }) => {
+const IngredientCompositionManager: FC<IngredientCompositionManagerProps> = ({ ingredientId, fdcId }) => {
     const [compositions, setCompositions] = useState<IngredientComposition[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [usdaData, setUsdaData] = useState<any>(null);
+    const [loadingUsda, setLoadingUsda] = useState(false);
     const isStatic = recipeAPI.isStaticMode();
 
     useEffect(() => {
@@ -91,7 +94,71 @@ const IngredientCompositionManager: FC<IngredientCompositionManagerProps> = ({ i
         await recipeAPI.deleteIngredientComposition(compositionId);
     };
 
-    if (loading) {
+    const convertUsdaToCompositions = async (usdaAnalysis: any): Promise<IngredientComposition[]> => {
+        const compositions: IngredientComposition[] = [];
+        const nutrients = usdaAnalysis.nutrients || {};
+
+        // Process each nutrient from USDA data
+        for (const nutrientData of Object.values(nutrients)) {
+            if (!nutrientData || typeof nutrientData !== 'object') continue;
+            const data = nutrientData as any;
+
+            const nutrient = data.nutrient;
+            if (!nutrient || !nutrient.id) continue;
+
+            // Skip zero-value nutrients
+            if (data.amount === 0 || data.amount === null || data.amount === undefined) continue;
+
+            // Get nutrient group from API based on nutrient name
+            let kind = 'nutrient'; // default fallback
+            try {
+                const groupResponse = await recipeAPI.getNutrientGroup(nutrient.name);
+                kind = groupResponse.group;
+            } catch (err) {
+                console.warn(`Failed to get nutrient group for "${nutrient.name}", using default:`, err);
+            }
+
+            compositions.push({
+                ingredient_id: ingredientId,
+                name: nutrient.name.split(",")[0],
+                kind: kind,
+                quantity: data.amount,
+                unit: data.unit || nutrient.unit_name,
+                daily_value: data.dri_percent || 0,
+            });
+        }
+
+        return compositions;
+    };
+
+    const loadUsdaData = async () => {
+        if (!fdcId) return;
+
+        try {
+            setLoadingUsda(true);
+            const data = await recipeAPI.analyzeUsdaFood(fdcId);
+
+            // Convert USDA format to our composition format
+            const convertedCompositions = await convertUsdaToCompositions(data);
+
+            // Store both the raw data and converted compositions
+            setUsdaData({ raw: data, compositions: convertedCompositions });
+        } catch (err) {
+            console.error('Failed to load USDA data:', err);
+            setError(err instanceof Error ? err.message : 'Failed to load USDA nutrition data');
+        } finally {
+            setLoadingUsda(false);
+        }
+    };
+
+    // Auto-load USDA data if no compositions and fdc_id is available
+    useEffect(() => {
+        if (compositions.length === 0 && fdcId && !loading && !usdaData) {
+            loadUsdaData();
+        }
+    }, [compositions, fdcId, loading]);
+
+    if (loading || loadingUsda) {
         return (
             <Box p={6} bg="orange.50" borderRadius="lg" borderLeft="4px solid" borderColor="orange.400">
                 <Flex justify="center" align="center" minH="100px">
@@ -106,6 +173,44 @@ const IngredientCompositionManager: FC<IngredientCompositionManagerProps> = ({ i
             <Box p={6} bg="red.50" borderRadius="lg" borderLeft="4px solid" borderColor="red.400">
                 <Text fontWeight="medium" color="red.800" mb={1}>Error</Text>
                 <Text fontSize="sm" color="red.700">{error}</Text>
+            </Box>
+        );
+    }
+
+    // Show USDA data if no compositions but USDA data is available
+    if (compositions.length === 0 && usdaData?.compositions) {
+        const servingSize = usdaData.raw?.serving_size || 100;
+        return (
+
+            <NutritionFacts
+                compositions={usdaData.compositions}
+                entityId={ingredientId}
+                editable={false}
+            />
+
+        );
+    }
+
+    // Show load button if no compositions and fdc_id exists but hasn't loaded yet
+    if (compositions.length === 0 && fdcId && !usdaData) {
+        return (
+            <Box p={6} bg="orange.50" borderRadius="lg" borderLeft="4px solid" borderColor="orange.400">
+                <VStack align="stretch" gap={3}>
+                    <Text fontSize="lg" fontWeight="semibold" color="orange.800">
+                        No nutritional information available
+                    </Text>
+                    <Text fontSize="sm" color="orange.700">
+                        This ingredient is linked to USDA food (FDC ID: {fdcId}). Load nutritional data from USDA?
+                    </Text>
+                    <Button
+                        colorScheme="orange"
+                        onClick={loadUsdaData}
+                        loading={loadingUsda}
+                        disabled={loadingUsda}
+                    >
+                        {loadingUsda ? 'Loading...' : 'Load from USDA'}
+                    </Button>
+                </VStack>
             </Box>
         );
     }

@@ -29,9 +29,11 @@ USDA_FOLDER = os.path.join(HERE, "..", "data", "usda")
 
 def usda_routes(app, *args):
     from usda_fdc.client import FdcClient
+    from usda_fdc.models import SearchResult, Food
     from usda_fdc.analysis.recipe import parse_ingredient
     from usda_fdc.analysis import analyze_food, DriType, Gender
     from usda_fdc.analysis.recipe import create_recipe, analyze_recipe
+    from usda_fdc.analysis.nutrients import get_nutrient_by_usda_id, NUTRIENT_GROUPS
 
     class RateLimitedClient(FdcClient):
         def __init__(self, api_key, requests_per_minute=10, **kwargs):
@@ -55,22 +57,18 @@ def usda_routes(app, *args):
             self.last_request_time = time.time()
 
             return result
- 
+
     api_key = os.getenv("FDC_API_KEY")
     # client = RateLimitedClient(api_key, requests_per_minute=1000/60)
     client = RateLimitedClient(api_key)
 
     @app.route('/api/usda/search/<string:name>', methods=['GET'])
     def search_usda_foods(name):
-        # page_number
-        # page_size
-        print("1")
         rows: SearchResult = client.search(name, data_type="Foundation")
-        print("2")
-    
+
         results = []
         for row in rows.foods:
-            results.append(asdict(row)) 
+            results.append(asdict(row))
 
         return results
 
@@ -99,27 +97,30 @@ def usda_routes(app, *args):
             weight_g=weight_g,
             description=text
         )
-    
 
-    @app.route('/api/usda/analyze/<fdc_id>', methods=['GET'])
+
+    @app.route('/api/usda/analyze/<int:fdc_id>', methods=['GET'])
     def analyze_ingredient(fdc_id):
-        food = client.get_food(fdc_id)
+        try:
+            food = client.get_food(fdc_id)
 
-        # Dietary Reference Intakes
-        #   DriType.RDA: Recommended Dietary Allowance
-        #   DriType.AI: Adequate Intake
-        #   DriType.UL: Tolerable Upper Intake Level
-        #   DriType.EAR: Estimated Average Requirement
-        #   DriType.AMDR: Acceptable Macronutrient Distribution Range
+            # Dietary Reference Intakes
+            #   DriType.RDA: Recommended Dietary Allowance
+            #   DriType.AI: Adequate Intake
+            #   DriType.UL: Tolerable Upper Intake Level
+            #   DriType.EAR: Estimated Average Requirement
+            #   DriType.AMDR: Acceptable Macronutrient Distribution Range
 
-        analysis = analyze_food(
-            food,
-            dri_type=DriType.RDA, 
-            gender=Gender.MALE,
-            serving_size=100.0
-        )
+            analysis = analyze_food(
+                food,
+                dri_type=DriType.RDA,
+                gender=Gender.MALE,
+                serving_size=100.0
+            )
 
-        return results
+            return jsonify(asdict(analysis))
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @app.route('/api/usda/recipe/<recipe_id>', methods=['GET'])
     def analyze_recipe(recipe_id):
@@ -142,6 +143,17 @@ def usda_routes(app, *args):
         per_serving = analysis.per_serving_analysis
 
         return results
+
+    @app.route('/api/usda/nutrient/group/<name>', methods=['GET'])
+    def get_nutrient(name: int):
+        name = name.split(",")[0].lower()
+
+        for group, items in NUTRIENT_GROUPS.items():
+            if name in items:
+                return {"group":group }
+
+        print(name, "group not found")
+        return {"group": name }
 
 
 def usda_csv_routes(app, db):

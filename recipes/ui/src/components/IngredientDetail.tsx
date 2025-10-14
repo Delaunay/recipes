@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Spinner, Text, Button, VStack, HStack, SimpleGrid, GridItem, Input, Textarea } from '@chakra-ui/react';
+import { Box, Spinner, Text, Button, VStack, HStack, SimpleGrid, GridItem, Input, Textarea, Badge, IconButton } from '@chakra-ui/react';
 import { recipeAPI, Ingredient, ConversionMatrix } from '../services/api';
 import ConversionMatrixComponent from './ConversionMatrix';
 import IngredientUnitsManager from './IngredientUnitsManager';
@@ -19,6 +19,14 @@ const IngredientDetail = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // USDA search state
+  const [usdaSearchQuery, setUsdaSearchQuery] = useState('');
+  const [usdaSuggestions, setUsdaSuggestions] = useState<Array<{ fdc_id: number, description: string, data_type: string }>>([]);
+  const [showUsdaSuggestions, setShowUsdaSuggestions] = useState(false);
+  const [isUsdaLoading, setIsUsdaLoading] = useState(false);
+  const [isUsdaFocused, setIsUsdaFocused] = useState(false);
+  const usdaInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchIngredient = async () => {
@@ -168,6 +176,41 @@ const IngredientDetail = () => {
     });
   };
 
+  // USDA search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (isUsdaFocused && usdaSearchQuery.length >= 2) {
+        setIsUsdaLoading(true);
+        try {
+          const results = await recipeAPI.searchUsdaFoods(usdaSearchQuery);
+          setUsdaSuggestions(results);
+          setShowUsdaSuggestions(true);
+        } catch (error) {
+          console.error('Error searching USDA foods:', error);
+          setUsdaSuggestions([]);
+        } finally {
+          setIsUsdaLoading(false);
+        }
+      } else {
+        setUsdaSuggestions([]);
+        setShowUsdaSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [usdaSearchQuery, isUsdaFocused]);
+
+  const handleUsdaSelect = (fdcId: number) => {
+    setUsdaSearchQuery('');
+    setShowUsdaSuggestions(false);
+    handleFieldChange('fdc_id', fdcId);
+  };
+
+  const handleUsdaClear = () => {
+    setUsdaSearchQuery('');
+    handleFieldChange('fdc_id', null);
+  };
+
   if (loading) {
     return (
       <Box textAlign="center" py={10}>
@@ -291,6 +334,120 @@ const IngredientDetail = () => {
           )}
         </Box>
 
+        {/* USDA Food Mapping */}
+        {isEditMode && (
+          <Box p={6} bg="orange.50" borderRadius="lg" borderLeft="4px solid" borderColor="orange.400">
+            <Text fontSize="lg" fontWeight="semibold" mb={3} color="orange.800">
+              USDA Food Mapping
+            </Text>
+            <VStack align="stretch" gap={2}>
+              <Box position="relative">
+                <HStack gap={2}>
+                  <Input
+                    ref={usdaInputRef}
+                    value={usdaSearchQuery}
+                    onChange={(e) => setUsdaSearchQuery(e.target.value)}
+                    onFocus={() => {
+                      setIsUsdaFocused(true);
+                      // Pre-fill with ingredient name if no search query
+                      if (!usdaSearchQuery && editedIngredient?.name) {
+                        setUsdaSearchQuery(editedIngredient.name);
+                      }
+                    }}
+                    onBlur={() => {
+                      setIsUsdaFocused(false);
+                      setTimeout(() => setShowUsdaSuggestions(false), 150);
+                    }}
+                    placeholder="Search USDA foods..."
+                    size="md"
+                    flex={1}
+                  />
+                  {isUsdaLoading && (
+                    <Spinner size="sm" />
+                  )}
+                  {editedIngredient?.fdc_id && (
+                    <HStack gap={1}>
+                      <Badge colorScheme="orange" fontSize="sm">
+                        FDC: {editedIngredient.fdc_id}
+                      </Badge>
+                      <IconButton
+                        size="sm"
+                        aria-label="Clear USDA food"
+                        onClick={handleUsdaClear}
+                        variant="ghost"
+                        colorScheme="red"
+                      >
+                        ✕
+                      </IconButton>
+                    </HStack>
+                  )}
+                </HStack>
+
+                {showUsdaSuggestions && usdaSuggestions.length > 0 && (
+                  <Box
+                    position="absolute"
+                    top="100%"
+                    left={0}
+                    right={0}
+                    bg="white"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    borderRadius="md"
+                    shadow="md"
+                    zIndex={1000}
+                    maxH="200px"
+                    overflowY="auto"
+                    mt={1}
+                  >
+                    {usdaSuggestions.map((food, index) => (
+                      <Box
+                        key={food.fdc_id}
+                        p={2}
+                        cursor="pointer"
+                        _hover={{ bg: "gray.50" }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleUsdaSelect(food.fdc_id);
+                        }}
+                        borderBottom={index < usdaSuggestions.length - 1 ? "1px solid" : "none"}
+                        borderColor="gray.100"
+                      >
+                        <VStack align="start" gap={0}>
+                          <Text fontSize="sm">{food.description}</Text>
+                          <HStack gap={2}>
+                            <Badge colorScheme="orange" fontSize="xs">
+                              {food.fdc_id}
+                            </Badge>
+                            <Text fontSize="xs" color="gray.500">
+                              {food.data_type?.replace('_', ' ')}
+                            </Text>
+                          </HStack>
+                        </VStack>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+              <Text fontSize="xs" color="orange.700">
+                Link this ingredient to USDA FoodData Central for automatic nutritional information
+              </Text>
+            </VStack>
+          </Box>
+        )}
+
+        {!isEditMode && displayIngredient?.fdc_id && (
+          <Box p={4} bg="orange.50" borderRadius="lg" borderLeft="4px solid" borderColor="orange.400">
+            <HStack justify="space-between">
+              <Text fontSize="sm" fontWeight="medium" color="orange.800">
+                USDA Food Mapping
+              </Text>
+              <Badge colorScheme="orange" fontSize="sm">
+                FDC ID: {displayIngredient.fdc_id}
+              </Badge>
+            </HStack>
+          </Box>
+        )}
+
         {/* Properties Grid */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
           {/* Nutritional Information */}
@@ -298,7 +455,10 @@ const IngredientDetail = () => {
             <Box borderRadius="lg" borderColor="green.400">
               {/* Ingredient Composition Manager */}
               {ingredient?.id && (
-                <IngredientCompositionManager ingredientId={ingredient.id} />
+                <IngredientCompositionManager
+                  ingredientId={ingredient.id}
+                  fdcId={ingredient.fdc_id}
+                />
               )}
             </Box>
           </GridItem>
@@ -439,77 +599,77 @@ const IngredientDetail = () => {
             </Box>
           </Box>
 
-            {/* Custom Properties (Extension) */}
-            {(isEditMode || (displayIngredient?.extension && Object.keys(displayIngredient.extension).length > 0)) && (
-              <Box p={6} bg="teal.50" borderRadius="lg" borderLeft="4px solid" borderColor="teal.400">
-                <HStack justify="space-between" mb={4}>
-                  <Text fontSize="lg" fontWeight="semibold" color="teal.800">
-                    Custom Properties
-                  </Text>
-                  {isEditMode && (
-                    <Button size="sm" colorScheme="teal" onClick={handleExtensionAdd}>
-                      + Add Property
-                    </Button>
-                  )}
-                </HStack>
-
-                {displayIngredient?.extension && Object.keys(displayIngredient.extension).length > 0 ? (
-                  <VStack align="stretch" gap={3}>
-                    {Object.entries(displayIngredient.extension).map(([key, value]) => (
-                      <HStack key={key} justify="space-between">
-                        {isEditMode ? (
-                          <>
-                            <Input
-                              defaultValue={key}
-                              onBlur={(e) => {
-                                const newKey = e.target.value.trim();
-                                if (newKey && newKey !== key) {
-                                  handleExtensionKeyChange(key, newKey);
-                                } else if (!newKey) {
-                                  // Reset to original if empty
-                                  e.target.value = key;
-                                }
-                              }}
-                              placeholder="Property name"
-                              size="sm"
-                              flex="1"
-                            />
-                            <Input
-                              value={String(value || '')}
-                              onChange={(e) => handleExtensionValueChange(key, e.target.value)}
-                              placeholder="Value"
-                              size="sm"
-                              flex="2"
-                            />
-                            <Button
-                              size="sm"
-                              colorScheme="red"
-                              variant="ghost"
-                              onClick={() => handleExtensionDelete(key)}
-                            >
-                              ×
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                              <Text fontSize="sm" color="teal.700" fontWeight="medium">
-                                {key}:
-                              </Text>
-                              <Text fontSize="md" color="teal.800">
-                                {String(value)}
-                            </Text>
-                          </>
-                        )}
-                      </HStack>
-                    ))}
-                  </VStack>
-                ) : (
-                  <Text fontSize="sm" color="teal.600" fontStyle="italic">
-                    No custom properties yet. Click "Add Property" to create one.
-                  </Text>
+          {/* Custom Properties (Extension) */}
+          {(isEditMode || (displayIngredient?.extension && Object.keys(displayIngredient.extension).length > 0)) && (
+            <Box p={6} bg="teal.50" borderRadius="lg" borderLeft="4px solid" borderColor="teal.400">
+              <HStack justify="space-between" mb={4}>
+                <Text fontSize="lg" fontWeight="semibold" color="teal.800">
+                  Custom Properties
+                </Text>
+                {isEditMode && (
+                  <Button size="sm" colorScheme="teal" onClick={handleExtensionAdd}>
+                    + Add Property
+                  </Button>
                 )}
-              </Box>
-            )}
+              </HStack>
+
+              {displayIngredient?.extension && Object.keys(displayIngredient.extension).length > 0 ? (
+                <VStack align="stretch" gap={3}>
+                  {Object.entries(displayIngredient.extension).map(([key, value]) => (
+                    <HStack key={key} justify="space-between">
+                      {isEditMode ? (
+                        <>
+                          <Input
+                            defaultValue={key}
+                            onBlur={(e) => {
+                              const newKey = e.target.value.trim();
+                              if (newKey && newKey !== key) {
+                                handleExtensionKeyChange(key, newKey);
+                              } else if (!newKey) {
+                                // Reset to original if empty
+                                e.target.value = key;
+                              }
+                            }}
+                            placeholder="Property name"
+                            size="sm"
+                            flex="1"
+                          />
+                          <Input
+                            value={String(value || '')}
+                            onChange={(e) => handleExtensionValueChange(key, e.target.value)}
+                            placeholder="Value"
+                            size="sm"
+                            flex="2"
+                          />
+                          <Button
+                            size="sm"
+                            colorScheme="red"
+                            variant="ghost"
+                            onClick={() => handleExtensionDelete(key)}
+                          >
+                            ×
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Text fontSize="sm" color="teal.700" fontWeight="medium">
+                            {key}:
+                          </Text>
+                          <Text fontSize="md" color="teal.800">
+                            {String(value)}
+                          </Text>
+                        </>
+                      )}
+                    </HStack>
+                  ))}
+                </VStack>
+              ) : (
+                <Text fontSize="sm" color="teal.600" fontStyle="italic">
+                  No custom properties yet. Click "Add Property" to create one.
+                </Text>
+              )}
+            </Box>
+          )}
 
           <Box>
 

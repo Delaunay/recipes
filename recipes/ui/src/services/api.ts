@@ -43,6 +43,7 @@ interface Instruction {
 
 
 interface RecipeIngredient {
+  id?: number; // RecipeIngredient ID
   ingredient_id?: number;
   recipe_id?: number; // Add recipe_id for when a recipe is selected as ingredient
   ingredient_recipe_id?: number; // Reference to another recipe used as ingredient (from backend)
@@ -52,6 +53,7 @@ interface RecipeIngredient {
   density?: number;
   quantity?: number;
   unit?: string;
+  fdc_id?: number; // USDA FDC ID for nutritional data
   recipe?: any; // Full recipe object when ingredient_recipe_id is set
 }
 
@@ -59,6 +61,7 @@ interface Ingredient {
   id?: number;
   name: string;
   description?: string;
+  fdc_id?: number;
   price_high?: number;
   price_low?: number;
   price_medium?: number;
@@ -732,6 +735,31 @@ class RecipeAPI {
   // Search for ingredients and recipes by name
   async searchIngredients(name: string): Promise<Array<{ id: number, name: string, type: 'ingredient' | 'recipe' }>> {
     return this.request<Array<{ id: number, name: string, type: 'ingredient' | 'recipe' }>>(`/ingredient/search/${encodeURIComponent(name)}`);
+  }
+
+  // USDA Food API methods
+  async searchUsdaFoods(name: string): Promise<Array<{ fdc_id: number, description: string, data_type: string, publication_date?: string }>> {
+    return this.request<Array<{ fdc_id: number, description: string, data_type: string, publication_date?: string }>>(`/api/usda/search/${encodeURIComponent(name)}`);
+  }
+
+  async getUsdaFood(fdcId: number): Promise<any> {
+    return this.request<any>(`/api/usda/food/${fdcId}`);
+  }
+
+  async analyzeUsdaFood(fdcId: number): Promise<any> {
+    return this.request<any>(`/api/usda/analyze/${fdcId}`);
+  }
+
+  async getNutrientGroup(nutrientName: string): Promise<{ group: string }> {
+    return this.request<{ group: string }>(`/api/usda/nutrient/group/${encodeURIComponent(nutrientName)}`);
+  }
+
+  async updateRecipeIngredient(recipeIngredientId: number, data: { fdc_id?: number, quantity?: number, unit?: string }): Promise<RecipeIngredient> {
+    return this.request<RecipeIngredient>(`/api/recipes/ingredients/${recipeIngredientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
   }
 }
 

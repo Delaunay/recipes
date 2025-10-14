@@ -580,6 +580,153 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
   );
 };
 
+// UsdaFoodSelector Component - Inline USDA food search and selection
+interface UsdaFoodSelectorProps {
+  currentFdcId?: number;
+  ingredientName: string;
+  onSelect: (fdcId: number | undefined) => void;
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "2xs" | "xs";
+}
+
+const UsdaFoodSelector: FC<UsdaFoodSelectorProps> = ({
+  currentFdcId,
+  ingredientName,
+  onSelect,
+  size = "sm"
+}) => {
+  const [suggestions, setSuggestions] = useState<Array<{ fdc_id: number, description: string, data_type: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Debounced USDA search
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (isFocused && searchQuery.length >= 2) {
+        setIsLoading(true);
+        try {
+          const results = await recipeAPI.searchUsdaFoods(searchQuery);
+          setSuggestions(results);
+          setShowSuggestions(true);
+        } catch (error) {
+          console.error('Error searching USDA foods:', error);
+          setSuggestions([]);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, isFocused]);
+
+  const handleSelect = (fdcId: number) => {
+    setSearchQuery('');
+    setShowSuggestions(false);
+    onSelect(fdcId);
+  };
+
+  const handleClear = () => {
+    setSearchQuery('');
+    onSelect(undefined);
+  };
+
+  return (
+    <Box position="relative" width="100%">
+      <HStack gap={1}>
+        <Input
+          ref={inputRef}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => {
+            setIsFocused(true);
+            // Pre-fill with ingredient name if no search query
+            if (!searchQuery && ingredientName) {
+              setSearchQuery(ingredientName);
+            }
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            setTimeout(() => setShowSuggestions(false), 150);
+          }}
+          size={size}
+          placeholder="Search USDA..."
+          flex={1}
+        />
+        {isLoading && (
+          <Spinner size="xs" />
+        )}
+        {currentFdcId && (
+          <HStack gap={1}>
+            <Badge colorScheme="orange" fontSize="2xs">
+              {currentFdcId}
+            </Badge>
+            <IconButton
+              size="xs"
+              aria-label="Clear USDA food"
+              onClick={handleClear}
+              variant="ghost"
+              colorScheme="red"
+            >
+              ✕
+            </IconButton>
+          </HStack>
+        )}
+      </HStack>
+
+      {showSuggestions && suggestions.length > 0 && (
+        <Box
+          position="absolute"
+          top="100%"
+          left={0}
+          right={0}
+          bg="white"
+          border="1px solid"
+          borderColor="gray.200"
+          borderRadius="md"
+          shadow="md"
+          zIndex={1000}
+          maxH="200px"
+          overflowY="auto"
+          mt={1}
+        >
+          {suggestions.map((food, index) => (
+            <Box
+              key={food.fdc_id}
+              p={2}
+              cursor="pointer"
+              _hover={{ bg: "gray.50" }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(food.fdc_id);
+              }}
+              borderBottom={index < suggestions.length - 1 ? "1px solid" : "none"}
+              borderColor="gray.100"
+            >
+              <VStack align="start" gap={0}>
+                <Text fontSize="sm">{food.description}</Text>
+                <HStack gap={2}>
+                  <Badge colorScheme="orange" fontSize="2xs">
+                    {food.fdc_id}
+                  </Badge>
+                  <Text fontSize="xs" color="gray.500">
+                    {food.data_type?.replace('_', ' ')}
+                  </Text>
+                </HStack>
+              </VStack>
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 // IngredientItem Component - Represents a single ingredient in a list
 interface IngredientItemProps {
   ingredient: RecipeIngredient;
@@ -936,44 +1083,84 @@ const IngredientItem: FC<IngredientItemProps> = ({
 
         <Box flex="1">
           {isEditable && !isStatic && onUpdateIngredient ? (
-            <IngredientNameInput
-              value={ingredient.name}
-              onChange={(value: string, ingredientId?: number, ingredientRecipeId?: number, clearIds?: boolean) => {
-                // Update the ingredient name
-                onUpdateIngredient(index, 'name', value);
+            <HStack gap={2} align="start">
+              <Box flex="1">
+                <IngredientNameInput
+                  value={ingredient.name}
+                  onChange={(value: string, ingredientId?: number, ingredientRecipeId?: number, clearIds?: boolean) => {
+                    // Update the ingredient name
+                    onUpdateIngredient(index, 'name', value);
 
-                // If clearIds flag is set, clear both IDs
-                if (clearIds) {
-                  if (ingredient.ingredient_id) {
-                    onUpdateIngredient(index, 'ingredient_id', undefined);
-                  }
-                  if (ingredient.ingredient_recipe_id) {
-                    onUpdateIngredient(index, 'ingredient_recipe_id', undefined);
-                  }
-                  return;
-                }
+                    // If clearIds flag is set, clear all IDs
+                    if (clearIds) {
+                      if (ingredient.ingredient_id) {
+                        onUpdateIngredient(index, 'ingredient_id', undefined);
+                      }
+                      if (ingredient.ingredient_recipe_id) {
+                        onUpdateIngredient(index, 'ingredient_recipe_id', undefined);
+                      }
+                      if (ingredient.fdc_id) {
+                        onUpdateIngredient(index, 'fdc_id', undefined);
+                      }
+                      return;
+                    }
 
-                // Set ingredient_id if an ingredient was selected
-                if (ingredientId !== undefined) {
-                  onUpdateIngredient(index, 'ingredient_id', ingredientId);
-                  // Clear ingredient_recipe_id if it exists
-                  if (ingredient.ingredient_recipe_id) {
-                    onUpdateIngredient(index, 'ingredient_recipe_id', undefined);
-                  }
-                }
+                    // Set ingredient_id if an ingredient was selected
+                    if (ingredientId !== undefined) {
+                      onUpdateIngredient(index, 'ingredient_id', ingredientId);
+                      // Clear ingredient_recipe_id and fdc_id if they exist
+                      if (ingredient.ingredient_recipe_id) {
+                        onUpdateIngredient(index, 'ingredient_recipe_id', undefined);
+                      }
+                      if (ingredient.fdc_id) {
+                        onUpdateIngredient(index, 'fdc_id', undefined);
+                      }
+                    }
 
-                // Set ingredient_recipe_id if a recipe was selected
-                if (ingredientRecipeId !== undefined) {
-                  onUpdateIngredient(index, 'ingredient_recipe_id', ingredientRecipeId);
-                  // Clear ingredient_id if it exists
-                  if (ingredient.ingredient_id) {
-                    onUpdateIngredient(index, 'ingredient_id', undefined);
-                  }
-                }
-              }}
-              size="sm"
-              placeholder="Ingredient name"
-            />
+                    // Set ingredient_recipe_id if a recipe was selected
+                    if (ingredientRecipeId !== undefined) {
+                      onUpdateIngredient(index, 'ingredient_recipe_id', ingredientRecipeId);
+                      // Clear ingredient_id and fdc_id if they exist
+                      if (ingredient.ingredient_id) {
+                        onUpdateIngredient(index, 'ingredient_id', undefined);
+                      }
+                      if (ingredient.fdc_id) {
+                        onUpdateIngredient(index, 'fdc_id', undefined);
+                      }
+                    }
+                  }}
+                  size="sm"
+                  placeholder="Ingredient name"
+                />
+              </Box>
+              <Box flex="1">
+                <UsdaFoodSelector
+                  currentFdcId={ingredient.fdc_id}
+                  ingredientName={ingredient.name}
+                  onSelect={async (fdcId) => {
+                    onUpdateIngredient(index, 'fdc_id', fdcId);
+                    // Update via API if the ingredient has an ID
+                    if (ingredient.id && fdcId !== undefined) {
+                      try {
+                        await recipeAPI.updateRecipeIngredient(ingredient.id, { fdc_id: fdcId });
+                      } catch (error) {
+                        console.error('Failed to update fdc_id:', error);
+                      }
+                    }
+                    // Clear other IDs when USDA food is selected
+                    if (fdcId !== undefined) {
+                      if (ingredient.ingredient_id) {
+                        onUpdateIngredient(index, 'ingredient_id', undefined);
+                      }
+                      if (ingredient.ingredient_recipe_id) {
+                        onUpdateIngredient(index, 'ingredient_recipe_id', undefined);
+                      }
+                    }
+                  }}
+                  size="sm"
+                />
+              </Box>
+            </HStack>
           ) : (
             <Text
               color="blue.600"
@@ -987,6 +1174,11 @@ const IngredientItem: FC<IngredientItemProps> = ({
               }}
             >
               {ingredient.name}
+              {ingredient.fdc_id && (
+                <Badge ml={2} colorScheme="orange" fontSize="xs">
+                  USDA:{ingredient.fdc_id}
+                </Badge>
+              )}
             </Text>
           )}
         </Box>
@@ -3101,6 +3293,8 @@ const Recipe: FC<RecipeProps> = ({
           // Include ingredient_recipe_id if it exists (for recipes used as ingredients)
           // CRITICAL: Never allow self-reference for existing recipes (already validated above)
           ...(ing.ingredient_recipe_id && (!recipe.id || ing.ingredient_recipe_id !== recipe.id) && { ingredient_recipe_id: ing.ingredient_recipe_id }),
+          // Include fdc_id if it exists
+          ...(ing.fdc_id && { fdc_id: ing.fdc_id }),
         })) || [],
         // Ensure categories exist
         categories: recipe.categories || [],

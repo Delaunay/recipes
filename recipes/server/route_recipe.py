@@ -89,13 +89,14 @@ def recipes_routes(app, db):
                             db.session.flush()
                         ingredient_id = ingredient._id
 
-                    # Create RecipeIngredient with quantity and unit
+                    # Create RecipeIngredient with quantity, unit, and fdc_id
                     recipe_ingredient = RecipeIngredient(
                         recipe_id=recipe._id,
                         ingredient_id=ingredient_id,
                         ingredient_recipe_id=ingredient_recipe_id,
                         quantity=ing_data.get('quantity', 1.0),
-                        unit=ing_data.get('unit', 'piece')
+                        unit=ing_data.get('unit', 'piece'),
+                        fdc_id=ing_data.get('fdc_id')
                     )
                     db.session.add(recipe_ingredient)
 
@@ -190,13 +191,14 @@ def recipes_routes(app, db):
                             db.session.flush()
                         ingredient_id = ingredient._id
 
-                    # Create new RecipeIngredient with quantity and unit
+                    # Create new RecipeIngredient with quantity, unit, and fdc_id
                     recipe_ingredient = RecipeIngredient(
                         recipe_id=recipe._id,
                         ingredient_id=ingredient_id,
                         ingredient_recipe_id=ingredient_recipe_id,
                         quantity=ing_data.get('quantity', 1.0),
-                        unit=ing_data.get('unit', 'piece')
+                        unit=ing_data.get('unit', 'piece'),
+                        fdc_id=ing_data.get('fdc_id')
                     )
                     db.session.add(recipe_ingredient)
 
@@ -249,3 +251,28 @@ def recipes_routes(app, db):
     def get_recipe_nutrition(recipe_id: int):
         compositions = db.session.query(IngredientComposition).filter_by(recipe_id=recipe_id).all()
         return jsonify([comp.to_json() for comp in compositions])
+
+    @app.route('/api/recipes/ingredients/<int:recipe_ingredient_id>', methods=['PATCH'])
+    def update_recipe_ingredient(recipe_ingredient_id: int) -> Dict[str, Any]:
+        """Update specific fields of a recipe ingredient (e.g., fdc_id)"""
+        try:
+            recipe_ingredient = db.session.get(RecipeIngredient, recipe_ingredient_id)
+            if not recipe_ingredient:
+                return jsonify({"error": "Recipe ingredient not found"}), 404
+
+            data = request.get_json()
+
+            # Update only the fields that are provided
+            if 'fdc_id' in data:
+                recipe_ingredient.fdc_id = data['fdc_id']
+            if 'quantity' in data:
+                recipe_ingredient.quantity = data['quantity']
+            if 'unit' in data:
+                recipe_ingredient.unit = data['unit']
+
+            db.session.commit()
+            return jsonify(recipe_ingredient.to_json())
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 400

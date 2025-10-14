@@ -208,7 +208,7 @@ class RecipeIngredient(Base):
     quantity = Column(Float, nullable=False)
     unit = Column(String(50), nullable=False)
 
-    # 
+    #
     fdc_id = Column(Integer)
 
     # Product usually used for this ingredient
@@ -257,6 +257,7 @@ class RecipeIngredient(Base):
             'unit': self.unit,
             'name': name,
             'id': self._id,
+            'fdc_id': self.fdc_id,
         }
 
 recipe_categories = Table(
@@ -265,6 +266,13 @@ recipe_categories = Table(
     Column('recipe_id', Integer, ForeignKey('recipes._id')),
     Column('category_id', Integer, ForeignKey('categories._id'))
 )
+
+
+class USDAFood(Base):
+    __tablename__ = 'usda_foods'
+
+    fdc_id = Column(Integer, primary_key=True)
+    name = Column(String(100), unique=True, nullable=False)
 
 
 class User(Base):
@@ -385,12 +393,12 @@ def article_schema():
     class Article(Base):
         """Full blog post to display"""
         __tablename__ = 'article'
-        
+
         _id = Column(Integer, primary_key=True)
         title = Column(String, 50)
         namespace = Column(String, 255)
-        tags = Column(JSON) 
-        extension = Column(JSON) 
+        tags = Column(JSON)
+        extension = Column(JSON)
 
 
     class ArticleBlock(Base):
@@ -517,7 +525,7 @@ class IngredientSubstitution(Base):
     original = Column(String(50), nullable=False)           # Original ingredient we want to replace
     replacement = Column(String(50), nullable=False)        # New ingredient replacing it
     ratio = Column(Float, default=1)                        # replacement ratio if not =
-    
+
     def to_json(self):
         return {
             'id': self._id,

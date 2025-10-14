@@ -70,6 +70,7 @@ def ingredient_routes(app, db):
             # Update ingredient fields
             ingredient.name = data.get('name', ingredient.name)
             ingredient.description = data.get('description', ingredient.description)
+            ingredient.fdc_id = data.get('fdc_id', ingredient.fdc_id)
             ingredient.price_high = data.get('price_high', ingredient.price_high)
             ingredient.price_low = data.get('price_low', ingredient.price_low)
             ingredient.price_medium = data.get('price_medium', ingredient.price_medium)
@@ -184,3 +185,4 @@ def ingredient_routes(app, db):
         except Exception as e:
             db.session.rollback()
             return jsonify({"error": str(e)}), 400
+
