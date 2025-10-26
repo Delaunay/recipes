@@ -49,6 +49,10 @@ interface NutritionFactsProps {
     onEdit?: (id: number, data: Partial<IngredientComposition>) => Promise<void>;
     onDelete?: (id: number) => Promise<void>;
     onRefresh?: () => Promise<void>;
+    onPushAll?: () => Promise<void>;
+    availableSources?: string[];
+    selectedSource?: string;
+    onSourceChange?: (source: string) => void;
 }
 
 const NutritionFacts: FC<NutritionFactsProps> = ({
@@ -59,6 +63,10 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
     onEdit,
     onDelete,
     onRefresh,
+    onPushAll,
+    availableSources,
+    selectedSource,
+    onSourceChange,
 }) => {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editingValues, setEditingValues] = useState<Partial<IngredientComposition>>({});
@@ -68,6 +76,16 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
     const [displayReferenceQuantity, setDisplayReferenceQuantity] = useState<number>(100);
     const [isEditingDisplayRef, setIsEditingDisplayRef] = useState(false);
     const [hoveredCategoryKind, setHoveredCategoryKind] = useState<string | null>(null);
+
+    // We do not want to manually edit numbers from USDA, they are baselines
+    // but we should be able to copy them to make our own
+    const isReallyEditable = selectedSource == "USDA"? false : editable;
+
+    // Get unique sources from compositions or use provided sources
+    let sources: string[] = availableSources || [];
+    if (!availableSources) {
+        sources = [...new Set(compositions.map(c => c.source).filter((s): s is string => Boolean(s)))];
+    }
 
     // Calculate display multiplier for adjusting values
     const displayMultiplier = displayReferenceQuantity / 100;
@@ -232,13 +250,53 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
         setEditingValues({ ...editingValues, [field]: value });
     };
 
+    const pushNutritionFact = async () => {
+        if (!onPushAll) return;
+
+        try {
+            await onPushAll();
+            if (onRefresh) await onRefresh();
+            setSuccessMessage('All compositions saved to database successfully');
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err) {
+            alert(`Failed to save compositions: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+    };
+
     return (
         <Box p={6} bg="white" borderRadius="lg" border="2px solid" borderColor="gray.800">
             <Flex justify="space-between" align="center" mb={2} pb={2} borderBottom="4px solid" borderColor="gray.800">
                 <VStack align="start" gap={0}>
-                    <Text fontSize="2xl" fontWeight="bold" color="gray.800">
-                        Nutrition Facts
-                    </Text>
+                    <HStack>
+                        <Text fontSize="2xl" fontWeight="bold" color="gray.800">
+                            Nutrition Facts
+                        </Text>
+                        {sources && sources.length > 0 && (
+                            <>
+                                <Text fontSize="1xl" color="gray.800">(</Text>
+                                <select
+                                    value={selectedSource || (sources[0] || 'Default')}
+                                    onChange={(e) => onSourceChange && onSourceChange(e.target.value)}
+                                    style={{
+                                        padding: '2px 8px',
+                                        fontSize: '14px',
+                                        border: '1px solid #CBD5E0',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'white',
+                                        cursor: 'pointer',
+                                        color: '#1A202C',
+                                    }}
+                                >
+                                    {sources.map((src) => (
+                                        <option key={src} value={src}>
+                                            {src}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Text fontSize="1xl" color="gray.800">)</Text>
+                            </>
+                        )}
+                    </HStack>
                     <HStack gap={1}>
                         <Text fontSize="sm" color="gray.600">Per</Text>
                         {isEditingDisplayRef ? (
@@ -268,6 +326,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                 color="blue.600"
                                 fontWeight="semibold"
                                 cursor="pointer"
+                                userSelect="none"
                                 onClick={() => setIsEditingDisplayRef(true)}
                                 _hover={{ textDecoration: 'underline' }}
                             >
@@ -276,16 +335,27 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                         )}
                     </HStack>
                 </VStack>
-                {editable && !isAdding && onAdd && (
-                    <Button
-                        size="sm"
-                        colorScheme="orange"
-                        onClick={() => handleStartAdd()}
-                    >
-                        <AddIcon />
-                        <Text ml={1}>Add</Text>
-                    </Button>
-                )}
+                <HStack gap={2}>
+                    {isReallyEditable && !isAdding && onAdd && (
+                        <Button
+                            size="sm"
+                            colorScheme="orange"
+                            onClick={() => handleStartAdd()}
+                        >
+                            <AddIcon />
+                            <Text ml={1}>Add</Text>
+                        </Button>
+                    )}
+                    {onPushAll && (
+                        <Button
+                            size="sm"
+                            colorScheme="green"
+                            onClick={() => pushNutritionFact()}
+                        >
+                            <Text ml={1}>Save</Text>
+                        </Button>
+                    )}
+                </HStack>
             </Flex>
 
             {/* Success Message */}
@@ -433,7 +503,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                         <Text fontSize="sm" color="gray.500" mb={2}>
                             No nutritional composition data available
                         </Text>
-                        {editable && onAdd && (
+                        {isReallyEditable && onAdd && (
                             <Text fontSize="xs" color="gray.400">
                                 Click "Add" to insert nutritional information
                             </Text>
@@ -638,7 +708,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                             {Number(composition.daily_value * displayMultiplier).toFixed(2).replace(/\.?0+$/, '')}%
                                                         </Text>
                                                     )}
-                                                    {editable && (
+                                                    {isReallyEditable && (
                                                         <HStack gap={1}>
                                                             {/* Add to category button */}
                                                             {hoveredCategoryKind === composition.kind && !isAdding && onAdd && (
@@ -708,7 +778,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                             {Number(composition.daily_value * displayMultiplier).toFixed(2).replace(/\.?0+$/, '')}%
                                                         </Text>
                                                     )}
-                                                    {editable && (
+                                                    {isReallyEditable && (
                                                         <HStack gap={1}>
                                                             {onEdit && (
                                                                 <Button
@@ -758,7 +828,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                             {Number(composition.daily_value * displayMultiplier).toFixed(2).replace(/\.?0+$/, '')}%
                                                         </Text>
                                                     )}
-                                                    {editable && (
+                                                    {isReallyEditable && (
                                                         <HStack gap={1}>
                                                             {onEdit && (
                                                                 <Button

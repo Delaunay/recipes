@@ -95,6 +95,7 @@ interface IngredientComposition {
   unit?: string;
   daily_value?: number;
   extension?: any;
+  source?: string;
 }
 
 interface UnitConversion {
@@ -394,8 +395,15 @@ class RecipeAPI {
   }
 
   // Ingredient Composition methods
-  async getIngredientCompositions(ingredientId: number): Promise<IngredientComposition[]> {
-    return this.request<IngredientComposition[]>(`/ingredients/${ingredientId}/compositions`);
+  async getIngredientCompositions(ingredientId: number, source?: string): Promise<IngredientComposition[]> {
+    const url = source
+      ? `/ingredients/${ingredientId}/compositions/${encodeURIComponent(source)}`
+      : `/ingredients/${ingredientId}/compositions`;
+    return this.request<IngredientComposition[]>(url);
+  }
+
+  async getIngredientCompositionSources(ingredientId: number): Promise<string[]> {
+    return this.request<string[]>(`/ingredients/${ingredientId}/compositions/source`);
   }
 
   async createIngredientComposition(ingredientId: number, composition: Omit<IngredientComposition, 'id' | 'ingredient_id'>): Promise<IngredientComposition> {
@@ -750,8 +758,8 @@ class RecipeAPI {
     return this.request<any>(`/api/usda/analyze/${fdcId}`);
   }
 
-  async getNutrientGroup(nutrientName: string): Promise<{ group: string }> {
-    return this.request<{ group: string }>(`/api/usda/nutrient/group/${encodeURIComponent(nutrientName)}`);
+  async getNutrientGroup(nutrientName: string): Promise<{ group: string, name: string }> {
+    return this.request<{ group: string, name: string }>(`/api/usda/nutrient/group/${encodeURIComponent(nutrientName)}`);
   }
 
   async updateRecipeIngredient(recipeIngredientId: number, data: { fdc_id?: number, quantity?: number, unit?: string }): Promise<RecipeIngredient> {

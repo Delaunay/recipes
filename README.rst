@@ -21,3 +21,45 @@ Server
 and used for the rendering
 
 This enable us to deploy the website on github pages without requiring a database or a server
+
+
+
+Lifestyle tracking
+------------------
+
+* Tracks things on different level independently and then link the independent measures together
+    * Recipe Ingredient != Receipt Products
+
+* Expense => Credit Card Item Easy to track
+* Receipt => Itemized Expense, hard to track (and annoying)
+
+
+
+
+Features
+--------
+
+* Password manager
+* Receipt tracking
+* Calendar
+    * Event
+* Todo lists
+* Telegram Integration
+* KeyValue Store
+* Cooking Recipe
+    * Unit Conversion
+* Meal Planning
+    * Nutrition Info
+    * Budget
+* Nutrition Info
+* Blog | Project tracking
+    * Hobbies
+
+
+Doable
+------
+
+* Mode telegram integration
+* Garmin Integration ?
+* Google Calendar Import / Export ?
+* 

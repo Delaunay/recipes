@@ -146,14 +146,36 @@ def usda_routes(app, *args):
 
     @app.route('/api/usda/nutrient/group/<name>', methods=['GET'])
     def get_nutrient(name: int):
+        original_name = name
+        
         name = name.split(",")[0].lower()
+        dname = name.capitalize()
+
+        if 'total lipid' in name:
+            return {"name": "", "group": "Fat"}
+
+        if 'fatty' in name:
+            name = original_name.split(",")[1].replace("total", "").strip().capitalize()
+            return {"name": name, "group": "Fat"}
+
+        if 'fat' in name:
+            return {"name": dname, "group": 'Fat'}
+        
+        if 'vitamin' in name:
+            return {"name": dname, "group": 'Vitamin'}
+
+        if 'energy' in name:
+            return {"name": "", "group": "Calories"}
 
         for group, items in NUTRIENT_GROUPS.items():
             if name in items:
-                return {"group":group }
+                if group == 'macronutrient':
+                    return {"name": dname, "group": dname}
+                
+                return {"name": dname, "group":group.capitalize() }
 
         print(name, "group not found")
-        return {"group": name }
+        return {"name": dname, "group": 'Others' }
 
 
 def usda_csv_routes(app, db):

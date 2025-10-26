@@ -119,10 +119,26 @@ def ingredient_routes(app, db):
 
     # Ingredient Composition routes
     @app.route('/ingredients/<int:ingredient_id>/compositions', methods=['GET'])
-    def get_ingredient_compositions(ingredient_id: int) -> Dict[str, Any]:
+    @app.route('/ingredients/<int:ingredient_id>/compositions/<string:source>', methods=['GET'])
+    def get_ingredient_compositions(ingredient_id: int, source: str = None) -> Dict[str, Any]:
         """Get all compositions for a specific ingredient"""
-        compositions = db.session.query(IngredientComposition).filter_by(ingredient_id=ingredient_id).all()
+        if source is None:
+            compositions = db.session.query(IngredientComposition).filter_by(
+                ingredient_id=ingredient_id).all()
+        else:
+            compositions = db.session.query(IngredientComposition).filter_by(
+                ingredient_id=ingredient_id, source=source).all()
+
         return jsonify([comp.to_json() for comp in compositions])
+
+
+    @app.route('/ingredients/<int:ingredient_id>/compositions/source', methods=['GET'])
+    def get_ingredient_composition_sources(ingredient_id: int) -> Dict[str, Any]:
+        """Get all unique sources for a specific ingredient's compositions"""
+        sources = db.session.query(IngredientComposition.source).filter_by(ingredient_id=ingredient_id).distinct().all()
+        # Extract source values from tuples and filter out None
+        source_list = [source[0] for source in sources if source[0] is not None]
+        return jsonify(source_list)
 
     @app.route('/ingredients/<int:ingredient_id>/compositions', methods=['POST'])
     def create_ingredient_composition(ingredient_id: int) -> Dict[str, Any]:
@@ -140,7 +156,8 @@ def ingredient_routes(app, db):
                 quantity=data.get('quantity'),
                 unit=data.get('unit'),
                 daily_value=data.get('daily_value'),
-                extension=data.get('extension')
+                extension=data.get('extension'),
+                source=data.get('source')
             )
             db.session.add(composition)
             db.session.commit()
@@ -164,6 +181,7 @@ def ingredient_routes(app, db):
             composition.unit = data.get('unit', composition.unit)
             composition.daily_value = data.get('daily_value', composition.daily_value)
             composition.extension = data.get('extension', composition.extension)
+            composition.source = data.get('source', composition.source)
 
             db.session.commit()
             return jsonify(composition.to_json())

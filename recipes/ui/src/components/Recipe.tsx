@@ -1174,11 +1174,6 @@ const IngredientItem: FC<IngredientItemProps> = ({
               }}
             >
               {ingredient.name}
-              {ingredient.fdc_id && (
-                <Badge ml={2} colorScheme="orange" fontSize="xs">
-                  USDA:{ingredient.fdc_id}
-                </Badge>
-              )}
             </Text>
           )}
         </Box>

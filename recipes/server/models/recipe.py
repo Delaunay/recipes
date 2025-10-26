@@ -2,199 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table, Text, UniqueConstraint, JSON, create_engine, select, Boolean, Index
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 
-Base = declarative_base()
-
-
-#
-# Calendar
-#
-#
-#   How tp handle recuring events ?
-#       We can generate events as the time passes
-#
-#   Generate Task list based on Events ?
-#   Prioritized ?
-#
-#
-# Template Day/week ?
-#       Winter / Summer / Spring / Fall
-#
-#   Event is time based, blocks the time
-#       they can have task attached to it
-#
-#   Tasks are things to do but they are not necessarily attached to
-#   time to do it
-#
-
-
-#
-#   The TODO list is a combination of Event and tasks
-#
-
-class Event(Base):
-    __tablename__ = 'events'
-
-    # To display a calaender
-    # Column Week Days
-    # Rows Time + Week Count
-
-    _id = Column(Integer, primary_key=True)
-
-    kind = Column(Integer)
-    color = Column(String(7))  # Hex color code like #FF0000
-    datetime_start = Column(DateTime, nullable=False)
-    datetime_end = Column(DateTime, nullable=False)
-    location = Column(String(200))
-    title = Column(String(100), nullable=False)
-    description = Column(Text)
-    guests = Column(JSON)  # List of guest names or IDs
-
-    # Scheduled Task ?
-    task = Column(Integer, ForeignKey('tasks._id'), nullable=True)
-    done = Column(Boolean, default=False)
-
-    # Budgeting
-    price_budget = Column(Float)
-    price_real = Column(Float)
-    people_count = Column(Integer)
-
-    # Template Event
-    template = Column(Boolean, default=False)
-    recuring = Column(Boolean, default=False)
-    active = Column(Boolean, default=True)
-
-    extension = Column(JSON)
-
-    # Relationships
-    # task = relationship('Task', back_populates='events')
-
-    def __repr__(self):
-        return f'<Event {self.title}>'
-
-    def to_json(self):
-        return {
-            'id': self._id,
-            'kind': self.kind,
-            'color': self.color,
-            'datetime_start': self.datetime_start.isoformat() + 'Z' if self.datetime_start else None,
-            'datetime_end': self.datetime_end.isoformat() + 'Z' if self.datetime_end else None,
-            'location': self.location,
-            'title': self.title,
-            'description': self.description,
-            'guests': self.guests,
-            'task': self.task,
-            'done': self.done,
-            'price_budget': self.price_budget,
-            'price_real': self.price_real,
-            'people_count': self.people_count,
-            'template': self.template,
-            'recuring': self.recuring,
-            'active': self.active
-        }
-
-
-class Task(Base):
-    __tablename__ = 'tasks'
-
-    _id = Column(Integer, primary_key=True)
-
-    title = Column(String(100), nullable=False)
-    description = Column(Text)
-    datetime_deadline = Column(DateTime)
-    datetime_done = Column(DateTime)
-    done = Column(Boolean, default=False)
-    priority = Column(Integer, default=0)
-
-    # Budgeting
-    price_budget = Column(Float)
-    price_real = Column(Float)
-    people_count = Column(Integer)
-
-    # Template Task
-    template = Column(Boolean, default=False)
-    recuring = Column(Boolean, default=False)
-    active = Column(Boolean, default=True)
-
-    #
-    extension = Column(JSON)
-
-    # Relationships
-    parent_subtasks = relationship('SubTask', foreign_keys='SubTask.parent_id', back_populates='parent')
-    child_subtasks = relationship('SubTask', foreign_keys='SubTask.child_id', back_populates='child')
-
-    def __repr__(self):
-        return f'<Task {self.title}>'
-
-    def to_json(self):
-        return {
-            'id': self._id,
-            'title': self.title,
-            'description': self.description,
-            'datetime_deadline': self.datetime_deadline.isoformat() if self.datetime_deadline else None,
-            'done': self.done,
-            'price_budget': self.price_budget,
-            'price_real': self.price_real,
-            'people_count': self.people_count,
-            'template': self.template,
-            'recuring': self.recuring,
-            'active': self.active,
-            'extension': self.extension,
-            "priority": self.priority if self.priority is not None else 0
-        }
-
-class KeyValueStore(Base):
-    __tablename__ = 'key_value_store'
-
-    topic = Column(String(100), primary_key=True, nullable=False)
-    key = Column(String(100), primary_key=True, nullable=False)
-    value = Column(JSON)
-    created_at = Column(DateTime, default=datetime.now())
-    updated_at = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
-
-    # Composite primary key constraint on (topic, key)
-    __table_args__ = (
-        # Additional index for topic-only queries (primary key already indexes topic+key)
-        Index('idx_keyvalue_topic', 'topic'),
-        Index('idx_keyvalue_key', 'key'),
-    )
-
-    def __repr__(self):
-        return f'<KeyValueStore topic={self.topic} key={self.key}>'
-
-    def to_json(self):
-        return {
-            'topic': self.topic,
-            'key': self.key,
-            'value': self.value,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        }
-
-
-class SubTask(Base):
-    __tablename__ = 'substasks'
-
-    _id = Column(Integer, primary_key=True)
-    parent_id = Column(Integer, ForeignKey('tasks._id'), nullable=False)
-    child_id = Column(Integer, ForeignKey('tasks._id'), nullable=False)
-
-    # Relationships
-    parent = relationship('Task', foreign_keys=[parent_id], back_populates='child_subtasks')
-    child = relationship('Task', foreign_keys=[child_id], back_populates='parent_subtasks')
-
-    def __repr__(self):
-        return f'<SubTask parent={self.parent_id} child={self.child_id}>'
-
-    def to_json(self):
-        return {
-            'id': self._id,
-            'parent_id': self.parent_id,
-            'child_id': self.child_id
-        }
-
-#
-# Recipe
-#
+from .common import Base
 
 
 # Recipe ingredients association model
@@ -273,31 +81,6 @@ class USDAFood(Base):
 
     fdc_id = Column(Integer, primary_key=True)
     name = Column(String(100), unique=True, nullable=False)
-
-
-class User(Base):
-    __tablename__ = 'users'
-
-    _id = Column(Integer, primary_key=True)
-    username = Column(String(50), unique=True, nullable=False)
-    email = Column(String(120), unique=True, nullable=False)
-    password_hash = Column(String(128), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationships
-    recipes = relationship('Recipe', back_populates='author')
-
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-    def to_json(self):
-        return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            # 'recipes': [recipe.to_json() for recipe in self.recipes] if self.recipes else []
-        }
 
 
 class Recipe(Base):
@@ -389,45 +172,6 @@ class IngredientComposition(Base):
             # 'fdc_id': self.fdc_id
         }
 
-def article_schema():
-    class Article(Base):
-        """Full blog post to display"""
-        __tablename__ = 'article'
-
-        _id = Column(Integer, primary_key=True)
-        title = Column(String, 50)
-        namespace = Column(String, 255)
-        tags = Column(JSON)
-        extension = Column(JSON)
-
-
-    class ArticleBlock(Base):
-        """Renderable block of a blog post"""
-        __tablename__ = 'article_block'
-
-        _id = Column(Integer, primary_key=True)
-        title = Column(String, 50)
-
-        page_id = Column(Integer, ForeignKey('recipes._id'), nullable=True)
-        kind = Column(String, 25)
-        extension = Column(JSON)
-        # SpreadSheet like info
-        # Plots + Spreadsheet
-        # Text | Article
-        # Images
-        # Layout that hold more blocks
-        # list ? or this is part of a markdown display
-        # code block
-        # video
-        # audio
-        # file attachment
-        # Latex
-        # timeline
-        # mermaid plot
-        # widget
-        # references
-        # footnote
-        # heading + paragraph
 
 class Ingredient(Base):
     __tablename__ = 'ingredients'
@@ -535,57 +279,8 @@ class IngredientSubstitution(Base):
             'ratio': self.ratio,
         }
 
-class Product(Base):
-    """Grocery list + prices"""
-    __tablename__ = 'products'
-
-    _id = Column(Integer, primary_key=True)
-    name = Column(String(50), nullable=False)               # Name of the product
-    brand = Column(String(50))
-    quantity = Column(Float)                                # Quantity in the package
-    unit = Column(String(50))                               # unit of quantity
-    price = Column(Float)                                   # unitary price
-    count = Column(Integer)                                 # Number of item purchase
-    organic = Column(Boolean)                               # Organic or not
-    created_at = Column(DateTime, default=datetime.utcnow)  # Date of purchase
-    ingredient = Column(String(50))                         # Ingredient this is usually used for
-    fdc_id = Column(Integer)
-
-    def to_json(self):
-        return {
-            'id': self._id,
-            'name': self.name,
-            'quantity': self.quantity,
-            'unit': self.unit,
-            'price': self.price,
-            'organic': self.organic,
-        }
 
 
-class ProductInventory(Base):
-    """Food currently in inventory, buying things increase the quantity, cooking lowers it"""
-    __tablename__ = 'product_inventory'
-
-    _id = Column(Integer, primary_key=True)
-    name = Column(String(50), nullable=False)               # Name of the product
-    quantity = Column(Float)                                # Current amount in inventory
-
-    # price = Column(Float) += price / qty
-
-    def to_json(self):
-        return {
-            'id': self._id,
-            'name': self.name,
-            'quantity': self.quantity
-        }
-
-class IngredientProduct(Base):
-    """Match an ingredient to a product"""
-    __tablename__ = 'ingredient_product_mapping'
-
-    _id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey('products._id'), nullable=False)
-    ingredient_id = Column(Integer, ForeignKey('ingredients._id'), nullable=False)
 
 
 # class Unit(Base):
@@ -776,7 +471,6 @@ def insert_common_ingredients(session):
     for ingredient in ingredients:
         session.add(ingredient)
         session.commit()
-
 
 
 def make_unit_from_input(sesh, recipe_ingredient: RecipeIngredient):
