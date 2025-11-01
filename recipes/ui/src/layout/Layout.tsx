@@ -42,6 +42,7 @@ const sidebarSections = [
     title: 'Planning',
     items: [
       { name: 'Calendar', href: '/calendar' },
+      { name: 'Routine', href: '/routine' },
       { name: 'Tasks', href: '/tasks' },
       { name: 'Projects', href: '/projects' },
     ]

@@ -8,6 +8,20 @@ from .models import Event, Task, SubTask
 
 
 def calendar_routes(app, db):
+
+    @app.route('/routine/<owner>/<name>')
+    def get_routine_events(owner: str, name: str):
+        try:
+            query = db.session.query(Event).filter(
+                Event.template == True,
+                Event.owner==owner,
+                Event.name==name
+            )
+            events = query.all()
+            return jsonify([event.to_json() for event in events])
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     # Events endpoints
     @app.route('/events', methods=['GET'])
     def get_events() -> Dict[str, Any]:
@@ -58,7 +72,10 @@ def calendar_routes(app, db):
                 price_budget=data.get('price_budget'),
                 price_real=data.get('price_real'),
                 people_count=data.get('people_count'),
-                active=data.get('active', True)
+                active=data.get('active', True),
+                template=data.get('template', False),
+                owner=data.get('owner'),
+                name=data.get('name')
             )
 
             db.session.add(event)
@@ -103,6 +120,12 @@ def calendar_routes(app, db):
             event.price_real = data.get('price_real', event.price_real)
             event.people_count = data.get('people_count', event.people_count)
             event.active = data.get('active', event.active)
+            if 'template' in data:
+                event.template = data.get('template')
+            if 'owner' in data:
+                event.owner = data.get('owner')
+            if 'name' in data:
+                event.name = data.get('name')
 
             db.session.commit()
 

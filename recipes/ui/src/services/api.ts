@@ -1,6 +1,25 @@
 // API service for recipe management
 // Use /api prefix to leverage Vite proxy and avoid CORS issues
 
+import type {
+  RecipeData,
+  Instruction,
+  RecipeIngredient,
+  Ingredient,
+  Category,
+  IngredientComposition,
+  UnitConversion,
+  ConversionMatrix,
+  UnitsUsedInRecipes,
+  IngredientUnitsUsed,
+  Task,
+  SubTask,
+  Event,
+  WeeklyRecipe,
+  PlannedMeal,
+  MealPlan,
+  KeyValueEntry
+} from './type';
 
 const USE_STATIC_MODE = import.meta.env.VITE_USE_STATIC_MODE === 'true';
 const API_BASE_URL = USE_STATIC_MODE ? '/recipes/api' : "/api";
@@ -17,205 +36,6 @@ const isStaticMode = () => {
 
 function imagePath(image: string): string {
   return API_BASE_URL + image;
-}
-
-interface RecipeData {
-  id?: number;
-  title: string;
-  description?: string;
-  images?: string[];
-  instructions: Array<Instruction>;
-  prep_time?: number;
-  cook_time?: number;
-  servings?: number;
-  ingredients?: Array<RecipeIngredient>;
-  categories?: Array<Category>;
-  author_id?: number;
-  component?: boolean;
-}
-
-interface Instruction {
-  step: string;
-  description: string;
-  duration?: string;
-  image?: string;
-}
-
-
-interface RecipeIngredient {
-  id?: number; // RecipeIngredient ID
-  ingredient_id?: number;
-  recipe_id?: number; // Add recipe_id for when a recipe is selected as ingredient
-  ingredient_recipe_id?: number; // Reference to another recipe used as ingredient (from backend)
-  name: string;
-  description?: string;
-  calories?: number;
-  density?: number;
-  quantity?: number;
-  unit?: string;
-  fdc_id?: number; // USDA FDC ID for nutritional data
-  recipe?: any; // Full recipe object when ingredient_recipe_id is set
-}
-
-interface Ingredient {
-  id?: number;
-  name: string;
-  description?: string;
-  fdc_id?: number;
-  price_high?: number;
-  price_low?: number;
-  price_medium?: number;
-  calories?: number;
-  density?: number;
-  composition?: any;
-  extension?: any;
-  item_avg_weight?: number;
-  unit?: {
-    metric?: string;
-    us_customary?: string;
-    us_legal?: string;
-    canada?: string;
-    australia?: string;
-    uk?: string;
-  };
-}
-
-interface Category {
-  id?: number;
-  name: string;
-  description?: string;
-}
-
-interface IngredientComposition {
-  id?: number;
-  ingredient_id: number;
-  name?: string;
-  kind?: string;
-  quantity?: number;
-  unit?: string;
-  daily_value?: number;
-  extension?: any;
-  source?: string;
-}
-
-interface UnitConversion {
-  id?: number;
-  from_unit: string;
-  to_unit: string;
-  conversion_factor: number;
-  category: string;
-  ingredient_id?: number;
-  extension?: any;
-  is_volume?: boolean;
-}
-
-
-
-interface ConversionMatrix {
-  ingredient: Ingredient;
-  volume_units: string[];
-  weight_units: string[];
-  conversions: {
-    [volumeUnit: string]: {
-      [weightUnit: string]: number | null;
-    };
-  };
-}
-
-interface UnitsUsedInRecipes {
-  units_in_recipes: string[];
-  unit_usage_count: { [unit: string]: number };
-  all_available_units: string[];
-  total_recipe_ingredients: number;
-}
-
-interface IngredientUnitsUsed {
-  ingredient: Ingredient;
-  units_used: string[];
-  unit_usage_count: { [unit: string]: number };
-  recipe_names: { [unit: string]: string[] };
-  existing_conversions: { [unit: string]: string[] };
-  all_available_units: string[];
-  total_uses: number;
-}
-
-interface Task {
-  id?: number;
-  title: string;
-  description?: string;
-  datetime_deadline?: string;
-  done: boolean;
-  priority?: number;
-  price_budget?: number;
-  price_real?: number;
-  people_count?: number;
-  template: boolean;
-  recuring: boolean;
-  active: boolean;
-  extension?: any;
-  parent_subtasks?: SubTask[];
-  child_subtasks?: SubTask[];
-}
-
-interface SubTask {
-  id?: number;
-  parent_id: number;
-  child_id: number;
-  parent?: Task;
-  child?: Task;
-}
-
-interface Event {
-  id?: number;
-  title: string;
-  description?: string;
-  datetime_start: string;
-  datetime_end: string;
-  location?: string;
-  color?: string;
-  kind?: number;
-  done: boolean;
-  price_budget?: number;
-  price_real?: number;
-  people_count?: number;
-  template: boolean;
-  recuring: boolean;
-  active: boolean;
-  extension?: any;
-}
-
-interface WeeklyRecipe {
-  id: string;
-  recipeId: string;
-  recipeName: string;
-  totalPortions: number;
-  portionsUsed: number;
-  portionsRemaining: number;
-}
-
-interface PlannedMeal {
-  id: string;
-  recipeId: string;
-  recipeName: string;
-  portions: number;
-  day: string;
-  mealType: 'breakfast' | 'lunch' | 'dinner';
-}
-
-interface MealPlan {
-  weekStart: Date;
-  people: number;
-  mealsPerDay: number;
-  weeklyRecipes: WeeklyRecipe[];
-  plannedMeals: PlannedMeal[];
-}
-
-interface KeyValueEntry {
-  topic: string;
-  key: string;
-  value: any;
-  created_at: string;
-  updated_at: string;
 }
 
 class RecipeAPI {
@@ -604,6 +424,10 @@ class RecipeAPI {
     return this.request<Event>(`/events/${id}`);
   }
 
+  async getRoutineEvents(owner: string, name: string): Promise<Event[]> {
+    return this.request<Event[]>(`/routine/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);
+  }
+
   async createEvent(event: Omit<Event, 'id'>): Promise<Event> {
     if (isStaticMode()) {
       throw new Error('Creating events is not supported in static mode');
@@ -774,22 +598,3 @@ class RecipeAPI {
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
 export { imagePath };
-export type {
-  RecipeData,
-  Ingredient,
-  RecipeIngredient,
-  Category,
-  Instruction,
-  IngredientComposition,
-  UnitConversion,
-  ConversionMatrix,
-  UnitsUsedInRecipes,
-  IngredientUnitsUsed,
-  Task,
-  SubTask,
-  Event,
-  WeeklyRecipe,
-  PlannedMeal,
-  MealPlan,
-  KeyValueEntry
-};

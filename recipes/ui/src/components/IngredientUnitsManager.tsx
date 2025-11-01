@@ -11,7 +11,8 @@ import {
     Badge,
     SimpleGrid
 } from '@chakra-ui/react';
-import { recipeAPI, IngredientUnitsUsed } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { IngredientUnitsUsed } from '../services/type';
 
 interface IngredientUnitsManagerProps {
     ingredientId: number;

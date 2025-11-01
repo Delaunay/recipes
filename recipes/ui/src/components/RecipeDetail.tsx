@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Spinner, Text, Button } from '@chakra-ui/react';
 import Recipe from './Recipe';
-import { recipeAPI, RecipeData } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { RecipeData } from '../services/type';
 
 const RecipeDetail = () => {
   const { identifier } = useParams<{ identifier?: string }>();

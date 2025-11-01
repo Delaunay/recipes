@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
@@ -9,55 +6,47 @@ import {
     Text,
     Button,
     HStack,
+    Input,
+    VStack,
+    Heading,
 } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
 import type { Event } from '../services/type';
 import EventModal from './EventModal';
 import {
     toDateServer,
-    formatDateRangeForServer,
     fromDateServer,
-    getStartOfWeek,
-    getEndOfWeek,
-    formatDateDisplay,
-    isToday,
 } from '../utils/dateUtils';
 
-// Individual Event Component
-interface CalendarEventProps {
+// Individual Event Component for Routine
+interface RoutineEventProps {
     event: Event;
     position: { top: number; height: number };
     onClick?: (event: Event) => void;
     onDoubleClick?: (event: Event) => void;
-    onEdit?: (event: Event) => void;
-    onDelete?: (event: Event) => void;
     onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void;
     onDragStart?: (event: Event, position: { top: number; height: number }) => void;
     timeSlotHeight: number;
     snapInterval: number;
     gridWeek: GridWeek;
     dayIndex: number;
-    currentWeek: Date;
     isMock?: boolean;
     isDragging?: boolean;
     draggedEventData?: Event | null;
     mockPosition?: { top: number; height: number; dayIndex?: number } | null;
 }
 
-const CalendarEvent: React.FC<CalendarEventProps> = ({
+const RoutineEvent: React.FC<RoutineEventProps> = ({
     event,
     position,
     onClick,
     onDoubleClick,
-    onEdit: _onEdit,
-    onDelete: _onDelete,
     onTimeChange,
     onDragStart,
     timeSlotHeight,
     snapInterval,
     gridWeek,
     dayIndex,
-    currentWeek,
     isMock,
     isDragging,
     draggedEventData,
@@ -71,18 +60,14 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
 
     // For mock events, use the provided position and don't handle interactions
     if (isMock) {
-        // Calculate which day column this mock event should be in based on drag position
-        const dayWidth = gridWeek.getWeekWidth() / 7; // 7 days
-        let dayIndex = 0;
+        const dayWidth = gridWeek.getWeekWidth() / 7;
+        let displayDayIndex = 0;
 
         if (mockPosition && draggedEventData) {
-            // Use the dayIndex from the drag position if available
-            dayIndex = mockPosition.dayIndex !== undefined ? mockPosition.dayIndex : 0;
+            displayDayIndex = mockPosition.dayIndex !== undefined ? mockPosition.dayIndex : 0;
         }
 
-        const leftPosition = dayIndex * dayWidth;
-
-        // Use the dragged event data for the mock display, or fallback to the passed event
+        const leftPosition = displayDayIndex * dayWidth;
         const displayEvent = draggedEventData || event;
 
         return (
@@ -113,7 +98,7 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
                 style={{
                     display: isDragging && draggedEventData ? 'flex' : 'none'
                 }}
-                data-day-index={dayIndex}
+                data-day-index={displayDayIndex}
             >
                 <Box flex="1" overflow="hidden">
                     <Text fontWeight="bold" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
@@ -129,21 +114,19 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
         );
     }
 
-    // If the original event is being dragged, hide it but keep it in DOM
     const shouldHide = isDragging;
 
     const handleClick = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent day click when clicking on event
+        e.stopPropagation();
         if (onClick) {
             onClick(event);
         }
     };
 
     const handleDoubleClick = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent day click when double-clicking on event
-        e.preventDefault(); // Prevent any default behavior
+        e.stopPropagation();
+        e.preventDefault();
 
-        // Cancel any pending drag operation
         if (dragTimeout) {
             clearTimeout(dragTimeout);
             setDragTimeout(null);
@@ -157,41 +140,33 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
     const handleEventMouseUp = (e: React.MouseEvent) => {
         e.stopPropagation();
 
-        // Cancel drag timeout if mouse is released quickly (before drag starts)
         if (dragTimeout) {
             clearTimeout(dragTimeout);
             setDragTimeout(null);
         }
     };
 
-
-
     const [dragTimeout, setDragTimeout] = useState<NodeJS.Timeout | null>(null);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         e.stopPropagation();
 
-        // Set a timeout to start dragging after a short delay
         const timeout = setTimeout(() => {
             startDragOperation(e.clientX, e.clientY);
-        }, 150); // 150ms delay before drag starts
+        }, 150);
 
         setDragTimeout(timeout);
     };
 
     const startDragOperation = (mouseX: number, mouseY: number) => {
-        // Get the calendar container
         const calendarContainer = document.querySelector('.class-grid') as HTMLElement;
         if (!calendarContainer || !eventRef.current) return;
 
-        // Find the mock event element
         const mockEvent = document.querySelector('[data-mock-event="true"]') as HTMLDivElement;
         if (!mockEvent) return;
 
-        // Get container rect for mouse offset calculation
         const containerRect = calendarContainer.getBoundingClientRect();
 
-        // Create drag operation
         dragOperationRef.current = new DragOperation(
             mockEvent,
             gridWeek,
@@ -202,14 +177,12 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
             { x: mouseX, y: mouseY },
             containerRect,
             onTimeChange,
-            currentWeek
+            null // No specific week for routine events
         );
 
-        // Start drag operation
         dragOperationRef.current.onDragStart();
         setIsDraggingState(true);
 
-        // Notify parent component about drag start
         if (onDragStart) {
             onDragStart(event, position);
         }
@@ -218,16 +191,13 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
         if (!isDraggingState || !dragOperationRef.current) return;
 
-        // Update cursor position for badge
         setCursorPosition({ x: e.clientX, y: e.clientY });
 
-        // Get the calendar container
         const calendarContainer = document.querySelector('.class-grid') as HTMLElement;
         if (!calendarContainer) return;
 
         const containerRect = calendarContainer.getBoundingClientRect();
 
-        // Update drag operation
         const result = dragOperationRef.current.onDragMove(e.clientX, e.clientY, containerRect);
         if (result) {
             setCurrentTime(result.time);
@@ -237,14 +207,11 @@ const CalendarEvent: React.FC<CalendarEventProps> = ({
     const handleMouseUp = () => {
         if (!isDraggingState || !dragOperationRef.current) return;
 
-        // Complete drag operation
         dragOperationRef.current.onDrop();
 
         setIsDraggingState(false);
         setCurrentTime("");
         dragOperationRef.current = null;
-
-        // Drag operation completed
     };
 
     useEffect(() => {
@@ -369,38 +336,26 @@ const useCalendarSizing = () => {
             const containerHeight = rect.height;
             const containerWidth = rect.width;
 
-
-            // Header 80x50
-            // Account for day header (50px) and padding
             const headerHeight = 50 + 10;
-            const padding = 32; // Account for container padding
+            const padding = 32;
             const availableHeight = containerHeight - headerHeight - padding;
 
-            // We have 18 hours (6 to 23)
             const hoursCount = 18;
 
-            // Calculate optimal time slot height
             const calculatedHeight = availableHeight / hoursCount;
 
-            // Set minimum and maximum constraints
-            const minSlotHeight = 5; //25;
-            const maxSlotHeight = 8000; // 80;
+            const minSlotHeight = 5;
+            const maxSlotHeight = 8000;
 
             const optimalHeight = Math.max(minSlotHeight, Math.min(maxSlotHeight, calculatedHeight));
-
-
-            console.log("containerHeight", containerHeight);
-            console.log("containerWidth", containerWidth);
 
             setTimeSlotHeight(optimalHeight);
             setTotalCalendarHeight(optimalHeight * hoursCount);
             setWeekWidth(containerWidth);
         };
 
-        // Initial calculation
         calculateSizing();
 
-        // Create ResizeObserver for dynamic updates
         const resizeObserver = new ResizeObserver(calculateSizing);
         resizeObserver.observe(element);
 
@@ -428,101 +383,76 @@ class GridWeek {
         this.weekWidth = weekWidth;
     }
 
-    // Get the relative position (0-1) of an event within the day
     getEventPosition(event: Event): { top: number; height: number } {
         const eventStart = fromDateServer(event.datetime_start);
         const eventEnd = fromDateServer(event.datetime_end);
 
-        // Convert hours to minutes for more precise positioning
         const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
         const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
         const dayStartMinutes = this.startHour * 60;
         const dayEndMinutes = this.endHour * 60;
 
-        // Calculate relative positions
         const relativeStart = (startMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
         const relativeEnd = (endMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
 
-        // Convert to pixel positions
         const top = Math.max(0, relativeStart * this.dayHeight);
         const h = Math.min(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
 
-        // If end time is tomorrow the height will be negative
         const height = h > 0 ? h : this.dayHeight - top;
         return { top, height };
     }
 
-    // Get the snapped position (0-1) of an event within the day
     getEventPositionSnapped(event: Event): { top: number; height: number } {
-        // Get the precise position first
         const position = this.getEventPosition(event);
 
-        // Snap the top position to 5-minute intervals
-        const snapInterval = this.timeSlotHeight / 12; // 5 minutes = 1/12 of an hour
+        const snapInterval = this.timeSlotHeight / 12;
         const snappedTop = Math.round(position.top / snapInterval) * snapInterval;
 
-        // Return the snapped position with the same height
         return { top: snappedTop, height: position.height };
     }
 
-    // Convert width position to day index (0-6 for Monday-Sunday)
     getDayIndexFromWidth(x: number): number {
-        const dayWidth = this.weekWidth / 7; // 7 days
+        const dayWidth = this.weekWidth / 7;
         const dayIndex = Math.trunc((x) / dayWidth);
-        return Math.max(0, Math.min(6, dayIndex)); // Clamp to 0-6
+        return Math.max(0, Math.min(6, dayIndex));
     }
 
-    // Convert width position to day name
     getDayNameFromWidth(widthPosition: number): string {
         const dayIndex = this.getDayIndexFromWidth(widthPosition);
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         return days[dayIndex];
     }
 
-    // Snap width position to the start of a day column
     snapWidthToDayStart(widthPosition: number): number {
-        const dayWidth = this.weekWidth / 7; // 7 days
+        const dayWidth = this.weekWidth / 7;
         const dayIndex = this.getDayIndexFromWidth(widthPosition);
         return dayIndex * dayWidth;
     }
 
-    // Get the total time span of the day in minutes
     getDaySpan(): number {
         return (this.endHour - this.startHour) * 60;
     }
 
-    // Get the snap interval in pixels
     getSnapInterval(): number {
-        return this.timeSlotHeight / 12; // 5 minutes
+        return this.timeSlotHeight / 12;
     }
 
-    // Get the week width
     getWeekWidth(): number {
         return this.weekWidth;
     }
 }
 
-
-
-
 class DragOperation {
-    // The Mock event we move to visualize the drag and drop operation
     dragOperationVisual: HTMLDivElement;
-
-    // The Grid we use to snap the mock event
     grid: GridWeek;
-
-    // The Original event we will update on drop
     originalEvent: HTMLDivElement;
 
-    // Store the original event data and position
     private originalEventData: Event;
     private originalPosition: { top: number; height: number; dayIndex: number };
     private isDragging: boolean = false;
     private timeSlotHeight: number;
     private onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void;
     private mouseOffset: { x: number; y: number } = { x: 0, y: 0 };
-    private currentWeek?: Date;
 
     constructor(
         dragOperationVisual: HTMLDivElement,
@@ -534,7 +464,7 @@ class DragOperation {
         initialMousePos: { x: number; y: number },
         containerRect: DOMRect,
         onTimeChange?: (event: Event, newStartTime: Date, newEndTime: Date) => void,
-        currentWeek?: Date
+        _currentWeek?: Date | null
     ) {
         this.dragOperationVisual = dragOperationVisual;
         this.grid = grid;
@@ -543,80 +473,54 @@ class DragOperation {
         this.originalPosition = position;
         this.timeSlotHeight = timeSlotHeight;
         this.onTimeChange = onTimeChange;
-        this.currentWeek = currentWeek;
 
-        // Calculate mouse offset from the top-left of the event
         const relativeMouseY = initialMousePos.y - containerRect.top;
         this.mouseOffset = {
-            x: 0, // We'll handle day switching separately
+            x: 0,
             y: relativeMouseY - position.top
         };
     }
 
     onDragStart() {
-        // Copy the information of the original event to make the `dragOperationVisual`
-        // to make `dragOperationVisual` look exactly like the event we drop over
-        // also make `originalEvent` invisible for the duration of the drag and drop
-
         this.isDragging = true;
-
-        // Make original event invisible
         this.originalEvent.style.visibility = 'hidden';
-
-        // Position the drag visual at the original location with correct height
         this.updateDragVisualPosition(this.originalPosition.top, this.originalPosition.dayIndex, this.originalPosition.height);
-
-        // Make drag visual visible
         this.dragOperationVisual.style.display = 'flex';
         this.dragOperationVisual.style.opacity = '0.8';
     }
 
     onDragMove(mouseX: number, mouseY: number, containerRect: DOMRect) {
-        // Update the position of dragOperationVisual
         if (!this.isDragging) return;
 
         const relativeX = mouseX - containerRect.left;
         const dayIndex = this.grid.getDayIndexFromWidth(relativeX);
 
-        // Calculate new top position based on mouse Y, accounting for mouse offset
         const relativeMouseY = mouseY - containerRect.top;
         const newTop = Math.max(0, relativeMouseY - this.mouseOffset.y);
 
-        // Snap to grid
         const snapInterval = this.grid.getSnapInterval();
         const snappedTop = Math.round(newTop / snapInterval) * snapInterval;
 
         this.updateDragVisualPosition(snappedTop, dayIndex);
 
-        // Return current time and day for cursor badge
         return this.calculateCurrentTimeAndDay(snappedTop, dayIndex);
     }
 
     onDrop() {
-        // Update `originalEvent` position to match dragOperationVisual
-        // Make dragOperationVisual disappear
-        // Update `originalEvent` start and end date
-
         if (!this.isDragging) return;
 
         this.isDragging = false;
 
-        // Get final position from drag visual
         const finalTop = parseInt(this.dragOperationVisual.style.top);
         const finalDayIndex = parseInt(this.dragOperationVisual.dataset.dayIndex || '0');
 
-
-        // Update the event if onTimeChange callback is provided
         if (this.onTimeChange) {
             this.updateEventTime(finalTop, finalDayIndex);
         }
-        // Hide drag visual
-        this.dragOperationVisual.style.display = 'none';
 
-        // Show original event
+        this.dragOperationVisual.style.display = 'none';
         this.originalEvent.style.visibility = 'visible';
 
-        // Return the new position data for the parent component to handle
         return {
             top: finalTop,
             dayIndex: finalDayIndex,
@@ -655,38 +559,28 @@ class DragOperation {
     private updateEventTime(top: number, dayIndex: number) {
         if (!this.onTimeChange) return;
 
-        // Calculate new start time based on final position
         const newHour = Math.floor(top / this.timeSlotHeight) + 6;
         const newMinutes = Math.floor((top % this.timeSlotHeight) / this.timeSlotHeight * 60);
         const snappedMinutes = Math.round(newMinutes / 5) * 5;
 
-        // Use date utilities to properly handle server dates
         const originalStart = fromDateServer(this.originalEventData.datetime_start);
         const originalEnd = fromDateServer(this.originalEventData.datetime_end);
         const durationMs = originalEnd.getTime() - originalStart.getTime();
 
-        // Create a new date based on the current week and day index
-        const currentWeekToUse = this.currentWeek || new Date();
-        const startOfWeek = getStartOfWeek(currentWeekToUse);
+        // For routine events, create a template date (using Monday of 1970 as base)
+        const baseDate = new Date(1970, 0, 5); // Jan 5, 1970 was a Monday
+        const targetDate = new Date(baseDate);
+        targetDate.setDate(baseDate.getDate() + dayIndex);
 
-        // Create the target date for the new day
-        const targetDate = new Date(startOfWeek);
-        targetDate.setDate(startOfWeek.getDate() + dayIndex);
-
-        // Set the new time on the target date
         const newStartTime = new Date(targetDate);
         newStartTime.setHours(newHour, snappedMinutes, 0, 0);
 
         const newEndTime = new Date(newStartTime.getTime() + durationMs);
 
-
-
-        // Apply the change
         this.onTimeChange(this.originalEventData, newStartTime, newEndTime);
     }
 
     cancel() {
-        // Cancel the drag operation and restore original state
         this.isDragging = false;
         this.originalEvent.style.visibility = 'visible';
         this.dragOperationVisual.style.display = 'none';
@@ -697,25 +591,33 @@ class DragOperation {
     }
 }
 
-interface WeeklyCalendarProps {
-    initialDate?: Date;
+interface RoutineProps {
+    initialOwner?: string;
+    initialRoutineName?: string;
 }
 
-const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
+const Routine: React.FC<RoutineProps> = ({
+    initialOwner = 'default',
+    initialRoutineName = 'work'
+}) => {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6 s 23
+    const hours = Array.from({ length: 18 }, (_, i) => i + 6);
 
-    // Use the sizing hook
     const { containerRef, timeSlotHeight, totalCalendarHeight, weekWidth } = useCalendarSizing();
 
     const [events, setEvents] = useState<Event[]>([]);
-    const [currentWeek, setCurrentWeek] = useState<Date>(initialDate || new Date());
+    const [owner, setOwner] = useState<string>(initialOwner);
+    const [routineName, setRoutineName] = useState<string>(initialRoutineName);
     const [dayAxis, setDayAxis] = useState<GridWeek | null>(null);
     const calendarContentRef = useRef<HTMLDivElement>(null);
 
     // Drag and drop state
     const [draggedEvent, setDraggedEvent] = useState<Event | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+
+    // Copy/paste state
+    const [copiedDayEvents, setCopiedDayEvents] = useState<Event[] | null>(null);
+    const [copiedDayName, setCopiedDayName] = useState<string | null>(null);
 
     // Modal state (unified for both create and edit)
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -726,7 +628,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
     // Event handlers
     const handleEventClick = (event: Event) => {
         console.log('Event clicked:', event);
-        // Single click - could add quick actions here if needed
     };
 
     const handleEventDoubleClick = (event: Event) => {
@@ -736,45 +637,27 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
         setIsModalOpen(true);
     };
 
-    const handleEventEdit = (event: Event) => {
-        console.log('Edit event:', event);
-        // Add edit functionality here
-    };
-
-    const handleEventDelete = (event: Event) => {
-        console.log('Delete event:', event);
-        // Add delete functionality here
-    };
-
     const handleDayClick = (dayName: string, event: React.MouseEvent) => {
-        // Don't show modal if dragging
         if (isDragging) return;
 
-        // Calculate which time slot was clicked
         const dayElement = event.currentTarget;
         const rect = dayElement.getBoundingClientRect();
         const clickY = event.clientY - rect.top;
 
-        // Calculate the time based on click position
-        // Each hour slot has a height of timeSlotHeight pixels
-        // Start hour is 6, so we need to add 6 to the calculated hour
-        const totalMinutesFromStart = (clickY / timeSlotHeight) * 60; // Convert to minutes
+        const totalMinutesFromStart = (clickY / timeSlotHeight) * 60;
         const hoursFromStart = Math.floor(totalMinutesFromStart / 60);
-        const minutesInHour = Math.floor((totalMinutesFromStart % 60) / 15) * 15; // Snap to 15-minute intervals
+        const minutesInHour = Math.floor((totalMinutesFromStart % 60) / 15) * 15;
 
-        const clickedHour = Math.max(6, Math.min(23, 6 + hoursFromStart)); // Clamp between 6-23
-        const clickedMinutes = Math.min(45, minutesInHour); // Clamp minutes to max 45
+        const clickedHour = Math.max(6, Math.min(23, 6 + hoursFromStart));
+        const clickedMinutes = Math.min(45, minutesInHour);
 
-
-
-        // Calculate the date for the clicked day
+        // For routine events, we use a template date (Monday of 1970 as base)
         const dayIndex = days.indexOf(dayName);
-        const startOfWeek = getStartOfWeek(currentWeek);
-        const clickedDate = new Date(startOfWeek);
-        clickedDate.setDate(startOfWeek.getDate() + dayIndex);
+        const baseDate = new Date(1970, 0, 5); // Jan 5, 1970 was a Monday
+        const clickedDate = new Date(baseDate);
+        clickedDate.setDate(baseDate.getDate() + dayIndex);
 
-        // Set modal state and open it for creating a new event
-        setEditingEvent(null); // Clear any editing event
+        setEditingEvent(null);
         setModalInitialDate(clickedDate);
         setModalInitialTime(`${clickedHour.toString().padStart(2, '0')}:${clickedMinutes.toString().padStart(2, '0')}`);
         setIsModalOpen(true);
@@ -782,21 +665,18 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
 
     const handleEventTimeChange = async (event: Event, newStartTime: Date, newEndTime: Date) => {
         try {
-            // Only update if the event has an ID
             if (event.id !== undefined) {
-                // Convert dates to server format using utility function
                 const startTimeServer = toDateServer(newStartTime);
                 const endTimeServer = toDateServer(newEndTime);
 
-
-
-                // Update the event on the server
                 await recipeAPI.updateEvent(event.id, {
                     datetime_start: startTimeServer,
-                    datetime_end: endTimeServer
+                    datetime_end: endTimeServer,
+                    template: true,
+                    owner: owner,
+                    name: routineName
                 });
 
-                // Update the event in the local events array
                 setEvents(prevEvents =>
                     prevEvents.map(e =>
                         e.id === event.id
@@ -810,167 +690,233 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                 );
             }
         } catch (error) {
-            console.error('Error updating event:', error);
-            // Optionally show an error message to the user
+            console.error('Error updating routine event:', error);
         }
 
-        // Clear drag state
         setIsDragging(false);
         setDraggedEvent(null);
     };
 
-    // Handle drag start
     const handleDragStart = (event: Event, _position: { top: number; height: number }) => {
-        // Set the dragged event and start dragging state
         setDraggedEvent(event);
         setIsDragging(true);
     };
 
-    // Handle event creation
-    const handleEventCreated = (newEvent: Event) => {
-        // Add the new event to the events list
-        setEvents(prevEvents => [...prevEvents, newEvent]);
-        // Close the modal
-        setIsModalOpen(false);
+    const handleEventCreated = async (newEvent: Event) => {
+        try {
+            // Override with routine-specific properties
+            const routineEvent = await recipeAPI.createEvent({
+                ...newEvent,
+                template: true,
+                owner: owner,
+                name: routineName
+            });
+            setEvents(prevEvents => [...prevEvents, routineEvent]);
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Error creating routine event:', error);
+        }
     };
 
-    // Handle event update
-    const handleEventUpdated = (updatedEvent: Event) => {
-        // Update the event in the events list
-        setEvents(prevEvents =>
-            prevEvents.map(e =>
-                e.id === updatedEvent.id ? updatedEvent : e
-            )
-        );
-        // Close the modal
-        setIsModalOpen(false);
-        setEditingEvent(null);
+    const handleEventUpdated = async (updatedEvent: Event) => {
+        try {
+            // Ensure template properties are maintained
+            const routineEvent = await recipeAPI.updateEvent(updatedEvent.id!, {
+                ...updatedEvent,
+                template: true,
+                owner: owner,
+                name: routineName
+            });
+            setEvents(prevEvents =>
+                prevEvents.map(e =>
+                    e.id === routineEvent.id ? routineEvent : e
+                )
+            );
+            setIsModalOpen(false);
+            setEditingEvent(null);
+        } catch (error) {
+            console.error('Error updating routine event:', error);
+        }
     };
 
-    // Handle event deletion
     const handleEventDeleted = (eventId: number) => {
-        // Remove the event from the events list
         setEvents(prevEvents =>
             prevEvents.filter(e => e.id !== eventId)
         );
-        // Close the modal
         setIsModalOpen(false);
         setEditingEvent(null);
     };
 
-    // Navigation functions
-    const goToPreviousWeek = () => {
-        setCurrentWeek(prevWeek => {
-            const newWeek = new Date(prevWeek);
-            newWeek.setDate(newWeek.getDate() - 7);
-            return newWeek;
-        });
-    };
-
-    const goToNextWeek = () => {
-        setCurrentWeek(prevWeek => {
-            const newWeek = new Date(prevWeek);
-            newWeek.setDate(newWeek.getDate() + 7);
-            return newWeek;
-        });
-    };
-
-    const goToToday = () => {
-        setCurrentWeek(new Date());
-    };
-
-
-
-    // Check if a given day index is today
-    const isDayToday = (dayIndex: number) => {
-        const startOfWeek = getStartOfWeek(currentWeek);
-        const dayDate = new Date(startOfWeek);
-        dayDate.setDate(startOfWeek.getDate() + dayIndex);
-
-        return isToday(dayDate);
-    };
-
-    const fetchEvents = async () => {
+    const fetchRoutineEvents = async () => {
         try {
-            const startOfWeek = getStartOfWeek(currentWeek);
-            const endOfWeek = getEndOfWeek(currentWeek);
-
-            // Convert dates to server format using utility function
-            const startOfWeekUTC = formatDateRangeForServer(startOfWeek, false);
-            const endOfWeekUTC = formatDateRangeForServer(endOfWeek, true);
-
-
-
-            const data = await recipeAPI.getEvents(startOfWeekUTC, endOfWeekUTC);
+            const data = await recipeAPI.getRoutineEvents(owner, routineName);
             setEvents(data);
         } catch (error) {
-            console.error('Error fetching events:', error);
-            // Set empty array on error to avoid crashes
+            console.error('Error fetching routine events:', error);
             setEvents([]);
         }
     };
 
-    // Filter events for a specific day
+    // Filter events for a specific day (Monday=0, Sunday=6)
     const getEventsForDay = (dayName: string): Event[] => {
         const dayIndex = days.indexOf(dayName);
         if (dayIndex === -1) return [];
 
-        const startOfWeek = getStartOfWeek(currentWeek);
-        const targetDate = new Date(startOfWeek);
-        targetDate.setDate(startOfWeek.getDate() + dayIndex);
-
         return events.filter(event => {
             const eventDate = fromDateServer(event.datetime_start);
-            return eventDate.toDateString() === targetDate.toDateString();
+            // Day of week: 0=Sunday, 1=Monday, etc. We need to convert to 0=Monday
+            const eventDayOfWeek = (eventDate.getDay() + 6) % 7;
+            return eventDayOfWeek === dayIndex;
         });
     };
 
-    // Create DayAxis when calendar content is available
     useEffect(() => {
-        const newDayAxis = new GridWeek(6, 23, totalCalendarHeight, timeSlotHeight, weekWidth); // Placeholder for weekWidth
+        const newDayAxis = new GridWeek(6, 23, totalCalendarHeight, timeSlotHeight, weekWidth);
         setDayAxis(newDayAxis);
     }, [totalCalendarHeight, timeSlotHeight, weekWidth]);
 
-    // Fetch events when component mounts or week changes
     useEffect(() => {
-        fetchEvents();
-    }, [currentWeek]);
+        fetchRoutineEvents();
+    }, [owner, routineName]);
+
+    // Copy all events from a specific day
+    const handleCopyDay = (dayName: string) => {
+        const eventsForDay = getEventsForDay(dayName);
+        if (eventsForDay.length === 0) {
+            alert(`No events to copy from ${dayName}`);
+            return;
+        }
+        setCopiedDayEvents(eventsForDay);
+        setCopiedDayName(dayName);
+        alert(`Copied ${eventsForDay.length} event(s) from ${dayName}`);
+    };
+
+    // Paste copied events to a specific day
+    const handlePasteDay = async (targetDayName: string) => {
+        if (!copiedDayEvents || copiedDayEvents.length === 0) {
+            alert('No events copied. Copy a day first.');
+            return;
+        }
+
+        const sourceDayIndex = days.indexOf(copiedDayName || '');
+        const targetDayIndex = days.indexOf(targetDayName);
+
+        if (sourceDayIndex === -1 || targetDayIndex === -1) {
+            alert('Invalid day selection');
+            return;
+        }
+
+        try {
+            // Calculate day offset
+            const dayOffset = targetDayIndex - sourceDayIndex;
+
+            // Create new events for the target day
+            const pastePromises = copiedDayEvents.map(async (event) => {
+                const eventStart = fromDateServer(event.datetime_start);
+                const eventEnd = fromDateServer(event.datetime_end);
+
+                // Create new date with the day offset
+                const newStart = new Date(eventStart);
+                newStart.setDate(eventStart.getDate() + dayOffset);
+
+                const newEnd = new Date(eventEnd);
+                newEnd.setDate(eventEnd.getDate() + dayOffset);
+
+                const newEvent = {
+                    title: event.title,
+                    description: event.description,
+                    datetime_start: toDateServer(newStart),
+                    datetime_end: toDateServer(newEnd),
+                    location: event.location,
+                    color: event.color,
+                    kind: event.kind,
+                    done: false,
+                    template: true,
+                    recuring: false,
+                    active: true,
+                    owner: owner,
+                    name: routineName
+                };
+
+                return recipeAPI.createEvent(newEvent);
+            });
+
+            const createdEvents = await Promise.all(pastePromises);
+
+            // Add the new events to the state
+            setEvents(prevEvents => [...prevEvents, ...createdEvents]);
+
+            alert(`Pasted ${createdEvents.length} event(s) to ${targetDayName}`);
+        } catch (error) {
+            console.error('Error pasting events:', error);
+            alert('Failed to paste events');
+        }
+    };
 
     return (
         <Box
-            className="cls-calendar"
+            className="cls-routine"
             h="100%"
             w="100%"
         >
-            {/* Navigation Header */}
-            <Box mb={4} p={2} bg="white" borderRadius="md" boxShadow="sm">
-                <HStack justify="space-between" align="center">
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={goToPreviousWeek}
-                    >
-                        ← Previous
-                    </Button>
-                    <Button
-                        variant="solid"
-                        size="sm"
-                        colorScheme="blue"
-                        onClick={goToToday}
-                    >
-                        Today
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={goToNextWeek}
-                    >
-                        Next →
-                    </Button>
-
-
-                </HStack>
+            {/* Header with Owner and Routine Name */}
+            <Box mb={4} p={4} bg="white" borderRadius="md" boxShadow="sm">
+                <VStack gap={4} align="stretch">
+                    <HStack justify="space-between" align="center">
+                        <Heading size="lg">Routine Template</Heading>
+                        {copiedDayName && copiedDayEvents && (
+                            <Box
+                                px={3}
+                                py={1}
+                                bg="blue.100"
+                                borderRadius="md"
+                                border="1px solid"
+                                borderColor="blue.300"
+                            >
+                                <Text fontSize="sm" fontWeight="medium" color="blue.700">
+                                    📋 Copied: {copiedDayName} ({copiedDayEvents.length} event{copiedDayEvents.length !== 1 ? 's' : ''})
+                                </Text>
+                            </Box>
+                        )}
+                    </HStack>
+                    <HStack gap={4}>
+                        <HStack flex="1">
+                            <Text mb={2} fontWeight="medium">Owner</Text>
+                            <Input
+                                value={owner}
+                                onChange={(e) => setOwner(e.target.value)}
+                                placeholder="Enter owner name"
+                            />
+                        </HStack>
+                        <HStack flex="1">
+                            <Text mb={2} fontWeight="medium">Routine Name</Text>
+                            <select
+                                value={routineName}
+                                onChange={(e) => setRoutineName(e.target.value)}
+                                style={{
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #e2e8f0',
+                                    width: '100%',
+                                    backgroundColor: 'white'
+                                }}
+                            >
+                                <option value="work">Work</option>
+                                <option value="sport">Sport</option>
+                                <option value="relax">Relax</option>
+                                <option value="vacation">Vacation</option>
+                                <option value="study">Study</option>
+                                <option value="family">Family</option>
+                                <option value="personal">Personal</option>
+                            </select>
+                        </HStack>
+                        <Box display="flex" alignItems="flex-end">
+                            <Button colorScheme="blue" onClick={fetchRoutineEvents}>
+                                Load Routine
+                            </Button>
+                        </Box>
+                    </HStack>
+                </VStack>
             </Box>
 
             <HStack ref={containerRef} h="100%" w="100%" maxH="100%" maxW="100%">
@@ -981,33 +927,27 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     borderColor="gray.300"
                     borderRadius="md"
                     bg="white"
-                    // minH="600px"
                     className="class-grid"
                     flex="1"
                     width="100%"
                     height="100%"
                 >
-                    {/* Empty top-left corner */}
                     <GridItem
                         border="1px solid"
                         borderColor="gray.200"
                         bg="gray.50"
                     />
 
-                    {/* Day headers */}
-                    {days.map((day, index) => {
-                        const startOfWeek = getStartOfWeek(currentWeek);
-                        const dayDate = new Date(startOfWeek);
-                        dayDate.setDate(startOfWeek.getDate() + index);
-
-                        const formattedDate = formatDateDisplay(dayDate);
-
+                    {/* Day headers - just day names, no dates */}
+                    {days.map((day) => {
+                        const eventsCount = getEventsForDay(day).length;
+                        const isCopiedDay = copiedDayName === day;
                         return (
                             <GridItem
                                 key={day}
                                 border="1px solid"
-                                borderColor="gray.200"
-                                bg="blue.50"
+                                borderColor={isCopiedDay ? "blue.400" : "gray.200"}
+                                bg={isCopiedDay ? "blue.100" : "blue.50"}
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -1015,11 +955,33 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                 fontSize="sm"
                                 flexDirection="column"
                                 py={2}
+                                gap={1}
                             >
-                                <Text>{day}</Text>
-                                <Text fontSize="xs" fontWeight="normal" color="gray.600" textAlign="center">
-                                    {formattedDate}
-                                </Text>
+                                <HStack gap={1}>
+                                    <Text>{day}</Text>
+                                    <HStack> 
+                                        <Button
+                                            size="xs"
+                                            variant="ghost"
+                                            colorScheme="blue"
+                                            onClick={() => handleCopyDay(day)}
+                                            title={`Copy ${day} (${eventsCount} events)`}
+                                            disabled={eventsCount === 0}
+                                        >
+                                            📋
+                                        </Button>
+                                        <Button
+                                            size="xs"
+                                            variant="ghost"
+                                            colorScheme="green"
+                                            onClick={() => handlePasteDay(day)}
+                                            title={`Paste to ${day}`}
+                                            disabled={!copiedDayEvents || copiedDayEvents.length === 0}
+                                        >
+                                            📌
+                                        </Button>
+                                    </HStack>
+                                </HStack>
                             </GridItem>
                         );
                     })}
@@ -1052,7 +1014,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                         ))}
                     </GridItem>
 
-                    {/* One massive content area spanning all 7 days and all hours */}
+                    {/* Content area spanning all 7 days */}
                     <GridItem
                         colSpan={7}
                         bg="white"
@@ -1066,7 +1028,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                         minH="0"
                         height={`${timeSlotHeight * hours.length}px`}
                     >
-                        {/* Mock event for drag preview - always rendered but controlled by CSS */}
+                        {/* Mock event for drag preview */}
                         <Box
                             data-mock-event="true"
                             position="absolute"
@@ -1107,26 +1069,24 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                             )}
                         </Box>
 
-                        {/* Day columns inside the content area */}
+                        {/* Day columns */}
                         <Grid
                             templateColumns="repeat(7, 1fr)"
                             gap={0.5}
                             flex="1"
                             minH="0"
                         >
-                            {days.map((day, dayIndex) => (
+                            {days.map((day) => (
                                 <GridItem
                                     key={day}
                                     borderTop="1px solid"
                                     borderLeft="1px solid"
                                     borderRight="1px solid"
-                                    borderColor={"gray.200"}
-                                    // borderColor={isDayToday(dayIndex)  ?"gray.500" : "gray.200" }
-                                    bg={isDayToday(dayIndex) ? "#fffae6" : "white"}
+                                    borderColor="gray.200"
+                                    bg="white"
                                     _hover={{ bg: "gray.50" }}
                                     minH="200px"
-                                    id={`calendar-${day}`}
-                                    // className={isToday(dayIndex) ? "current-day" : ""}
+                                    id={`routine-${day}`}
                                     position="relative"
                                     height="100%"
                                     cursor="pointer"
@@ -1150,22 +1110,19 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                     {/* Render events for this day */}
                                     {dayAxis && getEventsForDay(day).map((event) => {
                                         const position = dayAxis.getEventPosition(event);
-                                        const dayIndex = days.indexOf(day);
+                                        const dayIdx = days.indexOf(day);
                                         return (
-                                            <CalendarEvent
+                                            <RoutineEvent
                                                 key={event.id}
                                                 event={event}
                                                 position={position}
                                                 onClick={handleEventClick}
                                                 onDoubleClick={handleEventDoubleClick}
-                                                onEdit={handleEventEdit}
-                                                onDelete={handleEventDelete}
                                                 onTimeChange={handleEventTimeChange}
                                                 timeSlotHeight={timeSlotHeight}
                                                 snapInterval={dayAxis.getSnapInterval()}
                                                 gridWeek={dayAxis}
-                                                dayIndex={dayIndex}
-                                                currentWeek={currentWeek}
+                                                dayIndex={dayIdx}
                                                 isDragging={isDragging && draggedEvent?.id === event.id}
                                                 onDragStart={handleDragStart}
                                             />
@@ -1177,7 +1134,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     </GridItem>
                 </Grid>
 
-                {/* Unified Event Modal (Create/Edit) */}
+                {/* Event Modal */}
                 <EventModal
                     isOpen={isModalOpen}
                     onClose={() => {
@@ -1198,4 +1155,5 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
     );
 };
 
-export default WeeklyCalendar;
+export default Routine;
+

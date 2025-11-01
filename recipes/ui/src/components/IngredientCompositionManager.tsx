@@ -1,6 +1,7 @@
 import { useState, useEffect, FC } from 'react';
 import { Box, Flex, Spinner, Text, Button, VStack } from '@chakra-ui/react';
-import { recipeAPI, IngredientComposition } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { IngredientComposition } from '../services/type';
 import NutritionFacts from './NutritionFacts';
 
 interface IngredientCompositionManagerProps {

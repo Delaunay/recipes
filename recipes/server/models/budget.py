@@ -5,6 +5,11 @@ from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from .common import Base
 
 
+#
+#  We need to handle different source of information
+#  and then make them match
+#
+
 class Receipt(Base):
     """Receipt you receive from the seller"""
     

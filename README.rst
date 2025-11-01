@@ -36,30 +36,3 @@ Lifestyle tracking
 
 
 
-Features
---------
-
-* Password manager
-* Receipt tracking
-* Calendar
-    * Event
-* Todo lists
-* Telegram Integration
-* KeyValue Store
-* Cooking Recipe
-    * Unit Conversion
-* Meal Planning
-    * Nutrition Info
-    * Budget
-* Nutrition Info
-* Blog | Project tracking
-    * Hobbies
-
-
-Doable
-------
-
-* Mode telegram integration
-* Garmin Integration ?
-* Google Calendar Import / Export ?
-* 

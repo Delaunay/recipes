@@ -8,7 +8,7 @@ import {
     SimpleGrid,
     Flex,
 } from '@chakra-ui/react';
-import { IngredientComposition } from '../services/api';
+import type { IngredientComposition } from '../services/type';
 
 // Icon components
 const DeleteIcon = () => (
@@ -79,7 +79,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
 
     // We do not want to manually edit numbers from USDA, they are baselines
     // but we should be able to copy them to make our own
-    const isReallyEditable = selectedSource == "USDA"? false : editable;
+    const isReallyEditable = selectedSource == "USDA" ? false : editable;
 
     // Get unique sources from compositions or use provided sources
     let sources: string[] = availableSources || [];

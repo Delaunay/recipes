@@ -13,7 +13,8 @@ import {
   Input,
   SimpleGrid,
 } from '@chakra-ui/react';
-import { recipeAPI, UnitConversion, Ingredient } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { UnitConversion, Ingredient } from '../services/type';
 
 // Simple icon components
 const EditIcon = () => (

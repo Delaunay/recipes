@@ -1,4 +1,5 @@
-import { recipeAPI, UnitConversion, Ingredient } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { UnitConversion, Ingredient } from '../services/type';
 
 // Constants matching the Python logic
 const DEFAULT_VOLUME_UNIT = 'ml';

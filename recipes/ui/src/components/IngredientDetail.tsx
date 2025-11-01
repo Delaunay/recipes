@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Spinner, Text, Button, VStack, HStack, SimpleGrid, GridItem, Input, Textarea, Badge, IconButton } from '@chakra-ui/react';
-import { recipeAPI, Ingredient, ConversionMatrix } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { Ingredient, ConversionMatrix } from '../services/type';
 import ConversionMatrixComponent from './ConversionMatrix';
 import IngredientUnitsManager from './IngredientUnitsManager';
 import IngredientCompositionManager from './IngredientCompositionManager';

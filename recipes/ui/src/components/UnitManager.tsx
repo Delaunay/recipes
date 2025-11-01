@@ -11,7 +11,8 @@ import {
     Input,
     Badge
 } from '@chakra-ui/react';
-import { recipeAPI, UnitsUsedInRecipes, Ingredient } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { UnitsUsedInRecipes, Ingredient } from '../services/type';
 
 const UnitManager: React.FC = () => {
     const [unitsData, setUnitsData] = useState<UnitsUsedInRecipes | null>(null);

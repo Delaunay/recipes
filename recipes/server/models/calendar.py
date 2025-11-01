@@ -26,6 +26,16 @@ from .common import Base
 #   time to do it
 #
 
+#
+#   New IDEA
+#
+#       Calendar is used to specify template days
+#
+#           Those are used to generate
+#           A list of task to achive durint the day
+#
+#
+
 
 
 #
@@ -64,6 +74,9 @@ class Event(Base):
     recuring = Column(Boolean, default=False)
     active = Column(Boolean, default=True)
 
+    owner = Column(String(200))
+    name = Column(String(200))
+
     extension = Column(JSON)
 
     # Relationships
@@ -90,5 +103,7 @@ class Event(Base):
             'people_count': self.people_count,
             'template': self.template,
             'recuring': self.recuring,
-            'active': self.active
+            'active': self.active,
+            'owner': self.owner,
+            'name': self.name
         }

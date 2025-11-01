@@ -17,7 +17,8 @@ import {
   IconButton,
   Heading,
 } from '@chakra-ui/react';
-import { RecipeData, RecipeIngredient, Instruction, recipeAPI, imagePath } from '../services/api';
+import { recipeAPI, imagePath } from '../services/api';
+import type { RecipeData, RecipeIngredient, Instruction } from '../services/type';
 import { convert, getAvailableUnits } from '../utils/unit_cvt';
 import { formatQuantity, parseFractionToDecimal } from '../utils/fractions';
 import ImageUpload from './ImageUpload';

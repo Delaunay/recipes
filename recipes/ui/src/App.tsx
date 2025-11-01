@@ -14,6 +14,7 @@ import IngredientDetail from './components/IngredientDetail';
 import UnitConversions from './components/UnitConversions';
 import UnitManager from './components/UnitManager';
 import Calendar from './components/Calendar';
+import Routine from './components/Routine';
 import Tasks from './components/Tasks';
 import MealPlanning from './components/MealPlanning';
 import GroceryReceipts from './components/GroceryReceipts';
@@ -42,6 +43,7 @@ function App() {
             <Route path="/budget" element={<Budget />} />
             <Route path="/planning" element={<MealPlanning />} />
             <Route path="/calendar" element={<Calendar />} />
+            <Route path="/routine" element={<Routine />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/ingredients" element={<Ingredients />} />
             <Route path="/ingredients/:identifier" element={<IngredientDetail />} />

@@ -4,22 +4,32 @@ from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 
 from .common import Base
 
+#
+# The goal here is to make an e2e encrypted KeyValue store
+# and implement things like password manager on top of it
+#
 
-class EncryptedChannel(Base):
-    __tablename__ = 'channels'
-    _id = Column(Integer, primary_key=True)
+# I thing e2e encrypted chat is out of scope for this app
+# class EncryptedChannel(Base):
+#     __tablename__ = 'channels'
+#     _id = Column(Integer, primary_key=True)
 
-    # Actually the conversation needs to be encrypted in a way that both
-    # people can decrypt the messages
-    # The clients need to derive a shared key
+#     # Actually the conversation needs to be encrypted in a way that both
+#     # people can decrypt the messages
+#     # The clients need to derive a shared key
 
 
-class EncryptedConversation(Base):
-    __tablename__ = 'conversations'
+# class EncryptedConversation(Base):
+#     __tablename__ = 'conversations'
 
-    _id         = Column(Integer, primary_key=True)
-    chanel_id   = Column(Integer, ForeignKey('channels._id'))
-    message_id  = Column(Integer, ForeignKey('messages._id'))
+#     _id         = Column(Integer, primary_key=True)
+#     chanel_id   = Column(Integer, ForeignKey('channels._id'))
+#     message_id  = Column(Integer, ForeignKey('messages._id'))
+
+
+#
+# Not sure if that exploded view is that interesting
+# maybe we should just encrypt a blob of info for a given website
 
 
 class PasswordManager(Base):
@@ -28,7 +38,7 @@ class PasswordManager(Base):
     namespace = Column(String(256), unique=True)   # Clear
     password_id  = Column(Integer, ForeignKey('messages._id'))
     recovery_codes_id = Column(Integer, ForeignKey('messages._id'))
-    
+
     security_question_1_id = Column(Integer, ForeignKey('messages._id'))
     security_question_2_id = Column(Integer, ForeignKey('messages._id'))
     security_question_3_id = Column(Integer, ForeignKey('messages._id'))

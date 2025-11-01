@@ -7,7 +7,7 @@ import {
     HStack,
     Heading
 } from '@chakra-ui/react';
-import { ConversionMatrix as ConversionMatrixType } from '../services/api';
+import type { ConversionMatrix as ConversionMatrixType } from '../services/type';
 
 interface ConversionMatrixProps {
     matrix: ConversionMatrixType | null;

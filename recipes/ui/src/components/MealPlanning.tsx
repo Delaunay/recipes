@@ -12,7 +12,8 @@ import {
     IconButton,
     Flex,
 } from '@chakra-ui/react';
-import { recipeAPI, RecipeData, WeeklyRecipe, PlannedMeal, MealPlan } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { RecipeData, WeeklyRecipe, PlannedMeal, MealPlan } from '../services/type';
 import { TelegramClient, TelegramStorage } from '../services/telegram';
 import { TelegramSettings } from './TelegramSettings';
 

@@ -9,7 +9,8 @@ import {
     Textarea,
     Flex,
 } from '@chakra-ui/react';
-import { recipeAPI, Task, SubTask } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { Task, SubTask } from '../services/type';
 
 interface TaskNode {
     task: Task;

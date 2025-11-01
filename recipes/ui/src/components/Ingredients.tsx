@@ -12,7 +12,8 @@ import {
   Badge,
   SimpleGrid,
 } from '@chakra-ui/react';
-import { recipeAPI, Ingredient } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { Ingredient } from '../services/type';
 
 // Icon components
 const DeleteIcon = () => (

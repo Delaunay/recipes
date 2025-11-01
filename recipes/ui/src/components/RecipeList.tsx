@@ -14,7 +14,8 @@ import {
   Input,
   Flex,
 } from '@chakra-ui/react';
-import { recipeAPI, RecipeData, imagePath } from '../services/api';
+import { recipeAPI, imagePath } from '../services/api';
+import type { RecipeData } from '../services/type';
 
 // Component filter states
 type ComponentFilter = 'all' | 'components' | 'dishes';

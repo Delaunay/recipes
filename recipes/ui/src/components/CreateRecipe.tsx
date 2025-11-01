@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button, Text } from '@chakra-ui/react';
 import Recipe from './Recipe';
-import { recipeAPI, RecipeData } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { RecipeData } from '../services/type';
 
 const CreateRecipe = () => {
   const navigate = useNavigate();

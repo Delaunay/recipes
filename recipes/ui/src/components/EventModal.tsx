@@ -9,7 +9,8 @@ import {
     Text,
     Heading,
 } from '@chakra-ui/react';
-import { Event, recipeAPI } from '../services/api';
+import { recipeAPI } from '../services/api';
+import type { Event } from '../services/type';
 import { datetimeLocalToServer, serverToDatetimeLocal } from '../utils/dateUtils';
 
 interface EventModalProps {
