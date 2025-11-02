@@ -9,7 +9,9 @@ import {
     Container,
     Button,
     IconButton,
-    Portal
+    Portal,
+    Input,
+    Textarea
 } from '@chakra-ui/react';
 import { Article, ArticleBlock, ArticleBlockKind } from '../services/type';
 import mockArticles from '../mock/ArticleMockData';
@@ -76,6 +78,9 @@ const BLOCK_TYPES: { value: ArticleBlockKind; label: string; icon: string }[] = 
     { value: 'latex', label: 'LaTeX', icon: 'Σ' },
     { value: 'mermaid', label: 'Diagram', icon: '📊' },
     { value: 'reference', label: 'Reference', icon: '📚' },
+    { value: 'toc', label: 'Table of Contents', icon: '📑' },
+    { value: 'spreadsheet', label: 'Spreadsheet', icon: '📊' },
+    { value: 'plot', label: 'Vega Plot', icon: '📈' },
 ];
 
 interface BlockSettingsModalProps {
@@ -464,6 +469,7 @@ interface BlockViewEditorProps {
     onDragEnd?: () => void;
     onDrop?: (targetBlockId: number | undefined, position: 'before' | 'after') => void;
     draggedBlockId?: number | undefined;
+    article?: Article; // For TOC and other auto-generated blocks
 }
 
 const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
@@ -480,7 +486,8 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
     onDragStart,
     onDragEnd,
     onDrop,
-    draggedBlockId
+    draggedBlockId,
+    article
 }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
@@ -516,10 +523,21 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
     };
 
     const renderBlock = () => {
+        // For TOC blocks, inject all blocks from the article into their data
+        const blockToRender = block.kind === 'toc'
+            ? {
+                ...block,
+                data: {
+                    ...block.data,
+                    allBlocks: article?.blocks || []
+                }
+            }
+            : block;
+
         // Use the BlockFactory to render the block
         return (
             <BlockRenderer
-                block={block}
+                block={blockToRender}
                 readonly={readonly}
                 onUpdate={onUpdate}
                 level={level}
@@ -532,6 +550,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
             />
         );
     };
+
 
 
     const handleMouseEnter = (e: React.MouseEvent) => {
@@ -624,6 +643,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
 
             <Box
                 ref={blockRef}
+                data-block-id={block.id}
                 position="relative"
                 borderRadius="md"
                 transition="all 0.2s"
@@ -759,6 +779,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                                 onDragEnd={onDragEnd}
                                 onDrop={onDrop}
                                 draggedBlockId={draggedBlockId}
+                                article={article}
                             />
                         ))}
                     </Box>
@@ -1001,36 +1022,151 @@ const ArticleViewEditor: React.FC = () => {
             </Box>
 
             {/* Article Header */}
-            <Box mb={8}>
-                <HStack mb={4} gap={2}>
-                    {displayArticle.tags?.map((tag: string, index: number) => (
-                        <Badge key={index} colorScheme="blue">
-                            {tag}
-                        </Badge>
-                    ))}
-                </HStack>
+            <Box mb={8} p={readonly ? 0 : 4} bg={readonly ? 'transparent' : 'gray.50'} borderRadius="md">
+                {/* Tags */}
+                <Box mb={4}>
+                    {readonly ? (
+                        <HStack gap={2} flexWrap="wrap">
+                            {displayArticle.tags?.map((tag: string, index: number) => (
+                                <Badge key={index} colorScheme="blue">
+                                    {tag}
+                                </Badge>
+                            ))}
+                        </HStack>
+                    ) : (
+                        <VStack align="stretch" gap={2}>
+                            <Text fontSize="xs" fontWeight="bold" color="gray.600">
+                                TAGS
+                            </Text>
+                            <HStack gap={2} flexWrap="wrap">
+                                {displayArticle.tags?.map((tag: string, index: number) => (
+                                    <Badge
+                                        key={index}
+                                        colorScheme="blue"
+                                        display="flex"
+                                        alignItems="center"
+                                        gap={1}
+                                        pr={1}
+                                    >
+                                        {tag}
+                                        <Box
+                                            as="span"
+                                            cursor="pointer"
+                                            onClick={() => {
+                                                const newTags = displayArticle.tags?.filter((_: string, i: number) => i !== index);
+                                                updateArticle({ tags: newTags });
+                                            }}
+                                            ml={1}
+                                            fontWeight="bold"
+                                            _hover={{ color: 'red.500' }}
+                                        >
+                                            ×
+                                        </Box>
+                                    </Badge>
+                                ))}
+                                <Input
+                                    placeholder="Add tag..."
+                                    size="xs"
+                                    width="150px"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            const value = e.currentTarget.value.trim();
+                                            if (value) {
+                                                const newTags = [...(displayArticle.tags || []), value];
+                                                updateArticle({ tags: newTags });
+                                                e.currentTarget.value = '';
+                                            }
+                                        }
+                                    }}
+                                />
+                            </HStack>
+                        </VStack>
+                    )}
+                </Box>
 
-                <Heading
-                    as="h1"
-                    fontSize="2xl"
-                    mb={4}
-                    contentEditable={!readonly}
-                    suppressContentEditableWarning
-                    onBlur={(e) => updateArticle({ title: e.currentTarget.textContent || '' })}
-                    outline="none"
-                    _focus={{
-                        outline: readonly ? 'none' : '2px solid',
-                        outlineColor: 'blue.300',
-                        outlineOffset: '2px'
-                    }}
-                >
-                    {displayArticle.title}
-                </Heading>
+                {/* Title */}
+                {readonly ? (
+                    <Heading as="h1" fontSize="2xl" mb={4}>
+                        {displayArticle.title}
+                    </Heading>
+                ) : (
+                    <VStack align="stretch" gap={1} mb={4}>
+                        <Text fontSize="xs" fontWeight="bold" color="gray.600">
+                            TITLE
+                        </Text>
+                        <Input
+                            value={displayArticle.title}
+                            onChange={(e) => updateArticle({ title: e.target.value })}
+                            fontSize="2xl"
+                            fontWeight="bold"
+                            size="lg"
+                            bg="white"
+                        />
+                    </VStack>
+                )}
 
-                {displayArticle.namespace && (
-                    <Text color="gray.500" fontSize="sm" mb={2}>
-                        Namespace: {displayArticle.namespace}
-                    </Text>
+                {/* Namespace */}
+                {readonly ? (
+                    displayArticle.namespace && (
+                        <Text color="gray.500" fontSize="sm" mb={2}>
+                            Namespace: {displayArticle.namespace}
+                        </Text>
+                    )
+                ) : (
+                    <VStack align="stretch" gap={1} mb={4}>
+                        <Text fontSize="xs" fontWeight="bold" color="gray.600">
+                            NAMESPACE
+                        </Text>
+                        <Input
+                            value={displayArticle.namespace || ''}
+                            onChange={(e) => updateArticle({ namespace: e.target.value })}
+                            placeholder="e.g., tutorials/web-dev"
+                            size="sm"
+                            bg="white"
+                        />
+                    </VStack>
+                )}
+
+                {/* Extension (metadata) */}
+                {!readonly && (
+                    <VStack align="stretch" gap={1} mb={4}>
+                        <Text fontSize="xs" fontWeight="bold" color="gray.600">
+                            METADATA (JSON)
+                        </Text>
+                        <Textarea
+                            value={JSON.stringify(displayArticle.extension || {}, null, 2)}
+                            onChange={(e) => {
+                                try {
+                                    const parsed = JSON.parse(e.target.value);
+                                    updateArticle({ extension: parsed });
+                                } catch (error) {
+                                    // Invalid JSON, don't update
+                                }
+                            }}
+                            placeholder='{"author": "Your Name", "publishedDate": "2025-11-02"}'
+                            size="sm"
+                            fontFamily="monospace"
+                            fontSize="xs"
+                            minHeight="80px"
+                            bg="white"
+                        />
+                        <Text fontSize="xs" color="gray.500">
+                            Additional metadata like author, date, custom fields (must be valid JSON)
+                        </Text>
+                    </VStack>
+                )}
+
+                {/* Extension display in readonly mode */}
+                {readonly && displayArticle.extension && (
+                    <Box mb={2}>
+                        <HStack gap={4} fontSize="sm" color="gray.600" flexWrap="wrap">
+                            {Object.entries(displayArticle.extension).map(([key, value]) => (
+                                <Text key={key}>
+                                    <Text as="span" fontWeight="medium">{key}:</Text> {String(value)}
+                                </Text>
+                            ))}
+                        </HStack>
+                    </Box>
                 )}
 
                 <Box mt={6} borderBottom="1px solid" borderColor="gray.200" />
@@ -1084,6 +1220,7 @@ const ArticleViewEditor: React.FC = () => {
                         onDragEnd={handleDragEnd}
                         onDrop={handleDrop}
                         draggedBlockId={draggedBlockId}
+                        article={displayArticle}
                     />
                 ))}
             </VStack>

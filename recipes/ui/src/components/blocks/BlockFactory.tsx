@@ -14,6 +14,9 @@ import { LatexBlock } from './LatexBlock';
 import { MermaidBlock } from './MermaidBlock';
 import { ReferenceBlock } from './ReferenceBlock';
 import { FootnoteBlock } from './FootnoteBlock';
+import { TableOfContentsBlock } from './TableOfContentsBlock';
+import { SpreadsheetBlock } from './SpreadsheetBlock';
+import { VegaPlotBlock } from './VegaPlotBlock';
 
 // Import editors
 import { HeadingBlockEditor } from './HeadingBlockEditor';
@@ -28,6 +31,9 @@ import { LatexBlockEditor } from './LatexBlockEditor';
 import { MermaidBlockEditor } from './MermaidBlockEditor';
 import { ReferenceBlockEditor } from './ReferenceBlockEditor';
 import { FootnoteBlockEditor } from './FootnoteBlockEditor';
+import { TableOfContentsBlockEditor } from './TableOfContentsBlockEditor';
+import { SpreadsheetBlockEditor } from './SpreadsheetBlockEditor';
+import { VegaPlotBlockEditor } from './VegaPlotBlockEditor';
 
 /**
  * Block factory that maps block kinds to their corresponding components and editors
@@ -59,6 +65,9 @@ class BlockFactoryClass {
         this.register('mermaid', MermaidBlock, MermaidBlockEditor);
         this.register('reference', ReferenceBlock, ReferenceBlockEditor);
         this.register('footnote', FootnoteBlock, FootnoteBlockEditor);
+        this.register('toc', TableOfContentsBlock, TableOfContentsBlockEditor);
+        this.register('spreadsheet', SpreadsheetBlock, SpreadsheetBlockEditor);
+        this.register('plot', VegaPlotBlock, VegaPlotBlockEditor);
     }
 
     /**

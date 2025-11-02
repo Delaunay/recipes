@@ -10,10 +10,14 @@ export const ListBlock: React.FC<BlockComponentProps> = ({ block }) => {
         <Box
             as={ordered ? 'ol' : 'ul'}
             mb={4}
-            pl={6}
+            ml={4}
             css={{
+                listStyleType: ordered ? 'decimal' : 'disc',
+                listStylePosition: 'outside',
+                paddingLeft: '1.5rem',
                 '& li': {
-                    marginBottom: '0.5rem'
+                    marginBottom: '0.5rem',
+                    paddingLeft: '0.5rem'
                 }
             }}
         >

@@ -34,6 +34,16 @@ export const comprehensiveArticle: Article = {
                 text: 'This article demonstrates all available block types in the article system. Each block can be edited, reordered via drag-and-drop, and nested within other blocks. The system is designed to be modular and extensible.'
             }
         },
+        // Table of Contents (auto-generated)
+        {
+            id: 2.5,
+            page_id: 1,
+            kind: 'toc',
+            data: {
+                title: 'Table of Contents',
+                maxLevel: 3
+            }
+        },
         // Heading Level 2
         {
             id: 3,
@@ -123,7 +133,7 @@ function renderBlock(block: ArticleBlock) {
             page_id: 1,
             kind: 'image',
             data: {
-                url: 'https://via.placeholder.com/800x400/4299e1/ffffff?text=Sample+Image',
+                url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Cumulus_Clouds_over_Yellow_Prairie2.jpg/1920px-Cumulus_Clouds_over_Yellow_Prairie2.jpg',
                 alt: 'Sample placeholder image',
                 caption: 'This is an image block with a caption'
             }
@@ -433,6 +443,134 @@ const article = {
                 }
             ]
         },
+        // Spreadsheet Example
+        {
+            id: 44,
+            page_id: 1,
+            kind: 'heading',
+            data: {
+                level: 2,
+                text: 'Data Visualization'
+            }
+        },
+        {
+            id: 45,
+            page_id: 1,
+            kind: 'heading',
+            data: {
+                level: 3,
+                text: 'Spreadsheet Block'
+            }
+        },
+        {
+            id: 46,
+            page_id: 1,
+            kind: 'paragraph',
+            data: {
+                text: 'Interactive spreadsheet for tabular data:'
+            }
+        },
+        {
+            id: 47,
+            page_id: 1,
+            kind: 'spreadsheet',
+            data: {
+                headers: ['Framework', 'Language', 'Stars (k)', 'Released'],
+                showHeaders: true,
+                data: [
+                    ['React', 'JavaScript', '220', '2013'],
+                    ['Vue.js', 'JavaScript', '207', '2014'],
+                    ['Angular', 'TypeScript', '93', '2016'],
+                    ['Svelte', 'JavaScript', '75', '2016'],
+                    ['Solid', 'TypeScript', '31', '2021']
+                ]
+            }
+        },
+        // Vega Plot Example
+        {
+            id: 48,
+            page_id: 1,
+            kind: 'heading',
+            data: {
+                level: 3,
+                text: 'Vega Plot Block'
+            }
+        },
+        {
+            id: 49,
+            page_id: 1,
+            kind: 'paragraph',
+            data: {
+                text: 'Interactive data visualization using Vega-Lite:'
+            }
+        },
+        {
+            id: 50,
+            page_id: 1,
+            kind: 'plot',
+            data: {
+                spec: {
+                    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+                    "description": "Monthly Downloads Comparison",
+                    "width": "container",
+                    "height": 250,
+                    "padding": { "left": 10, "top": 10, "right": 10, "bottom": 10 },
+                    "config": {
+                        "legend": {
+                            "labelFontSize": 12,
+                            "titleFontSize": 13,
+                            "symbolSize": 100,
+                            "padding": 10,
+                            "labelPadding": 8,
+                            "rowPadding": 5,
+                            "columnPadding": 10
+                        },
+                        "axis": {
+                            "labelFontSize": 11,
+                            "titleFontSize": 12,
+                            "labelPadding": 8,
+                            "titlePadding": 10
+                        }
+                    },
+                    "data": {
+                        "values": [
+                            { "month": "Jan", "framework": "React", "downloads": 45 },
+                            { "month": "Jan", "framework": "Vue", "downloads": 30 },
+                            { "month": "Jan", "framework": "Angular", "downloads": 20 },
+                            { "month": "Feb", "framework": "React", "downloads": 48 },
+                            { "month": "Feb", "framework": "Vue", "downloads": 32 },
+                            { "month": "Feb", "framework": "Angular", "downloads": 22 },
+                            { "month": "Mar", "framework": "React", "downloads": 52 },
+                            { "month": "Mar", "framework": "Vue", "downloads": 35 },
+                            { "month": "Mar", "framework": "Angular", "downloads": 21 },
+                            { "month": "Apr", "framework": "React", "downloads": 55 },
+                            { "month": "Apr", "framework": "Vue", "downloads": 38 },
+                            { "month": "Apr", "framework": "Angular", "downloads": 23 }
+                        ]
+                    },
+                    "mark": {
+                        "type": "line",
+                        "point": true,
+                        "strokeWidth": 2
+                    },
+                    "encoding": {
+                        "x": { "field": "month", "type": "ordinal", "title": "Month" },
+                        "y": { "field": "downloads", "type": "quantitative", "title": "Downloads (M)" },
+                        "color": {
+                            "field": "framework",
+                            "type": "nominal",
+                            "title": "Framework",
+                            "legend": {
+                                "orient": "right",
+                                "titlePadding": 10,
+                                "labelPadding": 8,
+                                "symbolStrokeWidth": 2
+                            }
+                        }
+                    }
+                }
+            }
+        },
         // Conclusion
         {
             id: 40,
@@ -448,7 +586,7 @@ const article = {
             page_id: 1,
             kind: 'paragraph',
             data: {
-                text: 'This comprehensive example demonstrates all available block types in a single article. You can edit any block by clicking the gear icon, add nested content with the plus icon, and drag blocks to reorder them. Toggle readonly mode to switch between viewing and editing.'
+                text: 'This comprehensive example demonstrates all available block types in a single article, including spreadsheets and interactive Vega plots. You can edit any block by clicking the gear icon, add nested content with the plus icon, and drag blocks to reorder them. Toggle readonly mode to switch between viewing and editing.'
             }
         },
         // Final list summarizing features
@@ -468,8 +606,10 @@ const article = {
             data: {
                 ordered: false,
                 items: [
-                    '14 different block types',
+                    '16+ different block types',
                     'Inline contenteditable for text blocks',
+                    'Interactive spreadsheet tables',
+                    'Vega/Vega-Lite data visualizations',
                     'Settings modal for advanced editing',
                     'Drag-and-drop reordering',
                     'Nested blocks and layouts',

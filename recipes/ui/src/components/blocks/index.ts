@@ -12,6 +12,9 @@ export { LatexBlock } from './LatexBlock';
 export { MermaidBlock } from './MermaidBlock';
 export { ReferenceBlock } from './ReferenceBlock';
 export { FootnoteBlock } from './FootnoteBlock';
+export { TableOfContentsBlock } from './TableOfContentsBlock';
+export { SpreadsheetBlock } from './SpreadsheetBlock';
+export { VegaPlotBlock } from './VegaPlotBlock';
 
 // Export all block editor components
 export { HeadingBlockEditor } from './HeadingBlockEditor';
@@ -26,6 +29,9 @@ export { LatexBlockEditor } from './LatexBlockEditor';
 export { MermaidBlockEditor } from './MermaidBlockEditor';
 export { ReferenceBlockEditor } from './ReferenceBlockEditor';
 export { FootnoteBlockEditor } from './FootnoteBlockEditor';
+export { TableOfContentsBlockEditor } from './TableOfContentsBlockEditor';
+export { SpreadsheetBlockEditor } from './SpreadsheetBlockEditor';
+export { VegaPlotBlockEditor } from './VegaPlotBlockEditor';
 
 // Export factory and types
 export { BlockFactory, BlockRenderer, BlockEditorRenderer } from './BlockFactory';

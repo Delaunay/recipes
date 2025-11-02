@@ -330,7 +330,8 @@ export type ArticleBlockKind =
     | 'widget'
     | 'reference'
     | 'footnote'
-    | 'attachment';
+    | 'attachment'
+    | 'toc';
 
 // ============================================================================
 // Budget/Finance Models (incomplete in Python, included for completeness)
