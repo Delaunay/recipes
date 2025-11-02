@@ -16,7 +16,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from ..tools.images import centercrop_resize_image
-from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task, SubTask
+from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task
 from .route_keyvalue import key_value_routes
 from .route_messaging import messaging_routes
 from .route_calendar import calendar_routes

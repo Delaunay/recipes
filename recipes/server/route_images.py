@@ -16,7 +16,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from ..tools.images import centercrop_resize_image
-from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task, SubTask
+from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task
 
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}

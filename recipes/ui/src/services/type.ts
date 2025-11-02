@@ -151,6 +151,8 @@ export interface IngredientUnitsUsed {
 
 export interface Task {
     id?: number;
+    root_id?: number;
+    parent_id?: number;
     title: string;
     description?: string;
     datetime_deadline?: string;
@@ -164,8 +166,7 @@ export interface Task {
     recuring: boolean;
     active: boolean;
     extension?: any;
-    parent_subtasks?: SubTask[];
-    child_subtasks?: SubTask[];
+    children?: Task[];  // Hierarchical children structure from backend
 }
 
 export interface SubTask {

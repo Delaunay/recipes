@@ -10,7 +10,7 @@ import {
     Flex,
 } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
-import type { Task, SubTask } from '../services/type';
+import type { Task } from '../services/type';
 
 interface TaskNode {
     task: Task;
@@ -20,7 +20,6 @@ interface TaskNode {
 
 const Tasks: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [subtasks, setSubtasks] = useState<SubTask[]>([]);
     const [taskTree, setTaskTree] = useState<TaskNode[]>([]);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [showForm, setShowForm] = useState(false);
@@ -42,22 +41,17 @@ const Tasks: React.FC = () => {
 
     useEffect(() => {
         buildTaskTree();
-    }, [tasks, subtasks]);
+    }, [tasks]);
 
     const fetchTasks = async () => {
         try {
-            const [tasksData, subtasksData] = await Promise.all([
-                recipeAPI.getTasks(),
-                recipeAPI.getSubtasks()
-            ]);
+            const tasksData = await recipeAPI.getTasks();
             console.log('Loaded tasks:', tasksData);
             setTasks(tasksData);
-            setSubtasks(subtasksData);
         } catch (error) {
             console.error('Error fetching tasks:', error);
             // For demo purposes, create some sample tasks
             setTasks(generateSampleTasks());
-            setSubtasks([]);
         }
     };
 
@@ -106,42 +100,18 @@ const Tasks: React.FC = () => {
     };
 
     const buildTaskTree = () => {
-        const taskMap = new Map<number, TaskNode>();
-        const rootTasks: TaskNode[] = [];
-
-        // Create nodes for all tasks
-        tasks.forEach(task => {
-            taskMap.set(task.id!, {
+        // Convert hierarchical Task objects to TaskNode objects
+        const convertToTaskNode = (task: Task, level: number): TaskNode => {
+            return {
                 task,
-                children: [],
-                level: 0
-            });
-        });
+                children: (task.children || []).map(child => convertToTaskNode(child, level + 1)),
+                level
+            };
+        };
 
-        // Build parent-child relationships
-        subtasks.forEach(subtask => {
-            const parentNode = taskMap.get(subtask.parent_id);
-            const childNode = taskMap.get(subtask.child_id);
-
-            if (parentNode && childNode) {
-                parentNode.children.push(childNode);
-                childNode.level = parentNode.level + 1;
-            }
-        });
-
-        // Find root tasks (those without parents)
-        tasks.forEach(task => {
-            const hasParent = subtasks.some(subtask => subtask.child_id === task.id);
-            if (!hasParent) {
-                const node = taskMap.get(task.id!);
-                if (node) {
-                    rootTasks.push(node);
-                }
-            }
-        });
-
-        // Tasks are already sorted by the backend (priority DESC, id DESC)
-        // No additional sorting needed
+        // Tasks from backend are already hierarchical with children
+        // Just convert to TaskNode format
+        const rootTasks = tasks.map(task => convertToTaskNode(task, 0));
         setTaskTree(rootTasks);
     };
 
@@ -351,10 +321,25 @@ const Tasks: React.FC = () => {
         try {
             const subtasksToSave = editingSubtasks.get(parentId) || [];
 
+            // Find the parent task to get its root_id
+            const findTaskById = (tasks: Task[], id: number): Task | null => {
+                for (const task of tasks) {
+                    if (task.id === id) return task;
+                    if (task.children) {
+                        const found = findTaskById(task.children, id);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            const parentTask = findTaskById(tasks, parentId);
+            const rootId = parentTask?.root_id || parentTask?.id;
+
             for (const subtask of subtasksToSave) {
                 if (subtask.title.trim()) {
-                    // Create the subtask first
-                    const createdTask = await recipeAPI.createTask({
+                    // Create the subtask with parent_id and root_id
+                    await recipeAPI.createTask({
                         title: subtask.title,
                         description: subtask.description || '',
                         datetime_deadline: subtask.datetime_deadline,
@@ -366,12 +351,8 @@ const Tasks: React.FC = () => {
                         template: false,
                         recuring: false,
                         active: true,
-                    });
-
-                    // Then create the parent-child relationship
-                    await recipeAPI.createSubtask({
                         parent_id: parentId,
-                        child_id: createdTask.id!,
+                        root_id: rootId,
                     });
                 }
             }

@@ -4,7 +4,7 @@ import traceback
 
 from flask import jsonify, request
 
-from .models import Event, Task, SubTask
+from .models import Event, Task
 
 
 def calendar_routes(app, db):

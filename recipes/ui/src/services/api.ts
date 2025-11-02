@@ -397,11 +397,16 @@ class RecipeAPI {
   }
 
   // SubTask methods
+  // DEPRECATED: These methods are no longer used. Tasks now use hierarchical parent_id/root_id structure.
+  // Child tasks are included in the parent task's 'children' array.
+  // To create a subtask, use createTask() with parent_id and root_id fields.
   async getSubtasks(): Promise<SubTask[]> {
+    console.warn('getSubtasks() is deprecated. Tasks now use hierarchical structure with children field.');
     return this.request<SubTask[]>('/subtasks');
   }
 
   async createSubtask(subtask: Omit<SubTask, 'id'>): Promise<SubTask> {
+    console.warn('createSubtask() is deprecated. Use createTask() with parent_id instead.');
     if (isStaticMode()) {
       throw new Error('Creating subtasks is not supported in static mode');
     }

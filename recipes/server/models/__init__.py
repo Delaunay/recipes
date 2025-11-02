@@ -22,7 +22,7 @@ from .recipe import (
     IngredientComposition,  # Ingredient Composition
 )
 
-from .task import Task, SubTask
+from .task import Task
 
 from .user import User
 

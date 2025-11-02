@@ -392,13 +392,18 @@ class GridWeek {
         const dayStartMinutes = this.startHour * 60;
         const dayEndMinutes = this.endHour * 60;
 
-        const relativeStart = (startMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
-        const relativeEnd = (endMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
+        // Clamp the event times to the visible calendar range
+        const clampedStartMinutes = Math.max(dayStartMinutes, Math.min(dayEndMinutes, startMinutes));
+        const clampedEndMinutes = Math.max(dayStartMinutes, Math.min(dayEndMinutes, endMinutes));
 
-        const top = Math.max(0, relativeStart * this.dayHeight);
-        const h = Math.min(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
+        // Calculate relative positions within the visible range
+        const relativeStart = (clampedStartMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
+        const relativeEnd = (clampedEndMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
 
-        const height = h > 0 ? h : this.dayHeight - top;
+        const top = relativeStart * this.dayHeight;
+        const bottom = relativeEnd * this.dayHeight;
+        const height = Math.max(0, bottom - top);
+
         return { top, height };
     }
 
@@ -619,6 +624,9 @@ const Routine: React.FC<RoutineProps> = ({
     const [copiedDayEvents, setCopiedDayEvents] = useState<Event[] | null>(null);
     const [copiedDayName, setCopiedDayName] = useState<string | null>(null);
 
+    // Stats display state
+    const [showStats, setShowStats] = useState(true);
+
     // Modal state (unified for both create and edit)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalInitialDate, setModalInitialDate] = useState<Date | undefined>();
@@ -779,6 +787,74 @@ const Routine: React.FC<RoutineProps> = ({
         fetchRoutineEvents();
     }, [owner, routineName]);
 
+    // Compute statistics about the routine week
+    const computeWeekStats = () => {
+        const statsByName: {
+            [key: string]: {
+                count: number;
+                totalMinutes: number;
+                color?: string;
+                durations: number[];
+            }
+        } = {};
+
+        events.forEach(event => {
+            const eventStart = fromDateServer(event.datetime_start);
+            const eventEnd = fromDateServer(event.datetime_end);
+            const durationMs = eventEnd.getTime() - eventStart.getTime();
+            const durationMinutes = durationMs / (1000 * 60);
+
+            const eventName = event.title || 'Unnamed';
+
+            if (!statsByName[eventName]) {
+                statsByName[eventName] = {
+                    count: 0,
+                    totalMinutes: 0,
+                    color: event.color,
+                    durations: []
+                };
+            }
+
+            statsByName[eventName].count += 1;
+            statsByName[eventName].totalMinutes += durationMinutes;
+            statsByName[eventName].durations.push(durationMinutes);
+        });
+
+        // Convert to array and sort by total time (descending)
+        return Object.entries(statsByName)
+            .map(([name, stats]) => {
+                // Calculate fragmentation metrics for this event type
+                const avgBlockDuration = stats.totalMinutes / stats.count;
+                const longestBlock = Math.max(...stats.durations);
+                const fragmentationIndex = stats.count / Math.max(stats.totalMinutes / 60, 0.1);
+
+                return {
+                    name,
+                    count: stats.count,
+                    totalMinutes: stats.totalMinutes,
+                    totalHours: stats.totalMinutes / 60,
+                    color: stats.color,
+                    avgBlockDuration,
+                    avgBlockDurationHours: avgBlockDuration / 60,
+                    longestBlock,
+                    longestBlockHours: longestBlock / 60,
+                    fragmentationIndex
+                };
+            })
+            .sort((a, b) => b.totalMinutes - a.totalMinutes);
+    };
+
+    const weekStats = computeWeekStats();
+    const totalWeekMinutes = weekStats.reduce((sum, stat) => sum + stat.totalMinutes, 0);
+    const totalWeekHours = totalWeekMinutes / 60;
+
+    // Calculate unaccounted time (24 hours per day * 7 days = 168 hours total)
+    const hoursPerDay = 24;
+    const totalDayHours = hoursPerDay * 7; // 168 hours per week
+    const totalDayMinutes = totalDayHours * 60;
+    const unaccountedMinutes = totalDayMinutes - totalWeekMinutes;
+    const unaccountedHours = unaccountedMinutes / 60;
+
     // Copy all events from a specific day
     const handleCopyDay = (dayName: string) => {
         const eventsForDay = getEventsForDay(dayName);
@@ -916,6 +992,208 @@ const Routine: React.FC<RoutineProps> = ({
                             </Button>
                         </Box>
                     </HStack>
+
+                    {/* Statistics Section */}
+                    {events.length > 0 && (
+                        <Box>
+                            <HStack justify="space-between" align="center" mb={2}>
+                                <Text fontWeight="bold" fontSize="md">
+                                    Weekly Statistics
+                                </Text>
+                                <Button
+                                    size="xs"
+                                    variant="ghost"
+                                    onClick={() => setShowStats(!showStats)}
+                                >
+                                    {showStats ? '▼ Hide' : '▶ Show'}
+                                </Button>
+                            </HStack>
+
+                            {showStats && (
+                                <Box
+                                    border="1px solid"
+                                    borderColor="gray.200"
+                                    borderRadius="md"
+                                    overflow="hidden"
+                                >
+                                    <Box overflowX="auto">
+                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                            <thead>
+                                                <tr style={{ backgroundColor: '#f7fafc' }}>
+                                                    <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                        Event
+                                                    </th>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                        Total Time
+                                                    </th>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                        Daily Avg
+                                                    </th>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                        Avg Block
+                                                    </th>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                        Longest
+                                                    </th>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                        Frag
+                                                    </th>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                        %
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {weekStats.map((stat, index) => {
+                                                    const percentage = totalWeekMinutes > 0
+                                                        ? (stat.totalMinutes / totalWeekMinutes * 100).toFixed(1)
+                                                        : 0;
+                                                    const dailyAvgMinutes = stat.totalMinutes / 7;
+                                                    const dailyAvgHours = dailyAvgMinutes / 60;
+                                                    return (
+                                                        <tr key={index} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                            <td style={{ padding: '8px' }}>
+                                                                <HStack gap={2}>
+                                                                    <Box
+                                                                        width="12px"
+                                                                        height="12px"
+                                                                        bg={stat.color || 'gray.400'}
+                                                                        borderRadius="sm"
+                                                                    />
+                                                                    <Text fontSize="sm">{stat.name}</Text>
+                                                                </HStack>
+                                                            </td>
+                                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                                <Text fontSize="sm" fontWeight="medium">
+                                                                    {stat.totalHours >= 1
+                                                                        ? `${stat.totalHours.toFixed(1)}h`
+                                                                        : `${stat.totalMinutes.toFixed(0)}m`
+                                                                    }
+                                                                </Text>
+                                                            </td>
+                                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                                <Text fontSize="sm" color="gray.600">
+                                                                    {dailyAvgHours >= 1
+                                                                        ? `${dailyAvgHours.toFixed(1)}h`
+                                                                        : `${dailyAvgMinutes.toFixed(0)}m`
+                                                                    }
+                                                                </Text>
+                                                            </td>
+                                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                                <Text fontSize="sm" color="gray.600">
+                                                                    {stat.avgBlockDurationHours >= 1
+                                                                        ? `${stat.avgBlockDurationHours.toFixed(1)}h`
+                                                                        : `${stat.avgBlockDuration.toFixed(0)}m`
+                                                                    }
+                                                                </Text>
+                                                            </td>
+                                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                                <Text fontSize="sm" color="gray.600">
+                                                                    {stat.longestBlockHours >= 1
+                                                                        ? `${stat.longestBlockHours.toFixed(1)}h`
+                                                                        : `${stat.longestBlock.toFixed(0)}m`
+                                                                    }
+                                                                </Text>
+                                                            </td>
+                                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                                <Text fontSize="sm" color="gray.600">
+                                                                    {stat.fragmentationIndex.toFixed(2)}
+                                                                </Text>
+                                                            </td>
+                                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                                <Text fontSize="sm" color="gray.600">
+                                                                    {percentage}%
+                                                                </Text>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr style={{ backgroundColor: '#f7fafc', fontWeight: 'bold' }}>
+                                                    <td style={{ padding: '8px' }}>
+                                                        <Text fontSize="sm" fontWeight="bold">Total Scheduled</Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" fontWeight="bold">
+                                                            {totalWeekHours >= 1
+                                                                ? `${totalWeekHours.toFixed(1)}h`
+                                                                : `${totalWeekMinutes.toFixed(0)}m`
+                                                            }
+                                                        </Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" fontWeight="bold">
+                                                            {(totalWeekHours / 7) >= 1
+                                                                ? `${(totalWeekHours / 7).toFixed(1)}h`
+                                                                : `${(totalWeekMinutes / 7).toFixed(0)}m`
+                                                            }
+                                                        </Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" fontWeight="bold">-</Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" fontWeight="bold">-</Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" fontWeight="bold">-</Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" fontWeight="bold">100%</Text>
+                                                    </td>
+                                                </tr>
+                                                {/* Unaccounted Time Row */}
+                                                <tr style={{ backgroundColor: '#fafafa' }}>
+                                                    <td style={{ padding: '8px' }}>
+                                                        <HStack gap={2}>
+                                                            <Box
+                                                                width="12px"
+                                                                height="12px"
+                                                                bg="gray.300"
+                                                                borderRadius="sm"
+                                                            />
+                                                            <Text fontSize="sm" fontStyle="italic" color="gray.600">Unaccounted Time</Text>
+                                                        </HStack>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" color="gray.600">
+                                                            {unaccountedHours >= 1
+                                                                ? `${unaccountedHours.toFixed(1)}h`
+                                                                : `${Math.max(0, unaccountedMinutes).toFixed(0)}m`
+                                                            }
+                                                        </Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" color="gray.600">
+                                                            {(unaccountedHours / 7) >= 1
+                                                                ? `${(unaccountedHours / 7).toFixed(1)}h`
+                                                                : `${Math.max(0, unaccountedMinutes / 7).toFixed(0)}m`
+                                                            }
+                                                        </Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" color="gray.600">-</Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" color="gray.600">-</Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" color="gray.600">-</Text>
+                                                    </td>
+                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                        <Text fontSize="sm" color="gray.600">
+                                                            {Math.max(0, (unaccountedMinutes / totalDayMinutes * 100)).toFixed(1)}%
+                                                        </Text>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </Box>
+                                </Box>
+                            )}
+                        </Box>
+                    )}
                 </VStack>
             </Box>
 
@@ -959,7 +1237,7 @@ const Routine: React.FC<RoutineProps> = ({
                             >
                                 <HStack gap={1}>
                                     <Text>{day}</Text>
-                                    <HStack> 
+                                    <HStack>
                                         <Button
                                             size="xs"
                                             variant="ghost"

@@ -18,7 +18,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from ..tools.images import centercrop_resize_image
-from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task, SubTask, IngredientComposition
+from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task, IngredientComposition
 from .usda.usda_reader import USDAReader
 
 

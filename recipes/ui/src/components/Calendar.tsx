@@ -439,16 +439,19 @@ class GridWeek {
         const dayStartMinutes = this.startHour * 60;
         const dayEndMinutes = this.endHour * 60;
 
-        // Calculate relative positions
-        const relativeStart = (startMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
-        const relativeEnd = (endMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
+        // Clamp the event times to the visible calendar range
+        const clampedStartMinutes = Math.max(dayStartMinutes, Math.min(dayEndMinutes, startMinutes));
+        const clampedEndMinutes = Math.max(dayStartMinutes, Math.min(dayEndMinutes, endMinutes));
+
+        // Calculate relative positions within the visible range
+        const relativeStart = (clampedStartMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
+        const relativeEnd = (clampedEndMinutes - dayStartMinutes) / (dayEndMinutes - dayStartMinutes);
 
         // Convert to pixel positions
-        const top = Math.max(0, relativeStart * this.dayHeight);
-        const h = Math.min(this.dayHeight, (relativeEnd - relativeStart) * this.dayHeight);
+        const top = relativeStart * this.dayHeight;
+        const bottom = relativeEnd * this.dayHeight;
+        const height = Math.max(0, bottom - top);
 
-        // If end time is tomorrow the height will be negative
-        const height = h > 0 ? h : this.dayHeight - top;
         return { top, height };
     }
 
