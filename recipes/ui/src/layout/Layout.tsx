@@ -48,6 +48,12 @@ const sidebarSections = [
     ]
   },
   {
+    title: 'Content',
+    items: [
+      { name: 'Articles', href: '/article' },
+    ]
+  },
+  {
     title: 'Units',
     items: [
       { name: 'Unit Conversions', href: '/conversions' },

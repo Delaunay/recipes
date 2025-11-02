@@ -23,6 +23,7 @@ import Budget from './components/Budget';
 import Settings from './components/Settings';
 import RecipeComparison from './components/RecipeComparison';
 import ApiTester from './components/ApiTester';
+import ArticleViewEditor from './components/ArticleViewEditor';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -52,6 +53,7 @@ function App() {
             <Route path="/compare" element={<RecipeComparison />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/api-tester" element={<ApiTester />} />
+            <Route path="/article" element={<ArticleViewEditor />} />
           </Routes>
         </Layout>
       </Router>

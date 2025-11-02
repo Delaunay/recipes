@@ -298,17 +298,39 @@ export interface Article {
     namespace?: string;
     tags?: any; // JSON
     extension?: any;
+    blocks?: ArticleBlock[]; // Root blocks of the article
 }
 
 export interface ArticleBlock {
     id?: number;
     page_id?: number; // Reference to Article
-    parent?: number; // Reference to parent ArticleBlock
-    children?: any; // JSON
-    kind?: string; // Type of block (text, image, code, etc.)
+    parent_id?: number; // Reference to parent ArticleBlock
+    kind?: string; // Type of block (text, image, code, layout, heading, paragraph, etc.)
     data?: any; // JSON content of the block
-    extension?: any;
+    extension?: any; // Additional metadata
+    children?: ArticleBlock[]; // Nested child blocks
 }
+
+// Block type constants for reference
+export type ArticleBlockKind =
+    | 'text'
+    | 'heading'
+    | 'paragraph'
+    | 'image'
+    | 'code'
+    | 'video'
+    | 'audio'
+    | 'layout'
+    | 'list'
+    | 'spreadsheet'
+    | 'plot'
+    | 'latex'
+    | 'timeline'
+    | 'mermaid'
+    | 'widget'
+    | 'reference'
+    | 'footnote'
+    | 'attachment';
 
 // ============================================================================
 // Budget/Finance Models (incomplete in Python, included for completeness)
