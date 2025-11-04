@@ -28,3 +28,4 @@ export const FootnoteBlockEditor: React.FC<BlockEditorProps> = ({ block, onChang
     );
 };
 
+

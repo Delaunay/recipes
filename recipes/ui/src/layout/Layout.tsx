@@ -107,7 +107,9 @@ const Layout: FC<LayoutProps> = ({ children }) => {
         <div className="sidebar-header">
           <h2 className="sidebar-title">
             <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }} onClick={closeMobileMenu}>
-              Lifestyle
+              (O)KaaSan 
+              {/* <br></br>
+              (お)母さん */}
             </Link>
           </h2>
         </div>

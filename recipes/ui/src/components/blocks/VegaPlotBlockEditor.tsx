@@ -151,3 +151,4 @@ export const VegaPlotBlockEditor: React.FC<BlockEditorProps> = ({ block, onChang
     );
 };
 
+

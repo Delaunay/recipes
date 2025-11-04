@@ -59,42 +59,61 @@ export const TableOfContentsBlock: React.FC<BlockComponentProps> = ({ block }) =
     return (
         <Box
             mb={6}
-            p={4}
-            bg="blue.50"
+            p={5}
+            bg="gray.50"
             borderRadius="md"
-            borderLeft="4px solid"
-            borderColor="blue.400"
+            border="1px solid"
+            borderColor="gray.200"
         >
-            <Text fontSize="md" fontWeight="bold" color="blue.900" mb={3}>
+            <Text
+                fontSize="lg"
+                fontWeight="600"
+                color="gray.800"
+                mb={4}
+                letterSpacing="tight"
+            >
                 {title}
             </Text>
 
             {tocItems.length === 0 ? (
-                <Text fontSize="sm" color="gray.600" fontStyle="italic">
+                <Text fontSize="sm" color="gray.500" fontStyle="italic">
                     No headings found in the article
                 </Text>
             ) : (
-                <VStack align="stretch" gap={1}>
+                <VStack align="stretch" gap={0}>
                     {tocItems.map((item, index) => {
                         // Calculate indentation based on heading level
-                        const indent = (item.level - 1) * 20;
+                        const indent = (item.level - 1) * 16;
 
                         return (
                             <Box
                                 key={index}
                                 pl={`${indent}px`}
+                                py={1.5}
                                 cursor="pointer"
+                                borderRadius="sm"
+                                transition="all 0.15s"
                                 _hover={{
-                                    color: 'blue.600',
-                                    textDecoration: 'underline'
+                                    bg: 'gray.100',
+                                    pl: `${indent + 4}px`
                                 }}
                                 onClick={() => handleClick(item.id)}
                             >
                                 <Text
-                                    fontSize={item.level === 1 ? 'sm' : 'xs'}
-                                    fontWeight={item.level === 1 ? 'semibold' : 'normal'}
-                                    color="blue.800"
+                                    fontSize={item.level === 1 ? 'sm' : item.level === 2 ? 'sm' : 'xs'}
+                                    fontWeight={item.level === 1 ? '600' : item.level === 2 ? '500' : 'normal'}
+                                    color={item.level === 1 ? 'gray.800' : 'gray.700'}
+                                    css={{
+                                        '&:hover': {
+                                            color: '#2d3748'
+                                        }
+                                    }}
                                 >
+                                    {item.level > 1 && (
+                                        <Text as="span" color="gray.400" mr={2}>
+                                            •
+                                        </Text>
+                                    )}
                                     {item.text}
                                 </Text>
                             </Box>

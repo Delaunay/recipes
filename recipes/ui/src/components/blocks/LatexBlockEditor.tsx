@@ -17,3 +17,4 @@ export const LatexBlockEditor: React.FC<BlockEditorProps> = ({ block, onChange }
     );
 };
 
+

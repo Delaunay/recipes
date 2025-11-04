@@ -36,3 +36,4 @@ export const ImageBlockEditor: React.FC<BlockEditorProps> = ({ block, onChange }
     );
 };
 
+

@@ -18,3 +18,4 @@ export const MermaidBlockEditor: React.FC<BlockEditorProps> = ({ block, onChange
     );
 };
 
+

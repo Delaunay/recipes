@@ -16,3 +16,4 @@ export const FootnoteBlock: React.FC<BlockComponentProps> = ({ block }) => {
     );
 };
 
+

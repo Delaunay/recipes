@@ -81,6 +81,38 @@ const BLOCK_TYPES: { value: ArticleBlockKind; label: string; icon: string }[] = 
     { value: 'toc', label: 'Table of Contents', icon: '📑' },
     { value: 'spreadsheet', label: 'Spreadsheet', icon: '📊' },
     { value: 'plot', label: 'Vega Plot', icon: '📈' },
+    { value: 'accordion', label: 'Accordion', icon: '▶' },
+    { value: 'alert', label: 'Alert', icon: '⚠️' },
+    { value: 'bibliography', label: 'Bibliography', icon: '📚' },
+    { value: 'footnotes', label: 'Footnotes', icon: '📝' },
+    { value: 'table', label: 'Table', icon: '🗂️' },
+    { value: 'timeline', label: 'Timeline', icon: '📅' },
+    { value: 'definition', label: 'Definition', icon: '📖' },
+    { value: 'glossary', label: 'Glossary', icon: '📚' },
+    { value: 'theorem', label: 'Theorem', icon: '∀' },
+    { value: 'citation', label: 'Citation', icon: '❝' },
+    { value: 'button', label: 'Button', icon: '🔘' },
+    { value: 'toggle', label: 'Toggle', icon: '▼' },
+    { value: 'diff', label: 'Diff', icon: '±' },
+    { value: 'embed', label: 'Embed', icon: '🎬' },
+    { value: 'gallery', label: 'Gallery', icon: '🖼️' },
+    { value: 'quiz', label: 'Quiz', icon: '❓' },
+    { value: 'form', label: 'Form', icon: '📝' },
+    { value: 'cli', label: 'CLI Command', icon: '⌨️' },
+    { value: 'filetree', label: 'File Tree', icon: '📁' },
+    { value: 'iframe', label: 'Iframe', icon: '🪟' },
+    { value: 'slideshow', label: 'Slideshow', icon: '🎞️' },
+    { value: 'animation', label: 'Animation', icon: '🎬' },
+    { value: 'datastructure', label: 'Data Structure', icon: '🔷' },
+    { value: 'sandbox', label: 'Live Code', icon: '⚡' },
+    { value: 'model3d', label: '3D Model', icon: '🎨' },
+    { value: 'trace', label: 'Execution Trace', icon: '🔍' },
+    { value: 'workflow', label: 'Workflow', icon: '🔄' },
+    { value: 'constraint', label: 'Constraints', icon: '⚖️' },
+    { value: 'ast', label: 'AST', icon: '🌳' },
+    { value: 'bnf', label: 'BNF Grammar', icon: '📜' },
+    { value: 'graph', label: 'Node Graph', icon: '🕸️' },
+    { value: 'blockly', label: 'Blockly', icon: '🧩' },
 ];
 
 interface BlockSettingsModalProps {
@@ -523,8 +555,9 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
     };
 
     const renderBlock = () => {
-        // For TOC blocks, inject all blocks from the article into their data
-        const blockToRender = block.kind === 'toc'
+        // For generator blocks (TOC, Bibliography, Footnotes, Glossary), inject all blocks from the article into their data
+        const isGeneratorBlock = ['toc', 'bibliography', 'footnotes', 'glossary'].includes(block.kind || '');
+        const blockToRender = isGeneratorBlock
             ? {
                 ...block,
                 data: {

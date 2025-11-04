@@ -35,3 +35,4 @@ export const HeadingBlockEditor: React.FC<BlockEditorProps> = ({ block, onChange
     );
 };
 
+
