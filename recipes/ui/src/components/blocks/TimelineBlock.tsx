@@ -10,14 +10,53 @@ interface TimelineItem {
     progress?: number; // 0-100
 }
 
-export const TimelineBlock: React.FC<BlockComponentProps> = ({ block }) => {
+export const TimelineBlock: React.FC<BlockComponentProps> = ({ block, allBlocks }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const items: TimelineItem[] = block.data?.items || [];
+    const dataSourceBlockId = block.data?.dataSourceBlockId;
     const title = block.data?.title;
     const showProgress = block.data?.showProgress !== false;
+
+    // Get items either from inline data or from referenced spreadsheet block
+    const items: TimelineItem[] = React.useMemo(() => {
+        // If a data source is specified, try to get data from that block
+        if (dataSourceBlockId && allBlocks) {
+            const sourceBlock = allBlocks.find(b => b.id === dataSourceBlockId);
+            if (sourceBlock && sourceBlock.kind === 'spreadsheet') {
+                return parseSpreadsheetData(sourceBlock);
+            }
+        }
+        // Fall back to inline items
+        return block.data?.items || [];
+    }, [dataSourceBlockId, allBlocks, block.data?.items]);
+
+    // Helper function to parse spreadsheet data into timeline items
+    function parseSpreadsheetData(spreadsheetBlock: any): TimelineItem[] {
+        const data = spreadsheetBlock.data?.data || [];
+        const headers = spreadsheetBlock.data?.headers || [];
+
+        // Find column indices
+        const taskIdx = headers.findIndex((h: string) => h.toLowerCase() === 'task');
+        const startIdx = headers.findIndex((h: string) => h.toLowerCase() === 'start');
+        const endIdx = headers.findIndex((h: string) => h.toLowerCase() === 'end');
+        const categoryIdx = headers.findIndex((h: string) => h.toLowerCase() === 'category');
+        const progressIdx = headers.findIndex((h: string) => h.toLowerCase() === 'progress');
+
+        if (taskIdx === -1 || startIdx === -1 || endIdx === -1) {
+            console.warn('Timeline: Spreadsheet must have "task", "start", and "end" columns');
+            return [];
+        }
+
+        return data.map((row: string[]) => ({
+            task: row[taskIdx] || '',
+            start: row[startIdx] || '',
+            end: row[endIdx] || '',
+            category: categoryIdx >= 0 ? row[categoryIdx] : undefined,
+            progress: progressIdx >= 0 ? parseFloat(row[progressIdx]) || 0 : undefined
+        })).filter((item: TimelineItem) => item.task && item.start && item.end);
+    }
 
     useEffect(() => {
         let isMounted = true;

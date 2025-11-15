@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     Box,
     VStack,
@@ -16,6 +17,13 @@ import {
 import { Article, ArticleBlock, ArticleBlockKind } from '../services/type';
 import mockArticles from '../mock/ArticleMockData';
 import { BlockRenderer, BlockEditorRenderer, setBlockViewEditor } from './blocks';
+import { recipeAPI } from '../services/api';
+
+// Simple toast notification system (since Chakra UI v3 has different API)
+const showToast = (title: string, description: string, status: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    console.log(`[${status.toUpperCase()}] ${title}: ${description}`);
+    // For now, just log. In production, you would implement a proper toast system
+};
 
 // Icons
 const GearIcon = () => (
@@ -60,9 +68,82 @@ const SaveIcon = () => (
 
 const DragIcon = () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M2.5 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z" />
+        <circle cx="5" cy="3" r="1.5" />
+        <circle cx="5" cy="8" r="1.5" />
+        <circle cx="5" cy="13" r="1.5" />
+        <circle cx="11" cy="3" r="1.5" />
+        <circle cx="11" cy="8" r="1.5" />
+        <circle cx="11" cy="13" r="1.5" />
     </svg>
 );
+
+/**
+ * Custom hook for batching block updates to minimize API requests.
+ * Accumulates updates over a 5-second period and sends them in one batch.
+ */
+const useBatchBlockUpdates = (_articleId: number | undefined, onSuccess?: () => void) => {
+    const [pendingUpdates, setPendingUpdates] = useState<Map<number, Partial<ArticleBlock>>>(new Map());
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Function to flush pending updates to the server
+    const flushUpdates = useCallback(async () => {
+        if (pendingUpdates.size === 0) return;
+
+        const updates = Array.from(pendingUpdates.values());
+        setPendingUpdates(new Map());
+
+        try {
+            await recipeAPI.updateBlocksBatch(updates);
+            if (onSuccess) {
+                onSuccess();
+            }
+            showToast('Changes saved', `Updated ${updates.length} block(s)`, 'success');
+        } catch (error) {
+            console.error('Failed to save changes:', error);
+            showToast('Save failed', 'Failed to save changes. Please try again.', 'error');
+        }
+    }, [pendingUpdates, onSuccess]);
+
+    // Queue an update for a block
+    const queueUpdate = useCallback((blockId: number, update: Partial<ArticleBlock>) => {
+        setPendingUpdates(prev => {
+            const newMap = new Map(prev);
+            const existing = newMap.get(blockId) || { id: blockId };
+            newMap.set(blockId, { ...existing, ...update });
+            return newMap;
+        });
+
+        // Reset the timer
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+        }
+
+        // Set a new timer to flush after 5 seconds
+        timerRef.current = setTimeout(() => {
+            flushUpdates();
+        }, 5000);
+    }, [flushUpdates]);
+
+    // Manual flush function
+    const flush = useCallback(() => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+        flushUpdates();
+    }, [flushUpdates]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+        };
+    }, []);
+
+    return { queueUpdate, flush, hasPendingUpdates: pendingUpdates.size > 0 };
+};
 
 // Block type definitions
 const BLOCK_TYPES: { value: ArticleBlockKind; label: string; icon: string }[] = [
@@ -113,6 +194,8 @@ const BLOCK_TYPES: { value: ArticleBlockKind; label: string; icon: string }[] = 
     { value: 'bnf', label: 'BNF Grammar', icon: '📜' },
     { value: 'graph', label: 'Node Graph', icon: '🕸️' },
     { value: 'blockly', label: 'Blockly', icon: '🧩' },
+    { value: 'electrical', label: 'Electrical Diagram', icon: '⚡' },
+    { value: 'drawing', label: 'Drawing', icon: '✏️' },
 ];
 
 interface BlockSettingsModalProps {
@@ -123,6 +206,7 @@ interface BlockSettingsModalProps {
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     position: { top: number; left: number };
+    allBlocks?: ArticleBlock[]; // All blocks for cross-referencing
 }
 
 const BlockSettingsModal: React.FC<BlockSettingsModalProps> = ({
@@ -132,7 +216,8 @@ const BlockSettingsModal: React.FC<BlockSettingsModalProps> = ({
     onDelete,
     onMoveUp,
     onMoveDown,
-    position
+    position,
+    allBlocks
 }) => {
     const modalRef = useRef<HTMLDivElement>(null);
     const [editedBlock, setEditedBlock] = useState<ArticleBlock>({ ...block });
@@ -272,26 +357,32 @@ const BlockSettingsModal: React.FC<BlockSettingsModalProps> = ({
 
     // Block data editor is now handled by BlockEditorRenderer component
 
+    // Check if this is a Vega plot block for split-screen layout
+    const isVegaPlot = editedBlock.kind === 'plot';
+    const modalWidth = isVegaPlot ? '90vw' : '400px';
+    const modalMaxH = isVegaPlot ? '90vh' : '80vh';
+    const modalTop = isVegaPlot ? '5vh' : `${Math.min(position.top, window.innerHeight - 500)}px`;
+    const modalLeft = isVegaPlot ? '5vw' : `${Math.min(position.left, window.innerWidth - 420)}px`;
 
     return (
         <Portal>
             <Box
                 ref={modalRef}
                 position="fixed"
-                top={`${Math.min(position.top, window.innerHeight - 500)}px`}
-                left={`${Math.min(position.left, window.innerWidth - 420)}px`}
+                top={modalTop}
+                left={modalLeft}
                 bg="white"
                 boxShadow="2xl"
                 borderRadius="lg"
                 p={4}
                 zIndex={1000}
-                width="400px"
-                maxH="80vh"
-                overflowY="auto"
+                width={modalWidth}
+                maxH={modalMaxH}
+                overflowY={isVegaPlot ? 'hidden' : 'auto'}
                 border="1px solid"
                 borderColor="gray.300"
             >
-                <VStack gap={3} align="stretch">
+                <VStack gap={3} align="stretch" height={isVegaPlot ? 'calc(90vh - 32px)' : 'auto'}>
                     {/* Header */}
                     <HStack justify="space-between" pb={2} borderBottom="1px solid" borderColor="gray.200">
                         <Text fontSize="md" fontWeight="bold">
@@ -302,55 +393,136 @@ const BlockSettingsModal: React.FC<BlockSettingsModalProps> = ({
                         </Badge>
                     </HStack>
 
-                    {/* Block Type Selector */}
-                    <Box>
-                        <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={2}>
-                            BLOCK TYPE
-                        </Text>
-                        <Box
-                            maxH="150px"
-                            overflowY="auto"
-                            border="1px solid"
-                            borderColor="gray.200"
-                            borderRadius="md"
-                            p={1}
-                        >
-                            {BLOCK_TYPES.map(type => (
-                                <Button
-                                    key={type.value}
-                                    size="sm"
-                                    variant={editedBlock.kind === type.value ? 'solid' : 'ghost'}
-                                    colorScheme={editedBlock.kind === type.value ? 'blue' : 'gray'}
-                                    width="100%"
-                                    justifyContent="flex-start"
-                                    onClick={() => updateBlockKind(type.value)}
-                                    mb={1}
-                                >
-                                    <Text mr={2}>{type.icon}</Text>
-                                    {type.label}
-                                </Button>
-                            ))}
-                        </Box>
-                    </Box>
+                    {/* Split Layout for Vega Plot */}
+                    {isVegaPlot ? (
+                        <HStack gap={4} align="stretch" flex={1} overflow="hidden">
+                            {/* Left Panel: Editor */}
+                            <VStack flex={1} gap={3} align="stretch" overflow="auto" pr={2}>
+                                {/* Block Type Selector */}
+                                <Box>
+                                    <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={2}>
+                                        BLOCK TYPE
+                                    </Text>
+                                    <Box
+                                        maxH="150px"
+                                        overflowY="auto"
+                                        border="1px solid"
+                                        borderColor="gray.200"
+                                        borderRadius="md"
+                                        p={1}
+                                    >
+                                        {BLOCK_TYPES.map(type => (
+                                            <Button
+                                                key={type.value}
+                                                size="sm"
+                                                variant={editedBlock.kind === type.value ? 'solid' : 'ghost'}
+                                                colorScheme={editedBlock.kind === type.value ? 'blue' : 'gray'}
+                                                width="100%"
+                                                justifyContent="flex-start"
+                                                onClick={() => updateBlockKind(type.value)}
+                                                mb={1}
+                                            >
+                                                <Text mr={2}>{type.icon}</Text>
+                                                {type.label}
+                                            </Button>
+                                        ))}
+                                    </Box>
+                                </Box>
 
-                    {/* Block Data Editor */}
-                    <Box>
-                        <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={2}>
-                            CONTENT
-                        </Text>
-                        <Box
-                            p={3}
-                            bg="gray.50"
-                            borderRadius="md"
-                            border="1px solid"
-                            borderColor="gray.200"
-                        >
-                            <BlockEditorRenderer
-                                block={editedBlock}
-                                onChange={updateBlockData}
-                            />
-                        </Box>
-                    </Box>
+                                {/* Block Data Editor */}
+                                <Box flex={1}>
+                                    <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={2}>
+                                        SPECIFICATION
+                                    </Text>
+                                    <Box
+                                        p={3}
+                                        bg="gray.50"
+                                        borderRadius="md"
+                                        border="1px solid"
+                                        borderColor="gray.200"
+                                    >
+                                        <BlockEditorRenderer
+                                            block={editedBlock}
+                                            onChange={updateBlockData}
+                                            allBlocks={allBlocks}
+                                        />
+                                    </Box>
+                                </Box>
+                            </VStack>
+
+                            {/* Right Panel: Preview */}
+                            <VStack flex={1} gap={2} align="stretch" borderLeft="2px solid" borderColor="gray.200" pl={4}>
+                                <Text fontSize="xs" fontWeight="bold" color="gray.600">
+                                    LIVE PREVIEW
+                                </Text>
+                                <Box
+                                    flex={1}
+                                    overflow="auto"
+                                    bg="gray.50"
+                                    borderRadius="md"
+                                    border="1px solid"
+                                    borderColor="gray.200"
+                                    p={4}
+                                >
+                                    <BlockRenderer block={editedBlock} readonly={true} />
+                                </Box>
+                            </VStack>
+                        </HStack>
+                    ) : (
+                        <>
+                            {/* Standard Layout for Other Blocks */}
+                            {/* Block Type Selector */}
+                            <Box>
+                                <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={2}>
+                                    BLOCK TYPE
+                                </Text>
+                                <Box
+                                    maxH="150px"
+                                    overflowY="auto"
+                                    border="1px solid"
+                                    borderColor="gray.200"
+                                    borderRadius="md"
+                                    p={1}
+                                >
+                                    {BLOCK_TYPES.map(type => (
+                                        <Button
+                                            key={type.value}
+                                            size="sm"
+                                            variant={editedBlock.kind === type.value ? 'solid' : 'ghost'}
+                                            colorScheme={editedBlock.kind === type.value ? 'blue' : 'gray'}
+                                            width="100%"
+                                            justifyContent="flex-start"
+                                            onClick={() => updateBlockKind(type.value)}
+                                            mb={1}
+                                        >
+                                            <Text mr={2}>{type.icon}</Text>
+                                            {type.label}
+                                        </Button>
+                                    ))}
+                                </Box>
+                            </Box>
+
+                            {/* Block Data Editor */}
+                            <Box>
+                                <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={2}>
+                                    CONTENT
+                                </Text>
+                                <Box
+                                    p={3}
+                                    bg="gray.50"
+                                    borderRadius="md"
+                                    border="1px solid"
+                                    borderColor="gray.200"
+                                >
+                                    <BlockEditorRenderer
+                                        block={editedBlock}
+                                        onChange={updateBlockData}
+                                        allBlocks={allBlocks}
+                                    />
+                                </Box>
+                            </Box>
+                        </>
+                    )}
 
                     {/* Actions */}
                     <Box>
@@ -502,6 +674,7 @@ interface BlockViewEditorProps {
     onDrop?: (targetBlockId: number | undefined, position: 'before' | 'after') => void;
     draggedBlockId?: number | undefined;
     article?: Article; // For TOC and other auto-generated blocks
+    allBlocks?: ArticleBlock[]; // All blocks for cross-referencing
 }
 
 const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
@@ -519,7 +692,8 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
     onDragEnd,
     onDrop,
     draggedBlockId,
-    article
+    article,
+    allBlocks
 }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
@@ -580,6 +754,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                 onDragEnd={onDragEnd}
                 onDrop={onDrop}
                 draggedBlockId={draggedBlockId}
+                allBlocks={allBlocks}
             />
         );
     };
@@ -685,19 +860,14 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                 opacity={isDragging ? 0.4 : 1}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                draggable={!readonly}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                cursor={!readonly ? 'grab' : 'default'}
-                _active={!readonly ? { cursor: 'grabbing' } : {}}
             >
                 {/* Hover Controls - Only show on directly hovered block */}
-                {!readonly && isDirectlyHovered && !isDragging && (
+                {!readonly && isDirectlyHovered && (
                     <>
-                        {/* Drag Handle (top left) */}
+                        {/* Drag Handle (top left) - Keep visible during drag */}
                         <Box
                             position="absolute"
                             top={1}
@@ -710,28 +880,34 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                             _active={{ cursor: 'grabbing' }}
                             boxShadow="md"
                             zIndex={10}
+                            draggable={true}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <DragIcon />
                         </Box>
 
-                        {/* Gear Icon (top right) */}
-                        <IconButton
-                            aria-label="Block settings"
-                            size="xs"
-                            position="absolute"
-                            top={1}
-                            right={1}
-                            colorScheme="blue"
-                            variant="solid"
-                            onClick={handleGearClick}
-                            zIndex={10}
-                            boxShadow="md"
-                        >
-                            <GearIcon />
-                        </IconButton>
+                        {/* Gear Icon (top right) - Hide during drag */}
+                        {!isDragging && (
+                            <IconButton
+                                aria-label="Block settings"
+                                size="xs"
+                                position="absolute"
+                                top={1}
+                                right={1}
+                                colorScheme="blue"
+                                variant="solid"
+                                onClick={handleGearClick}
+                                zIndex={10}
+                                boxShadow="md"
+                            >
+                                <GearIcon />
+                            </IconButton>
+                        )}
 
-                        {/* Plus Icon (bottom right) */}
-                        {onAddChild && (
+                        {/* Plus Icon (bottom right) - Hide during drag */}
+                        {!isDragging && onAddChild && (
                             <IconButton
                                 aria-label="Add child block"
                                 size="xs"
@@ -813,6 +989,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                                 onDrop={onDrop}
                                 draggedBlockId={draggedBlockId}
                                 article={article}
+                                allBlocks={allBlocks}
                             />
                         ))}
                     </Box>
@@ -844,6 +1021,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                     onMoveUp={onMoveUp}
                     onMoveDown={onMoveDown}
                     position={settingsPosition}
+                    allBlocks={allBlocks}
                 />
             )}
 
@@ -863,12 +1041,33 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
 
 // Main Component
 const ArticleViewEditor: React.FC = () => {
-    const [readonly, setReadonly] = useState(true);
+    // Get location to read query parameters
+    const location = useLocation();
+
+    // In static/production mode, default to readonly. In development, default to edit mode
+    const isStatic = import.meta.env.MODE === 'production' || import.meta.env.VITE_STATIC === 'true';
+    const [readonly, setReadonly] = useState(isStatic);
     const [article, setArticle] = useState<Article | null>(null);
+    const [loading, setLoading] = useState(true);
     const [showAddRootMenu, setShowAddRootMenu] = useState(false);
     const [addMenuPosition, setAddMenuPosition] = useState({ top: 0, left: 0 });
     const [hoveredBlockId, setHoveredBlockId] = useState<number | undefined>(undefined);
     const [draggedBlockId, setDraggedBlockId] = useState<number | undefined>(undefined);
+
+    // Extract article ID from URL query parameters
+    const getArticleIdFromUrl = (): number | null => {
+        const searchParams = new URLSearchParams(location.search);
+        const idParam = searchParams.get('id');
+        return idParam ? parseInt(idParam, 10) : null;
+    };
+
+    // Use the batch update hook
+    const { queueUpdate, flush, hasPendingUpdates } = useBatchBlockUpdates(article?.id, () => {
+        // Optionally refresh article after save
+        if (article?.id) {
+            loadArticle(article.id);
+        }
+    });
 
     const handleBlockHoverChange = (blockId: number | undefined, isHovering: boolean) => {
         if (isHovering) {
@@ -966,23 +1165,77 @@ const ArticleViewEditor: React.FC = () => {
         setDraggedBlockId(undefined);
     };
 
-    // Get the initial article
-    const getInitialArticle = (): Article => {
-        return JSON.parse(JSON.stringify(mockArticles.comprehensive));
+    // Load article from API or use mock data
+    const loadArticle = async (articleId: number) => {
+        try {
+            setLoading(true);
+            const loadedArticle = await recipeAPI.getArticle(articleId);
+            setArticle(loadedArticle);
+        } catch (error) {
+            console.error('Failed to load article:', error);
+            showToast('Load failed', 'Failed to load article. Using mock data.', 'warning');
+            // Fallback to mock data
+            setArticle(JSON.parse(JSON.stringify(mockArticles.comprehensive)));
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // Initialize article on mount
-    React.useEffect(() => {
-        setArticle(getInitialArticle());
-    }, []);
+    // Initialize article on mount or when URL changes
+    useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const idParam = searchParams.get('id');
 
-    const displayArticle = article || getInitialArticle();
+        // Check if this is the special "test" article
+        if (idParam === 'test') {
+            const testArticle = JSON.parse(JSON.stringify(mockArticles.comprehensive));
+            testArticle.title = 'TestArticle';
+            testArticle.id = 'test';
+            testArticle.namespace = 'Mock';
+            testArticle.tags = ['test', 'demo'];
+            setArticle(testArticle);
+            setLoading(false);
+            return;
+        }
 
-    const updateArticle = (updates: Partial<Article>) => {
-        setArticle({ ...displayArticle, ...updates });
+        const articleId = getArticleIdFromUrl();
+
+        // If in static mode or no ID provided, use mock data
+        if (isStatic || recipeAPI.isStaticMode()) {
+            setArticle(JSON.parse(JSON.stringify(mockArticles.comprehensive)));
+            setLoading(false);
+        } else if (articleId) {
+            // Load the article from the backend using the ID from URL
+            loadArticle(articleId).catch(() => {
+                console.error(`Failed to load article ${articleId}, using mock data`);
+                setArticle(JSON.parse(JSON.stringify(mockArticles.comprehensive)));
+                setLoading(false);
+            });
+        } else {
+            // No ID provided, show mock data
+            setArticle(JSON.parse(JSON.stringify(mockArticles.comprehensive)));
+            setLoading(false);
+        }
+    }, [location.search]); // Re-run when the query parameters change
+
+    const displayArticle = article || JSON.parse(JSON.stringify(mockArticles.comprehensive));
+
+    const updateArticle = async (updates: Partial<Article>) => {
+        const updatedArticle = { ...displayArticle, ...updates };
+        setArticle(updatedArticle);
+
+        // If we have an ID and we're not in static mode, update the article metadata on the backend
+        if (displayArticle.id && !isStatic && !recipeAPI.isStaticMode()) {
+            try {
+                await recipeAPI.updateArticle(displayArticle.id, updates);
+            } catch (error) {
+                console.error('Failed to update article:', error);
+                showToast('Update failed', 'Failed to update article metadata.', 'error');
+            }
+        }
     };
 
-    const addRootBlock = (blockType: ArticleBlockKind) => {
+    const addRootBlock = async (blockType: ArticleBlockKind) => {
         const newBlock: ArticleBlock = {
             id: Date.now() + Math.random(),
             page_id: displayArticle.id,
@@ -990,22 +1243,114 @@ const ArticleViewEditor: React.FC = () => {
             data: {},
             children: []
         };
-        updateArticle({ blocks: [...(displayArticle.blocks || []), newBlock] });
+
+        // Optimistically update the UI
+        setArticle({ ...displayArticle, blocks: [...(displayArticle.blocks || []), newBlock] });
+
+        // If we have an article ID and we're not in static mode, create the block on the backend
+        if (displayArticle.id && !isStatic && !recipeAPI.isStaticMode()) {
+            try {
+                const createdBlock = await recipeAPI.createArticleBlock(displayArticle.id, {
+                    parent_id: undefined,
+                    kind: blockType,
+                    data: {},
+                    extension: {}
+                });
+
+                // Update the local block with the server-assigned ID
+                setArticle(prev => ({
+                    ...prev!,
+                    blocks: (prev!.blocks || []).map(b =>
+                        b.id === newBlock.id ? { ...b, id: createdBlock.id } : b
+                    )
+                }));
+            } catch (error) {
+                console.error('Failed to create block:', error);
+                showToast('Create failed', 'Failed to create block.', 'error');
+            }
+        }
     };
 
-    const handleSave = () => {
-        console.log('Saving article:', displayArticle);
-        alert('Article saved! (Check console for JSON)');
+    const handleSave = async () => {
+        if (!displayArticle.id || isStatic || recipeAPI.isStaticMode()) {
+            console.log('Saving article (local only):', displayArticle);
+            showToast('Saved locally', 'Changes saved locally. Backend not available.', 'info');
+            return;
+        }
+
+        try {
+            // Flush any pending batch updates
+            await flush();
+
+            showToast('Saved!', 'Article and all changes have been saved.', 'success');
+        } catch (error) {
+            console.error('Failed to save article:', error);
+            showToast('Save failed', 'Failed to save changes.', 'error');
+        }
     };
 
-    const handleExport = () => {
-        const json = JSON.stringify(displayArticle, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `article-${displayArticle.id}.json`;
-        a.click();
+    const handleExport = async () => {
+        if (!displayArticle.id || isStatic || recipeAPI.isStaticMode()) {
+            // Export local data
+            const json = JSON.stringify(displayArticle, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `article-${displayArticle.id || 'draft'}.json`;
+            a.click();
+            return;
+        }
+
+        try {
+            const exportedArticle = await recipeAPI.exportArticle(displayArticle.id);
+            const json = JSON.stringify(exportedArticle, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `article-${displayArticle.id}.json`;
+            a.click();
+        } catch (error) {
+            console.error('Failed to export article:', error);
+            showToast('Export failed', 'Failed to export article.', 'error');
+        }
+    };
+
+    // Wrapper for block updates that uses batching
+    const handleBlockUpdate = (updatedBlock: ArticleBlock) => {
+        // Update local state immediately for responsive UI
+        setArticle(prev => {
+            if (!prev) return prev;
+
+            const updateBlockInTree = (blocks: ArticleBlock[]): ArticleBlock[] => {
+                return blocks.map(block => {
+                    if (block.id === updatedBlock.id) {
+                        return updatedBlock;
+                    }
+                    if (block.children && block.children.length > 0) {
+                        return { ...block, children: updateBlockInTree(block.children) };
+                    }
+                    return block;
+                });
+            };
+
+            return {
+                ...prev,
+                blocks: updateBlockInTree(prev.blocks || [])
+            };
+        });
+
+        // Queue the update for batching (only if we have an ID and not in static mode)
+        if (updatedBlock.id && !isStatic && !recipeAPI.isStaticMode()) {
+            queueUpdate(updatedBlock.id as number, {
+                id: updatedBlock.id,
+                kind: updatedBlock.kind,
+                data: updatedBlock.data,
+                extension: updatedBlock.extension,
+                parent_id: updatedBlock.parent_id
+            });
+        }
     };
 
     const handleAddRootClick = (e: React.MouseEvent) => {
@@ -1036,10 +1381,24 @@ const ArticleViewEditor: React.FC = () => {
                             <>
                                 <Button
                                     size="sm"
-                                    colorScheme="blue"
+                                    colorScheme={hasPendingUpdates ? "orange" : "blue"}
                                     onClick={handleSave}
+                                    position="relative"
                                 >
                                     <SaveIcon /> Save
+                                    {hasPendingUpdates && (
+                                        <Badge
+                                            position="absolute"
+                                            top="-8px"
+                                            right="-8px"
+                                            colorScheme="orange"
+                                            borderRadius="full"
+                                            fontSize="10px"
+                                            px={1}
+                                        >
+                                            •
+                                        </Badge>
+                                    )}
                                 </Button>
                                 <Button
                                     size="sm"
@@ -1207,55 +1566,56 @@ const ArticleViewEditor: React.FC = () => {
 
             {/* Article Content */}
             <VStack gap={0} align="stretch">
-                {displayArticle.blocks?.map((block, index) => (
-                    <BlockViewEditor
-                        key={block.id}
-                        block={block}
-                        readonly={readonly}
-                        onUpdate={!readonly ? (updatedBlock) => {
-                            const newBlocks = [...(displayArticle.blocks || [])];
-                            newBlocks[index] = updatedBlock;
-                            updateArticle({ blocks: newBlocks });
-                        } : undefined}
-                        onDelete={!readonly ? () => {
-                            const newBlocks = (displayArticle.blocks || []).filter((_, i) => i !== index);
-                            updateArticle({ blocks: newBlocks });
-                        } : undefined}
-                        onMoveUp={!readonly && index > 0 ? () => {
-                            const newBlocks = [...(displayArticle.blocks || [])];
-                            [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
-                            updateArticle({ blocks: newBlocks });
-                        } : undefined}
-                        onMoveDown={!readonly && index < (displayArticle.blocks?.length || 0) - 1 ? () => {
-                            const newBlocks = [...(displayArticle.blocks || [])];
-                            [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
-                            updateArticle({ blocks: newBlocks });
-                        } : undefined}
-                        onAddChild={!readonly ? (blockType) => {
-                            const newBlock: ArticleBlock = {
-                                id: Date.now() + Math.random(),
-                                parent_id: block.id,
-                                kind: blockType,
-                                data: {},
-                                children: []
-                            };
-                            const updatedBlock = {
-                                ...block,
-                                children: [...(block.children || []), newBlock]
-                            };
-                            const newBlocks = [...(displayArticle.blocks || [])];
-                            newBlocks[index] = updatedBlock;
-                            updateArticle({ blocks: newBlocks });
-                        } : undefined}
-                        onHoverChange={handleBlockHoverChange}
-                        hoveredBlockId={hoveredBlockId}
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
-                        onDrop={handleDrop}
-                        draggedBlockId={draggedBlockId}
-                        article={displayArticle}
-                    />
-                ))}
+                {loading ? (
+                    <Text>Loading article...</Text>
+                ) : (
+                    displayArticle.blocks?.map((block: ArticleBlock, index: number) => (
+                        <BlockViewEditor
+                            key={block.id}
+                            block={block}
+                            readonly={readonly}
+                            onUpdate={!readonly ? handleBlockUpdate : undefined}
+                            onDelete={!readonly ? () => {
+                                const newBlocks = (displayArticle.blocks || []).filter((_: ArticleBlock, i: number) => i !== index);
+                                updateArticle({ blocks: newBlocks });
+                            } : undefined}
+                            onMoveUp={!readonly && index > 0 ? () => {
+                                const newBlocks = [...(displayArticle.blocks || [])];
+                                [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+                                updateArticle({ blocks: newBlocks });
+                            } : undefined}
+                            onMoveDown={!readonly && index < (displayArticle.blocks?.length || 0) - 1 ? () => {
+                                const newBlocks = [...(displayArticle.blocks || [])];
+                                [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+                                updateArticle({ blocks: newBlocks });
+                            } : undefined}
+                            onAddChild={!readonly ? (blockType: ArticleBlockKind) => {
+                                const newBlock: ArticleBlock = {
+                                    id: Date.now() + Math.random(),
+                                    parent_id: block.id,
+                                    kind: blockType,
+                                    data: {},
+                                    children: []
+                                };
+                                const updatedBlock = {
+                                    ...block,
+                                    children: [...(block.children || []), newBlock]
+                                };
+                                const newBlocks = [...(displayArticle.blocks || [])];
+                                newBlocks[index] = updatedBlock;
+                                updateArticle({ blocks: newBlocks });
+                            } : undefined}
+                            onHoverChange={handleBlockHoverChange}
+                            hoveredBlockId={hoveredBlockId}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                            onDrop={handleDrop}
+                            draggedBlockId={draggedBlockId}
+                            article={displayArticle}
+                            allBlocks={displayArticle.blocks || []}
+                        />
+                    ))
+                )}
             </VStack>
 
             {/* Add Root Block */}
@@ -1292,6 +1652,11 @@ const ArticleViewEditor: React.FC = () => {
                         <Text>• Use the ⚙️ gear icon to change block type and edit properties</Text>
                         <Text>• Use the + icon to add nested child blocks</Text>
                         <Text>• Press Enter in a heading to save changes</Text>
+                        {!isStatic && !recipeAPI.isStaticMode() && (
+                            <Text color="green.700" fontWeight="medium">
+                                ⚡ Changes are batched and auto-saved every 5 seconds
+                            </Text>
+                        )}
                     </VStack>
                 </Box>
             )}

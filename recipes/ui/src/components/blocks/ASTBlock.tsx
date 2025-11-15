@@ -29,7 +29,7 @@ const ASTNodeRenderer: React.FC<{ node: ASTNode; level: number; readonly: boolea
                 gap={2}
                 py={1}
                 px={2}
-                pl={level * 24 + 8}
+                pl={level * 12 + 8}
                 cursor={hasChildren && readonly ? 'pointer' : 'default'}
                 _hover={hasChildren && readonly ? { bg: 'gray.50' } : {}}
                 onClick={() => hasChildren && readonly && setIsExpanded(!isExpanded)}

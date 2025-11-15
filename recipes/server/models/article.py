@@ -10,10 +10,15 @@ class Article(Base):
     __tablename__ = 'articles'
 
     _id = Column(Integer, primary_key=True)
-    title = Column(String, 50)
-    namespace = Column(String, 255)
+    root_id = Column(Integer, ForeignKey('articles._id'), nullable=True)
+    parent = Column(Integer, ForeignKey('articles._id'), nullable=True)
+
+    title = Column(String(50))
+    namespace = Column(String(255))
     tags = Column(JSON)
     extension = Column(JSON)
+
+    # Add a view counter for optimizing UX display view
 
     @staticmethod
     def get_article_forest(session, articles):
@@ -26,12 +31,15 @@ class Article(Base):
             .all()
         )
 
+        if len(nodes) == 0:
+            return articles
+
         parents = {}
         roots = []
         children = []
 
         for node in nodes:
-            if node.parent is None:
+            if node.parent is None or node.parent == node._id:
                 obj = node.to_json()
                 parents[node._id] = obj
                 roots.append(obj)
@@ -43,7 +51,7 @@ class Article(Base):
             else:
                 children.append(node)
 
-        assert len(roots) == len(articles), "All roots should have been fetched"
+        assert len(roots) == len(articles), f"All roots should have been fetched {len(roots)} {len(articles)} {len(nodes)} {len(children)}"
 
         # If the query order by task_id, it should do this loop in a single pass
         # because parent need to be created first so their _id will be smaller
@@ -94,27 +102,23 @@ class Article(Base):
 #
 # class DataBlock(Base):
 #     pass
-
-
-
-
-    # SpreadSheet like info
-    # Plots + Spreadsheet
-    # Text | Article
-    # Images
-    # Layout that hold more blocks
-    # list ? or this is part of a markdown display
-    # code block
-    # video
-    # audio
-    # file attachment
-    # Latex
-    # timeline
-    # mermaid plot
-    # widget
-    # references
-    # footnote
-    # heading + paragraph
+# SpreadSheet like info
+# Plots + Spreadsheet
+# Text | Article
+# Images
+# Layout that hold more blocks
+# list ? or this is part of a markdown display
+# code block
+# video
+# audio
+# file attachment
+# Latex
+# timeline
+# mermaid plot
+# widget
+# references
+# footnote
+# heading + paragraph
 class ArticleBlock(Base):
     """Renderable block of a blog post"""
     __tablename__ = 'article_blocks'
@@ -127,7 +131,7 @@ class ArticleBlock(Base):
     page_id = Column(Integer, ForeignKey('articles._id'), nullable=True)
     parent = Column(Integer, ForeignKey('article_blocks._id'), nullable=True)
 
-    kind = Column(String, 25)
+    kind = Column(String(25))
     data = Column(JSON)
     extension = Column(JSON)
 

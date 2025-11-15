@@ -27,6 +27,7 @@ from .route_recipe import recipes_routes
 from .route_ingredient import ingredient_routes
 from .route_project import projects_routes
 from .route_usda import usda_routes
+from .route_article import article_routes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -99,6 +100,7 @@ class RecipeApp:
         ingredient_routes(self.app, self.db)
         projects_routes(self.app, self.db)
         usda_routes(self.app, self.db)
+        article_routes(self.app, self.db)
 
     def setup_routes(self):
         @self.app.route('/', defaults={'path': ''})

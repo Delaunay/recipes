@@ -1,83 +1,82 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Box, VStack, Text, Button, HStack, Heading } from '@chakra-ui/react';
-import { recipeAPI } from '../services/api';
+import { Box, Heading, Text, SimpleGrid, Card } from '@chakra-ui/react';
+import { sidebarSections } from '../layout/Layout';
 
 const Home = () => {
-  const isStatic = recipeAPI.isStaticMode();
-
   useEffect(() => {
-    document.title = 'RecipeBook';
+    document.title = '(O)KaaSan - Home';
   }, []);
 
   return (
-    <Box py={10}>
-      <VStack gap={8} align="center" maxW="4xl" mx="auto">
-        <Box textAlign="center">
-          <Heading size="2xl" mb={4}>
-            Welcome to RecipeBook
-          </Heading>
-          <Text fontSize="xl" color="gray.600" mb={8}>
-            {isStatic
-              ? 'Browse this curated collection of recipes - your static recipe reference'
-              : 'Your digital cookbook for organizing, creating, and sharing recipes'
-            }
-          </Text>
-        </Box>
+    <Box>
+      <Box textAlign="center" mb={8}>
+        <Heading size="2xl" mb={4} color="#f56500">
+          Welcome to (O)KaaSan
+        </Heading>
+        <Text fontSize="xl" color="gray.600">
+          Your all-in-one lifestyle management application
+        </Text>
+      </Box>
 
-        {/* Static Mode Notice */}
-        {isStatic && (
-          <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.400" maxW="2xl">
-            <Text fontWeight="medium" color="blue.800" mb={2} textAlign="center">
-              📖 Static Recipe Collection
-            </Text>
-            <Text fontSize="sm" color="blue.700" textAlign="center">
-              This is a read-only version of RecipeBook. You can browse recipes, scale quantities,
-              and convert units, but creating or editing recipes is not available.
-            </Text>
-          </Box>
-        )}
+      <Heading size="lg" mb={6} color="gray.700">
+        Sections
+      </Heading>
 
-        <HStack gap={6} flexWrap="wrap" justify="center">
-          <Link to="/recipes">
-            <Button colorScheme="blue" size="lg">
-              Browse All Recipes
-            </Button>
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
+        {sidebarSections.map((section) => (
+          <Link
+            key={section.href}
+            to={section.href}
+            style={{ textDecoration: 'none' }}
+          >
+            <Card.Root
+              p={6}
+              borderWidth="1px"
+              borderRadius="lg"
+              borderColor="gray.200"
+              transition="all 0.2s"
+              _hover={{
+                borderColor: '#f56500',
+                boxShadow: 'lg',
+                transform: 'translateY(-2px)'
+              }}
+              cursor="pointer"
+              height="100%"
+            >
+              <Card.Body>
+                <Heading size="lg" mb={3} color="gray.700">
+                  {section.title}
+                </Heading>
+                {section.items.length > 0 && (
+                  <Box>
+                    <Text fontSize="sm" color="gray.500" mb={2}>
+                      {section.items.length} {section.items.length === 1 ? 'feature' : 'features'}:
+                    </Text>
+                    <Box color="gray.600" fontSize="sm">
+                      {section.items.slice(0, 4).map((item, idx) => (
+                        <Text key={idx} mb={1}>
+                          • {item.name}
+                        </Text>
+                      ))}
+                      {section.items.length > 4 && (
+                        <Text color="gray.500" fontStyle="italic">
+                          + {section.items.length - 4} more
+                        </Text>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+                {section.items.length === 0 && (
+                  <Text fontSize="sm" color="gray.500" fontStyle="italic">
+                    Coming soon...
+                  </Text>
+                )}
+              </Card.Body>
+            </Card.Root>
           </Link>
-          {!isStatic && (
-            <Link to="/create">
-              <Button colorScheme="green" variant="outline" size="lg">
-                Create New Recipe
-              </Button>
-            </Link>
-          )}
-          <Link to="/ingredients">
-            <Button colorScheme="purple" variant="outline" size="lg">
-              View Ingredients
-            </Button>
-          </Link>
-        </HStack>
-
-        {/* Feature highlights */}
-        <VStack gap={4} mt={8} maxW="2xl" textAlign="center">
-          <Heading size="md" color="gray.700">
-            {isStatic ? 'Available Features:' : 'Features:'}
-          </Heading>
-          <VStack gap={2} fontSize="sm" color="gray.600">
-            <Text>📖 Browse and view detailed recipes</Text>
-            <Text>🔢 Scale recipe quantities with custom multipliers</Text>
-            <Text>⚖️ Convert between different measurement units</Text>
-            <Text>🏷️ Explore recipes by categories and ingredients</Text>
-            {!isStatic && (
-              <>
-                <Text>✏️ Create and edit your own recipes</Text>
-                <Text>📷 Add images to recipes and cooking steps</Text>
-                <Text>📊 Manage ingredient database and unit conversions</Text>
-              </>
-            )}
-          </VStack>
-        </VStack>
-      </VStack>
+        ))}
+      </SimpleGrid>
     </Box>
   );
 };

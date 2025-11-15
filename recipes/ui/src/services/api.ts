@@ -18,7 +18,9 @@ import type {
   WeeklyRecipe,
   PlannedMeal,
   MealPlan,
-  KeyValueEntry
+  KeyValueEntry,
+  Article,
+  ArticleBlock
 } from './type';
 
 const USE_STATIC_MODE = import.meta.env.VITE_USE_STATIC_MODE === 'true';
@@ -597,6 +599,96 @@ class RecipeAPI {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
+  }
+
+  // Article methods
+  async getArticles(): Promise<Article[]> {
+    return this.request<Article[]>('/articles');
+  }
+
+  async getLastAccessedArticles(): Promise<Article[]> {
+    return this.request<Article[]>('/articles/last-accessed');
+  }
+
+  async getArticle(id: number): Promise<Article> {
+    return this.request<Article>(`/articles/${id}`);
+  }
+
+  async createArticle(article: Omit<Article, 'id'>): Promise<Article> {
+    if (isStaticMode()) {
+      throw new Error('Creating articles is not supported in static mode');
+    }
+    return this.request<Article>('/articles', {
+      method: 'POST',
+      body: JSON.stringify(article),
+    });
+  }
+
+  async updateArticle(id: number, article: Partial<Article>): Promise<Article> {
+    if (isStaticMode()) {
+      throw new Error('Updating articles is not supported in static mode');
+    }
+    return this.request<Article>(`/articles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(article),
+    });
+  }
+
+  async deleteArticle(id: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting articles is not supported in static mode');
+    }
+    return this.request<{ message: string }>(`/articles/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createArticleBlock(articleId: number, block: Omit<ArticleBlock, 'id'>): Promise<ArticleBlock> {
+    if (isStaticMode()) {
+      throw new Error('Creating blocks is not supported in static mode');
+    }
+    return this.request<ArticleBlock>(`/articles/${articleId}/blocks`, {
+      method: 'POST',
+      body: JSON.stringify(block),
+    });
+  }
+
+  async updateBlock(blockId: number, block: Partial<ArticleBlock>): Promise<ArticleBlock> {
+    if (isStaticMode()) {
+      throw new Error('Updating blocks is not supported in static mode');
+    }
+    return this.request<ArticleBlock>(`/blocks/${blockId}`, {
+      method: 'PUT',
+      body: JSON.stringify(block),
+    });
+  }
+
+  /**
+   * Batch update multiple blocks at once to minimize requests.
+   * This is the preferred method for updating blocks - frontend can group
+   * all changes over a 5-second period and send them in one request.
+   */
+  async updateBlocksBatch(blocks: Partial<ArticleBlock>[]): Promise<{ message: string; blocks: ArticleBlock[] }> {
+    if (isStaticMode()) {
+      throw new Error('Updating blocks is not supported in static mode');
+    }
+    return this.request<{ message: string; blocks: ArticleBlock[] }>('/blocks/batch', {
+      method: 'PUT',
+      body: JSON.stringify(blocks),
+    });
+  }
+
+  async deleteBlock(blockId: number): Promise<{ message: string }> {
+    if (isStaticMode()) {
+      throw new Error('Deleting blocks is not supported in static mode');
+    }
+    return this.request<{ message: string }>(`/blocks/${blockId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async exportArticle(articleId: number): Promise<Article> {
+    return this.request<Article>(`/articles/${articleId}/export`);
   }
 }
 

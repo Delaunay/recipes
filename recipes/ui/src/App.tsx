@@ -4,7 +4,7 @@ import {
   createSystem,
   defaultConfig
 } from '@chakra-ui/react';
-import Layout from './layout/Layout';
+import Layout, { sidebarSections } from './layout/Layout';
 import Home from './components/Home';
 import RecipeList from './components/RecipeList';
 import RecipeDetail from './components/RecipeDetail';
@@ -24,6 +24,8 @@ import Settings from './components/Settings';
 import RecipeComparison from './components/RecipeComparison';
 import ApiTester from './components/ApiTester';
 import ArticleViewEditor from './components/ArticleViewEditor';
+import SectionView from './components/SectionView';
+import ContentView from './components/ContentView';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -36,6 +38,30 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
+
+            {/* Section overview pages */}
+            {sidebarSections.map((section) => {
+              // Use custom ContentView for the Content section
+              if (section.href === '/content') {
+                return (
+                  <Route
+                    key={section.href}
+                    path={section.href}
+                    element={<ContentView />}
+                  />
+                );
+              }
+              // Use default SectionView for all other sections
+              return (
+                <Route
+                  key={section.href}
+                  path={section.href}
+                  element={<SectionView title={section.title} items={section.items} />}
+                />
+              );
+            })}
+
+            {/* Individual pages */}
             <Route path="/recipes" element={<RecipeList />} />
             <Route path="/recipes/:identifier" element={<RecipeDetail />} />
             <Route path="/create" element={<CreateRecipe />} />

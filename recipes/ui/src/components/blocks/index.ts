@@ -47,6 +47,8 @@ export { ASTBlock } from './ASTBlock';
 export { BNFBlock } from './BNFBlock';
 export { GraphBlock } from './GraphBlock';
 export { BlocklyBlock } from './BlocklyBlock';
+export { ElectricalDiagramBlock } from './ElectricalDiagramBlock';
+export { DrawingBlock } from './DrawingBlock';
 
 // Export all block editor components
 export { HeadingBlockEditor } from './HeadingBlockEditor';
@@ -96,6 +98,8 @@ export { ASTBlockEditor } from './ASTBlockEditor';
 export { BNFBlockEditor } from './BNFBlockEditor';
 export { GraphBlockEditor } from './GraphBlockEditor';
 export { BlocklyBlockEditor } from './BlocklyBlockEditor';
+export { ElectricalDiagramBlockEditor } from './ElectricalDiagramBlockEditor';
+export { DrawingBlockEditor } from './DrawingBlockEditor';
 
 // Export factory and types
 export { BlockFactory, BlockRenderer, BlockEditorRenderer } from './BlockFactory';

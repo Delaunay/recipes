@@ -17,6 +17,9 @@ export interface BlockComponentProps {
     onDragEnd?: () => void;
     onDrop?: (targetBlockId: number | undefined, position: 'before' | 'after') => void;
     draggedBlockId?: number | undefined;
+
+    // All blocks in the article (for cross-referencing)
+    allBlocks?: ArticleBlock[];
 }
 
 /**
@@ -25,6 +28,7 @@ export interface BlockComponentProps {
 export interface BlockEditorProps {
     block: ArticleBlock;
     onChange: (key: string, value: any) => void;
+    allBlocks?: ArticleBlock[]; // For cross-referencing other blocks
 }
 
 /**

@@ -56,13 +56,36 @@ const alertStyles: Record<AlertType, { bg: string; border: string; icon: string;
     }
 };
 
-export const AlertBlock: React.FC<BlockComponentProps> = ({ block }) => {
+export const AlertBlock: React.FC<BlockComponentProps> = ({ block, readonly, onUpdate }) => {
+    const titleRef = React.useRef<HTMLParagraphElement>(null);
+    const messageRef = React.useRef<HTMLParagraphElement>(null);
+
     const type = (block.data?.type || 'info') as AlertType;
     const title = block.data?.title;
     const message = block.data?.message || '';
 
     const style = alertStyles[type];
     const IconComponent = style.iconComponent;
+
+    const handleTitleBlur = () => {
+        if (titleRef.current && onUpdate) {
+            const newTitle = titleRef.current.innerText;
+            onUpdate({
+                ...block,
+                data: { ...block.data, title: newTitle }
+            });
+        }
+    };
+
+    const handleMessageBlur = () => {
+        if (messageRef.current && onUpdate) {
+            const newMessage = messageRef.current.innerText;
+            onUpdate({
+                ...block,
+                data: { ...block.data, message: newMessage }
+            });
+        }
+    };
 
     return (
         <Box
@@ -80,11 +103,50 @@ export const AlertBlock: React.FC<BlockComponentProps> = ({ block }) => {
             </Box>
             <Box flex={1}>
                 {title && (
-                    <Text fontWeight="600" fontSize="sm" mb={1} color="gray.800">
+                    <Text
+                        ref={titleRef}
+                        fontWeight="600"
+                        fontSize="sm"
+                        mb={1}
+                        color="gray.800"
+                        contentEditable={!readonly}
+                        suppressContentEditableWarning
+                        onBlur={handleTitleBlur}
+                        css={
+                            !readonly
+                                ? {
+                                    '&:focus': {
+                                        outline: '2px solid var(--chakra-colors-blue-400)',
+                                        outlineOffset: '2px',
+                                        borderRadius: '4px'
+                                    }
+                                }
+                                : undefined
+                        }
+                    >
                         {title}
                     </Text>
                 )}
-                <Text fontSize="sm" color="gray.700" whiteSpace="pre-wrap">
+                <Text
+                    ref={messageRef}
+                    fontSize="sm"
+                    color="gray.700"
+                    whiteSpace="pre-wrap"
+                    contentEditable={!readonly}
+                    suppressContentEditableWarning
+                    onBlur={handleMessageBlur}
+                    css={
+                        !readonly
+                            ? {
+                                '&:focus': {
+                                    outline: '2px solid var(--chakra-colors-blue-400)',
+                                    outlineOffset: '2px',
+                                    borderRadius: '4px'
+                                }
+                            }
+                            : undefined
+                    }
+                >
                     {message}
                 </Text>
             </Box>

@@ -1,4 +1,4 @@
-from .calendar import Event, Base
+from .calendar import Event
 
 from .keyvalue import KeyValueStore
 
@@ -26,10 +26,14 @@ from .task import Task
 
 from .user import User
 
+from .article import Article, ArticleBlock
+
+
+from .common import Base
+
 
 if False:
     from .encryption import EncryptedStorage, PasswordManager
 
-    from .article import Article, ArticleBlock
 
     from .budget import Receipt, ReceiptItem, Expense

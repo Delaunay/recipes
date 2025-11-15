@@ -362,7 +362,9 @@ export type ArticleBlockKind =
     | 'ast'
     | 'bnf'
     | 'graph'
-    | 'blockly';
+    | 'blockly'
+    | 'electrical'
+    | 'drawing';
 
 // ============================================================================
 // Budget/Finance Models (incomplete in Python, included for completeness)

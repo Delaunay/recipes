@@ -14,12 +14,14 @@ const ChevronRightIcon = () => (
     </svg>
 );
 
-export const AccordionBlock: React.FC<BlockComponentProps> = ({ block, readonly }) => {
+export const AccordionBlock: React.FC<BlockComponentProps> = ({ block, readonly, onUpdate }) => {
     const items = block.data?.items || [];
     const allowMultiple = block.data?.allowMultiple !== false;
     const defaultExpanded = block.data?.defaultExpanded || [];
 
     const [expandedItems, setExpandedItems] = useState<number[]>(defaultExpanded);
+    const titleRefs = React.useRef<(HTMLParagraphElement | null)[]>([]);
+    const contentRefs = React.useRef<(HTMLParagraphElement | null)[]>([]);
 
     const toggleItem = (index: number) => {
         if (readonly) return;
@@ -38,6 +40,30 @@ export const AccordionBlock: React.FC<BlockComponentProps> = ({ block, readonly 
                 }
             }
         });
+    };
+
+    const handleTitleBlur = (index: number) => {
+        if (titleRefs.current[index] && onUpdate) {
+            const newTitle = titleRefs.current[index]!.innerText;
+            const newItems = [...items];
+            newItems[index] = { ...newItems[index], title: newTitle };
+            onUpdate({
+                ...block,
+                data: { ...block.data, items: newItems }
+            });
+        }
+    };
+
+    const handleContentBlur = (index: number) => {
+        if (contentRefs.current[index] && onUpdate) {
+            const newContent = contentRefs.current[index]!.innerText;
+            const newItems = [...items];
+            newItems[index] = { ...newItems[index], content: newContent };
+            onUpdate({
+                ...block,
+                data: { ...block.data, items: newItems }
+            });
+        }
     };
 
     return (
@@ -64,18 +90,42 @@ export const AccordionBlock: React.FC<BlockComponentProps> = ({ block, readonly 
                             display="flex"
                             alignItems="center"
                             justifyContent="space-between"
-                            onClick={() => toggleItem(index)}
                             transition="background-color 0.15s"
                         >
-                            <Text fontWeight="600" color="gray.800" fontSize="sm">
+                            <Text
+                                ref={(el) => {
+                                    titleRefs.current[index] = el;
+                                }}
+                                fontWeight="600"
+                                color="gray.800"
+                                fontSize="sm"
+                                flex={1}
+                                contentEditable={!readonly}
+                                suppressContentEditableWarning
+                                onBlur={() => handleTitleBlur(index)}
+                                onClick={(e) => {
+                                    if (!readonly) e.stopPropagation();
+                                }}
+                                css={
+                                    !readonly
+                                        ? {
+                                            '&:focus': {
+                                                outline: '2px solid var(--chakra-colors-blue-400)',
+                                                outlineOffset: '2px',
+                                                borderRadius: '4px'
+                                            }
+                                        }
+                                        : undefined
+                                }
+                            >
                                 {item.title}
                             </Text>
                             <Box
                                 color="gray.500"
                                 transition="transform 0.2s"
-                                css={{
-                                    transform: isExpanded ? 'rotate(0deg)' : 'rotate(0deg)'
-                                }}
+                                onClick={() => toggleItem(index)}
+                                cursor="pointer"
+                                ml={2}
                             >
                                 {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
                             </Box>
@@ -90,7 +140,28 @@ export const AccordionBlock: React.FC<BlockComponentProps> = ({ block, readonly 
                                 borderTop="1px solid"
                                 borderColor="gray.100"
                             >
-                                <Text fontSize="sm" color="gray.700" whiteSpace="pre-wrap">
+                                <Text
+                                    ref={(el) => {
+                                        contentRefs.current[index] = el;
+                                    }}
+                                    fontSize="sm"
+                                    color="gray.700"
+                                    whiteSpace="pre-wrap"
+                                    contentEditable={!readonly}
+                                    suppressContentEditableWarning
+                                    onBlur={() => handleContentBlur(index)}
+                                    css={
+                                        !readonly
+                                            ? {
+                                                '&:focus': {
+                                                    outline: '2px solid var(--chakra-colors-blue-400)',
+                                                    outlineOffset: '2px',
+                                                    borderRadius: '4px'
+                                                }
+                                            }
+                                            : undefined
+                                    }
+                                >
                                     {item.content}
                                 </Text>
                             </Box>

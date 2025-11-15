@@ -49,6 +49,8 @@ import { ASTBlock } from './ASTBlock';
 import { BNFBlock } from './BNFBlock';
 import { GraphBlock } from './GraphBlock';
 import { BlocklyBlock } from './BlocklyBlock';
+import { ElectricalDiagramBlock } from './ElectricalDiagramBlock';
+import { DrawingBlock } from './DrawingBlock';
 
 // Import editors
 import { HeadingBlockEditor } from './HeadingBlockEditor';
@@ -98,6 +100,8 @@ import { ASTBlockEditor } from './ASTBlockEditor';
 import { BNFBlockEditor } from './BNFBlockEditor';
 import { GraphBlockEditor } from './GraphBlockEditor';
 import { BlocklyBlockEditor } from './BlocklyBlockEditor';
+import { ElectricalDiagramBlockEditor } from './ElectricalDiagramBlockEditor';
+import { DrawingBlockEditor } from './DrawingBlockEditor';
 
 /**
  * Block factory that maps block kinds to their corresponding components and editors
@@ -164,6 +168,8 @@ class BlockFactoryClass {
         this.register('bnf', BNFBlock, BNFBlockEditor);
         this.register('graph', GraphBlock, GraphBlockEditor);
         this.register('blockly', BlocklyBlock, BlocklyBlockEditor);
+        this.register('electrical', ElectricalDiagramBlock, ElectricalDiagramBlockEditor);
+        this.register('drawing', DrawingBlock, DrawingBlockEditor);
     }
 
     /**

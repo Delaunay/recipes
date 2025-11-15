@@ -728,7 +728,50 @@ const article = {
             page_id: 1,
             kind: 'paragraph',
             data: {
-                text: 'Gantt-style timeline showing project phases:'
+                text: 'Gantt-style timeline showing project phases. You can either enter data manually or reference a spreadsheet block as the data source:'
+            }
+        },
+        {
+            id: 650,
+            page_id: 1,
+            kind: 'spreadsheet',
+            data: {
+                title: 'Project Tasks Data',
+                showHeaders: true,
+                headers: ['task', 'start', 'end', 'category', 'progress'],
+                data: [
+                    ['Initial Planning', '2025-01-01', '2025-01-15', 'Planning', '100'],
+                    ['Core Block Implementation', '2025-01-10', '2025-02-15', 'Development', '100'],
+                    ['Advanced Blocks', '2025-02-01', '2025-03-01', 'Development', '90'],
+                    ['Testing & Polish', '2025-02-20', '2025-03-15', 'QA', '75'],
+                    ['Documentation', '2025-03-01', '2025-03-20', 'Documentation', '50']
+                ]
+            }
+        },
+        {
+            id: 651,
+            page_id: 1,
+            kind: 'paragraph',
+            data: {
+                text: 'Timeline using spreadsheet data source (Block #650):'
+            }
+        },
+        {
+            id: 652,
+            page_id: 1,
+            kind: 'timeline',
+            data: {
+                title: 'Development Timeline (From Spreadsheet)',
+                showProgress: true,
+                dataSourceBlockId: 650  // Reference to the spreadsheet block above
+            }
+        },
+        {
+            id: 653,
+            page_id: 1,
+            kind: 'paragraph',
+            data: {
+                text: 'Timeline with inline data (traditional approach):'
             }
         },
         {
@@ -736,7 +779,7 @@ const article = {
             page_id: 1,
             kind: 'timeline',
             data: {
-                title: 'Article System Development Timeline',
+                title: 'Article System Development Timeline (Inline Data)',
                 showProgress: true,
                 items: [
                     {
@@ -1356,9 +1399,45 @@ doubled`
                 }
             }
         },
-        // Engineering & Process Blocks
         {
             id: 104,
+            page_id: 1,
+            kind: 'electrical',
+            data: {
+                title: 'LED Circuit with Current Limiting Resistor',
+                width: 600,
+                height: 350,
+                components: [
+                    { id: 'V1', type: 'battery', value: '9V', x: 100, y: 200, rotation: 90 },
+                    { id: 'R1', type: 'resistor', value: '470Ω', x: 250, y: 100, rotation: 0 },
+                    { id: 'LED1', type: 'led', value: 'Red LED', x: 400, y: 100, rotation: 0 },
+                    { id: 'GND', type: 'ground', value: '', x: 500, y: 200, rotation: 0 }
+                ],
+                wires: [
+                    { points: [[100, 160], [100, 100], [210, 100]] },
+                    { points: [[290, 100], [360, 100]] },
+                    { points: [[440, 100], [500, 100], [500, 180]] },
+                    { points: [[100, 240], [100, 280], [500, 280], [500, 220]] }
+                ]
+            }
+        },
+        {
+            id: 105,
+            page_id: 1,
+            kind: 'drawing',
+            data: {
+                title: 'Quick Sketch: System Architecture',
+                width: 600,
+                height: 400,
+                backgroundColor: '#f9fafb',
+                defaultColor: '#000000',
+                defaultLineWidth: 2,
+                imageData: ''
+            }
+        },
+        // Engineering & Process Blocks
+        {
+            id: 106,
             page_id: 1,
             kind: 'heading',
             data: {
@@ -1367,7 +1446,7 @@ doubled`
             }
         },
         {
-            id: 105,
+            id: 107,
             page_id: 1,
             kind: 'workflow',
             data: {
@@ -1383,7 +1462,7 @@ doubled`
             }
         },
         {
-            id: 106,
+            id: 108,
             page_id: 1,
             kind: 'constraint',
             data: {
@@ -1419,7 +1498,7 @@ doubled`
         },
         // Media Blocks
         {
-            id: 107,
+            id: 110,
             page_id: 1,
             kind: 'heading',
             data: {
@@ -1428,7 +1507,7 @@ doubled`
             }
         },
         {
-            id: 108,
+            id: 111,
             page_id: 1,
             kind: 'slideshow',
             data: {
@@ -1444,7 +1523,7 @@ doubled`
             }
         },
         {
-            id: 109,
+            id: 112,
             page_id: 1,
             kind: 'animation',
             data: {
@@ -1458,7 +1537,7 @@ doubled`
             }
         },
         {
-            id: 110,
+            id: 113,
             page_id: 1,
             kind: 'iframe',
             data: {
@@ -1469,7 +1548,7 @@ doubled`
             }
         },
         {
-            id: 111,
+            id: 114,
             page_id: 1,
             kind: 'model3d',
             data: {
@@ -1494,7 +1573,7 @@ doubled`
             page_id: 1,
             kind: 'paragraph',
             data: {
-                text: 'This comprehensive example demonstrates 51 block types including Blockly visual programming, LiteGraph node graphs, interactive forms, live code execution, data structures (trees, stacks, arrays), execution traces, AST visualization, BNF grammars, workflow diagrams, engineering constraints, CLI commands, file trees, iframes, slideshows, animations, 3D models, and much more. Plus all the essentials: data tables, timelines, spreadsheets, Vega plots, accordions, alerts, definitions with auto-generated glossary, academic references, footnotes, theorems & proofs, citations, quizzes, code diffs, embeds, galleries, and interactive elements. You can edit any block by clicking the gear icon, add nested content with the plus icon, and drag blocks to reorder them. Toggle readonly mode to switch between viewing and editing.'
+                text: 'This comprehensive example demonstrates 53+ block types including Blockly visual programming, LiteGraph node graphs, electrical circuit diagrams, freehand drawing canvases, interactive forms, live code execution, data structures (trees, stacks, arrays), execution traces, AST visualization, BNF grammars, workflow diagrams, engineering constraints, CLI commands, file trees, iframes, slideshows, animations, 3D models, and much more. Plus all the essentials: data tables, timelines, spreadsheets, Vega plots, accordions, alerts, definitions with auto-generated glossary, academic references, footnotes, theorems & proofs, citations, quizzes, code diffs, embeds, galleries, and interactive elements. You can edit any block by clicking the gear icon, add nested content with the plus icon, and drag blocks to reorder them. Toggle readonly mode to switch between viewing and editing.'
             }
         },
         // Final list summarizing features
