@@ -84,6 +84,8 @@ class Article(Base):
             "namespace": self.namespace,
             "tags": self.tags,
             "extension": self.extension,
+            "parent_id": self.parent,
+            "root_id": self.root_id,
             "blocks": []
         }
 
@@ -93,7 +95,7 @@ class Article(Base):
                 .filter(ArticleBlock.page_id == self._id)
                 .order_by(ArticleBlock._id.asc())
                 .all()
-            ) 
+            )
 
         return this
 
@@ -140,7 +142,7 @@ class ArticleBlock(Base):
         return {
             'id': self._id,
             'page_id': self.page_id,
-            'parent_id': self.parent, 
+            'parent_id': self.parent,
             'kind': self.kind,
             'data': self.data,
             'extension': self.extension,

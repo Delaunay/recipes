@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import {
     Box,
     VStack,
@@ -1362,6 +1362,33 @@ const ArticleViewEditor: React.FC = () => {
         setShowAddRootMenu(true);
     };
 
+    const handleCreateChildArticle = async () => {
+        if (!displayArticle.id || displayArticle.id === 'test' || isStatic || recipeAPI.isStaticMode()) {
+            showToast('Not available', 'Creating child articles is not available in static mode or for test articles.', 'warning');
+            return;
+        }
+
+        try {
+            const childArticle = await recipeAPI.createChildArticle(displayArticle.id as number, {
+                title: 'Untitled Child',
+                namespace: displayArticle.namespace,
+                tags: [],
+                extension: {},
+                blocks: []
+            });
+
+            // Refresh the article to get updated child_articles list
+            if (displayArticle.id) {
+                loadArticle(displayArticle.id as number);
+            }
+
+            showToast('Child created', `Created child article: ${childArticle.title}`, 'success');
+        } catch (error) {
+            console.error('Failed to create child article:', error);
+            showToast('Create failed', 'Failed to create child article.', 'error');
+        }
+    };
+
     return (
         <Container maxW="container.lg" py={8}>
             {/* Top Toolbar */}
@@ -1637,6 +1664,71 @@ const ArticleViewEditor: React.FC = () => {
                             onClose={() => setShowAddRootMenu(false)}
                             position={addMenuPosition}
                         />
+                    )}
+                </Box>
+            )}
+
+            {/* Child Articles Section */}
+            {displayArticle.id && displayArticle.id !== 'test' && (
+                <Box mt={12} p={6} bg="purple.50" borderRadius="md" borderWidth="2px" borderColor="purple.200">
+                    <HStack justify="space-between" mb={4}>
+                        <Heading size="md" color="purple.800">
+                            📄 Child Articles
+                        </Heading>
+                        {!readonly && !isStatic && !recipeAPI.isStaticMode() && (
+                            <Button
+                                size="sm"
+                                colorScheme="purple"
+                                onClick={handleCreateChildArticle}
+                            >
+                                <PlusIcon /> Create Child Article
+                            </Button>
+                        )}
+                    </HStack>
+
+                    {displayArticle.child_articles && displayArticle.child_articles.length > 0 ? (
+                        <VStack align="stretch" gap={2}>
+                            {displayArticle.child_articles.map((child: Article) => (
+                                <Link
+                                    key={child.id}
+                                    to={`/article?id=${child.id}`}
+                                    style={{ textDecoration: 'none' }}
+                                >
+                                    <Box
+                                        p={3}
+                                        bg="white"
+                                        borderRadius="md"
+                                        borderWidth="1px"
+                                        borderColor="purple.200"
+                                        transition="all 0.2s"
+                                        _hover={{
+                                            borderColor: 'purple.500',
+                                            boxShadow: 'md',
+                                            transform: 'translateY(-2px)'
+                                        }}
+                                        cursor="pointer"
+                                    >
+                                        <HStack justify="space-between">
+                                            <VStack align="flex-start" gap={1}>
+                                                <Text fontWeight="600" color="purple.800">
+                                                    {child.title || 'Untitled'}
+                                                </Text>
+                                                {child.namespace && (
+                                                    <Text fontSize="xs" color="gray.600">
+                                                        {child.namespace}
+                                                    </Text>
+                                                )}
+                                            </VStack>
+                                            <Text fontSize="xl" color="purple.400">→</Text>
+                                        </HStack>
+                                    </Box>
+                                </Link>
+                            ))}
+                        </VStack>
+                    ) : (
+                        <Text fontSize="sm" color="gray.600" fontStyle="italic">
+                            No child articles yet. {!readonly && 'Click "Create Child Article" to add one.'}
+                        </Text>
                     )}
                 </Box>
             )}

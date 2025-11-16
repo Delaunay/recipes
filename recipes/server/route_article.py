@@ -44,6 +44,10 @@ def article_routes(app, db):
             articles = [article_json]
             Article.get_article_forest(db.session, articles)
 
+            # Get child articles (articles that have this article as parent)
+            child_articles = db.session.query(Article).filter(Article.parent == article_id).all()
+            article_json['child_articles'] = [child.to_json() for child in child_articles]
+
             return jsonify(article_json)
         except Exception as e:
             print_exc()
@@ -55,11 +59,23 @@ def article_routes(app, db):
         try:
             data = request.get_json()
 
+            parent_id = data.get('parent_id')
+            root_id = data.get('root_id')
+
+            # If parent is specified, automatically set root_id
+            if parent_id and not root_id:
+                parent_article = db.session.query(Article).get(parent_id)
+                if parent_article:
+                    # If parent has a root, use that; otherwise parent is the root
+                    root_id = parent_article.root_id if parent_article.root_id else parent_id
+
             article = Article(
                 title=data.get('title', 'Untitled'),
                 namespace=data.get('namespace'),
                 tags=data.get('tags', []),
-                extension=data.get('extension', {})
+                extension=data.get('extension', {}),
+                parent=parent_id,
+                root_id=root_id
             )
 
             db.session.add(article)
@@ -69,6 +85,51 @@ def article_routes(app, db):
         except Exception as e:
             print_exc()
             db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    # Create a child article for a given parent article
+    @app.route('/articles/<int:parent_id>/children', methods=['POST'])
+    def create_child_article(parent_id: int) -> Dict[str, Any]:
+        try:
+            parent_article = db.session.query(Article).get(parent_id)
+            if not parent_article:
+                return jsonify({"error": "Parent article not found"}), 404
+
+            data = request.get_json()
+
+            # Determine root_id: if parent has a root, use that; otherwise parent is the root
+            root_id = parent_article.root_id if parent_article.root_id else parent_id
+
+            article = Article(
+                title=data.get('title', 'Untitled Child'),
+                namespace=data.get('namespace'),
+                tags=data.get('tags', []),
+                extension=data.get('extension', {}),
+                parent=parent_id,
+                root_id=root_id
+            )
+
+            db.session.add(article)
+            db.session.commit()
+
+            return jsonify(article.to_json()), 201
+        except Exception as e:
+            print_exc()
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    # Get all child articles for a given parent
+    @app.route('/articles/<int:parent_id>/children', methods=['GET'])
+    def get_child_articles(parent_id: int) -> Dict[str, Any]:
+        try:
+            parent_article = db.session.query(Article).get(parent_id)
+            if not parent_article:
+                return jsonify({"error": "Parent article not found"}), 404
+
+            child_articles = db.session.query(Article).filter(Article.parent == parent_id).all()
+            return jsonify([child.to_json() for child in child_articles])
+        except Exception as e:
+            print_exc()
             return jsonify({"error": str(e)}), 500
 
     # Update article metadata (title, namespace, tags, extension)

@@ -298,7 +298,10 @@ export interface Article {
     namespace?: string;
     tags?: any; // JSON
     extension?: any;
+    parent_id?: number; // Reference to parent article
+    root_id?: number; // Reference to root article in hierarchy
     blocks?: ArticleBlock[]; // Root blocks of the article
+    child_articles?: Article[]; // Child articles (sub-pages)
 }
 
 export interface ArticleBlock {
