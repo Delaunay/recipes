@@ -3,10 +3,17 @@ import { Box, VStack, Button, Spinner, Text } from '@chakra-ui/react';
 import { BlockComponentProps } from './BlockTypes';
 
 import * as Blockly from 'blockly/core';
+import * as En from 'blockly/msg/en';
+import 'blockly/blocks';
+import * as blocks from 'blockly/blocks';
+import { buildToolboxFromBlocks } from './blockly/utils';
+
+
 import { recipeAPI } from '../../services/api';
 
 
-export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly }) => {
+
+export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly: _readonly }) => {
     const blocklyDiv = useRef<HTMLDivElement>(null);
     const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
     const isInitialized = useRef(false);
@@ -15,11 +22,11 @@ export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly }) => {
 
     const height = 400;
 
-    // Use hardcoded blocks if no data provided, otherwise use provided data
-    const blocksData = {};
+    Blockly.setLocale(En);
+    console.log("MSG", Blockly.Msg)
 
     useEffect(() => {
-        if (!blocklyDiv.current) return;
+        if (!blocklyDiv.current || isInitialized.current) return;
 
         const initWorkspace = async () => {
             console.log('🔧 Initializing Blockly workspace...');
@@ -53,27 +60,17 @@ export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly }) => {
                 }
 
                 // Inject workspace with the toolbox
+                // blocks.blocks might not exist, so fallback to blocks itself or empty object
+                // const blocksMap = (blocks as any).blocks || blocks || {};
+                console.log( buildToolboxFromBlocks(blocks));
                 const workspace = Blockly.inject(blocklyDiv.current!, {
-                    toolbox: toolbox
+                    toolbox: buildToolboxFromBlocks(blocks)
                 });
 
                 console.log('✓ Workspace created and stored in ref');
                 workspaceRef.current = workspace;
                 isInitialized.current = true;
                 setIsLoading(false);
-
-                // // Load blocks if provided
-                // if (blocksData && Object.keys(blocksData).length > 0) {
-                //     try {
-                //         console.log('Loading blocks into workspace:', blocksData);
-                //         Blockly.serialization.workspaces.load(blocksData, workspace);
-                //         console.log('✓ Blocks loaded successfully');
-                //         console.log('Workspace blocks count:', workspace.getAllBlocks().length);
-                //     } catch (err) {
-                //         console.error('✗ Error loading blocks:', err);
-                //         console.error('Blocks data:', JSON.stringify(blocksData, null, 2));
-                //     }
-                // }
             } catch (err) {
                 console.error('❌ Error initializing Blockly workspace:', err);
                 setError(err instanceof Error ? err.message : 'Unknown error');
@@ -92,7 +89,7 @@ export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly }) => {
                 isInitialized.current = false;
             }
         };
-    }, [blocksData, readonly]);
+    }, []); // Empty dependency array - only run once on mount
 
     const handleSaveWorkspace = () => {
         console.log('💾 Save button clicked!');

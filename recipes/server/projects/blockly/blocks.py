@@ -471,7 +471,7 @@ class BinOp(BlocklyNode):
                 },
                 {"type": "input_value", "name": "RIGHT"},
             ],
-            "output": None,
+            "output": "NumberType",
             "colour": 230,
         }
 
@@ -865,6 +865,7 @@ class Assign(BlocklyNode):
         return {
             "type": cls.__typename__(),
             "message0": "%1 = %2",
+            "inputsInline": True,
             "args0": [
                 {"type": "input_statement", "name": "TARGETS"},
                 {"type": "input_value", "name": "VALUE"},
@@ -1174,8 +1175,10 @@ class If(BlocklyNode):
             "args1": [
                 {"type": "input_statement", "name": "BODY"},
             ],
-            "message2": "else:%1",
-            "args2": [
+            "message2": "else:",
+            "args2": [],
+            "message3": "%1",
+            "args3": [
                 {"type": "input_statement", "name": "ORELSE"},
             ],
             "previousStatement": None,
@@ -1362,18 +1365,28 @@ class Try(BlocklyNode):
             "args1": [
                 {"type": "input_statement", "name": "BODY"},
             ],
-            "message2": "except:%1",
-            "args2": [
+
+            "message2": "except:",
+            "args2": [],
+            "message3": "%1",
+            "args3": [
                 {"type": "input_statement", "name": "HANDLERS"},
             ],
-            "message3": "else:%1",
-            "args3": [
+
+            "message4": "else:",
+            "args4": [],
+            "message5": "%1",
+            "args5": [
                 {"type": "input_statement", "name": "ORELSE"},
             ],
-            "message4": "finally:%1",
-            "args4": [
+
+            "message6": "finally:",
+            "args6": [],
+            "message7": "%1",
+            "args7": [
                 {"type": "input_statement", "name": "FINALBODY"},
             ],
+
             "previousStatement": None,
             "nextStatement": None,
             "colour": 0,
@@ -2539,12 +2552,13 @@ STATEMENTS = set(
         Nonlocal,
         Expr,
         FunctionDef,
-        AsyncFunctionDef,
         ClassDef,
-        AsyncFor,
-        AsyncWith,
         Import,
         ImportFrom,
+
+        # AsyncFunctionDef,
+        # AsyncFor,
+        # AsyncWith,
     ]
 )
 
