@@ -316,6 +316,7 @@ export interface ArticleBlock {
 
 // Block type constants for reference
 export type ArticleBlockKind =
+    | 'markdown'
     | 'text'
     | 'heading'
     | 'paragraph'

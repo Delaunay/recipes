@@ -28,6 +28,9 @@ from .route_ingredient import ingredient_routes
 from .route_project import projects_routes
 from .route_usda import usda_routes
 from .route_article import article_routes
+from .projects.graph import code_conversion
+
+# from .mcp import routes as mcp_routes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -53,7 +56,7 @@ def annotation_registry():
 
 __annotation_registry["recipe_ids"] = lambda sesh: sesh.query(Recipe._id).all()
 
-    
+
 
 class RecipeApp:
     def __init__(self):
@@ -89,7 +92,7 @@ class RecipeApp:
 
         # users = db.session.execute(db.select(User).order_by(User.username)).scalars()
         self.setup_routes()
-        
+
         key_value_routes(self.app, self.db)
         messaging_routes(self.app)
         calendar_routes(self.app, self.db)
@@ -101,6 +104,8 @@ class RecipeApp:
         projects_routes(self.app, self.db)
         usda_routes(self.app, self.db)
         article_routes(self.app, self.db)
+        code_conversion(self.app)
+        # mcp_routes(self.app, self.db)
 
     def setup_routes(self):
         @self.app.route('/', defaults={'path': ''})

@@ -51,6 +51,7 @@ import { GraphBlock } from './GraphBlock';
 import { BlocklyBlock } from './BlocklyBlock';
 import { ElectricalDiagramBlock } from './ElectricalDiagramBlock';
 import { DrawingBlock } from './DrawingBlock';
+import { MarkdownEditorBlock } from './MarkdownEditorBlock';
 
 // Import editors
 import { HeadingBlockEditor } from './HeadingBlockEditor';
@@ -102,6 +103,7 @@ import { GraphBlockEditor } from './GraphBlockEditor';
 import { BlocklyBlockEditor } from './BlocklyBlockEditor';
 import { ElectricalDiagramBlockEditor } from './ElectricalDiagramBlockEditor';
 import { DrawingBlockEditor } from './DrawingBlockEditor';
+import { MarkdownEditorBlockEditor } from './MarkdownEditorBlockEditor';
 
 /**
  * Block factory that maps block kinds to their corresponding components and editors
@@ -170,6 +172,7 @@ class BlockFactoryClass {
         this.register('blockly', BlocklyBlock, BlocklyBlockEditor);
         this.register('electrical', ElectricalDiagramBlock, ElectricalDiagramBlockEditor);
         this.register('drawing', DrawingBlock, DrawingBlockEditor);
+        this.register('markdown', MarkdownEditorBlock, MarkdownEditorBlockEditor);
     }
 
     /**

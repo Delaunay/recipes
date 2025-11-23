@@ -704,6 +704,56 @@ class RecipeAPI {
   async exportArticle(articleId: number): Promise<Article> {
     return this.request<Article>(`/articles/${articleId}/export`);
   }
+
+  // Code Conversion methods
+  async textToGraph(code: string): Promise<any> {
+    if (isStaticMode()) {
+      throw new Error('Code conversion is not supported in static mode');
+    }
+    return this.request<any>('/kiwi/conversion/t2g', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async textToBlock(code: string): Promise<any> {
+    if (isStaticMode()) {
+      throw new Error('Code conversion is not supported in static mode');
+    }
+    return this.request<any>('/kiwi/conversion/t2b', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async blockToText(blockData: any): Promise<{ code: string }> {
+    if (isStaticMode()) {
+      throw new Error('Code conversion is not supported in static mode');
+    }
+    return this.request<{ code: string }>('/kiwi/conversion/b2t', {
+      method: 'POST',
+      body: JSON.stringify(blockData),
+    });
+  }
+
+  async graphToText(graphData: any): Promise<{ code: string }> {
+    if (isStaticMode()) {
+      throw new Error('Code conversion is not supported in static mode');
+    }
+    return this.request<{ code: string }>('/kiwi/conversion/g2t', {
+      method: 'POST',
+      body: JSON.stringify(graphData),
+    });
+  }
+
+  // Blockly methods
+  async getBlocklyDefinitions(): Promise<any[]> {
+    return this.request<any[]>('/kiwi/blockly/definitions');
+  }
+
+  async getBlocklyToolbox(): Promise<any> {
+    return this.request<any>('/kiwi/blockly/toolbox');
+  }
 }
 
 // Export a singleton instance

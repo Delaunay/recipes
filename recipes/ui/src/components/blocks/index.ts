@@ -49,6 +49,7 @@ export { GraphBlock } from './GraphBlock';
 export { BlocklyBlock } from './BlocklyBlock';
 export { ElectricalDiagramBlock } from './ElectricalDiagramBlock';
 export { DrawingBlock } from './DrawingBlock';
+export { MarkdownEditorBlock, parseMarkdownToBlocks } from './MarkdownEditorBlock';
 
 // Export all block editor components
 export { HeadingBlockEditor } from './HeadingBlockEditor';
@@ -100,6 +101,7 @@ export { GraphBlockEditor } from './GraphBlockEditor';
 export { BlocklyBlockEditor } from './BlocklyBlockEditor';
 export { ElectricalDiagramBlockEditor } from './ElectricalDiagramBlockEditor';
 export { DrawingBlockEditor } from './DrawingBlockEditor';
+export { MarkdownEditorBlockEditor } from './MarkdownEditorBlockEditor';
 
 // Export factory and types
 export { BlockFactory, BlockRenderer, BlockEditorRenderer } from './BlockFactory';

@@ -18,6 +18,7 @@ import { Article, ArticleBlock, ArticleBlockKind } from '../services/type';
 import mockArticles from '../mock/ArticleMockData';
 import { BlockRenderer, BlockEditorRenderer, setBlockViewEditor } from './blocks';
 import { recipeAPI } from '../services/api';
+import QuickInputArea from './QuickInputArea';
 
 // Simple toast notification system (since Chakra UI v3 has different API)
 const showToast = (title: string, description: string, status: 'success' | 'error' | 'warning' | 'info' = 'info') => {
@@ -97,7 +98,8 @@ const useBatchBlockUpdates = (_articleId: number | undefined, onSuccess?: () => 
             if (onSuccess) {
                 onSuccess();
             }
-            showToast('Changes saved', `Updated ${updates.length} block(s)`, 'success');
+            // Silent auto-save - no toast notification to avoid interrupting the user
+            console.log(`Auto-saved ${updates.length} block(s)`);
         } catch (error) {
             console.error('Failed to save changes:', error);
             showToast('Save failed', 'Failed to save changes. Please try again.', 'error');
@@ -147,6 +149,7 @@ const useBatchBlockUpdates = (_articleId: number | undefined, onSuccess?: () => 
 
 // Block type definitions
 const BLOCK_TYPES: { value: ArticleBlockKind; label: string; icon: string }[] = [
+    { value: 'markdown', label: '✨ Markdown Editor', icon: '📝' },
     { value: 'heading', label: 'Heading', icon: 'H' },
     { value: 'paragraph', label: 'Paragraph', icon: '¶' },
     { value: 'text', label: 'Text', icon: 'T' },
@@ -1062,12 +1065,9 @@ const ArticleViewEditor: React.FC = () => {
     };
 
     // Use the batch update hook
-    const { queueUpdate, flush, hasPendingUpdates } = useBatchBlockUpdates(article?.id, () => {
-        // Optionally refresh article after save
-        if (article?.id) {
-            loadArticle(article.id);
-        }
-    });
+    // Note: We don't reload the article after save to avoid interrupting the editing flow
+    // The optimistic updates already keep the UI in sync
+    const { queueUpdate, flush, hasPendingUpdates } = useBatchBlockUpdates(article?.id);
 
     const handleBlockHoverChange = (blockId: number | undefined, isHovering: boolean) => {
         if (isHovering) {
@@ -1319,6 +1319,68 @@ const ArticleViewEditor: React.FC = () => {
 
     // Wrapper for block updates that uses batching
     const handleBlockUpdate = (updatedBlock: ArticleBlock) => {
+        // Check if this is a markdown block requesting conversion to blocks
+        if (updatedBlock.extension?._replaceWithBlocks) {
+            const parsedBlocks = updatedBlock.extension._replaceWithBlocks as ArticleBlock[];
+
+            // Replace the markdown block with the parsed blocks
+            setArticle(prev => {
+                if (!prev) return prev;
+
+                const replaceBlockInTree = (blocks: ArticleBlock[]): ArticleBlock[] => {
+                    const newBlocks: ArticleBlock[] = [];
+
+                    for (const block of blocks) {
+                        if (block.id === updatedBlock.id) {
+                            // Replace this block with all parsed blocks
+                            newBlocks.push(...parsedBlocks);
+                        } else {
+                            // Keep the block, but check children
+                            if (block.children && block.children.length > 0) {
+                                newBlocks.push({ ...block, children: replaceBlockInTree(block.children) });
+                            } else {
+                                newBlocks.push(block);
+                            }
+                        }
+                    }
+
+                    return newBlocks;
+                };
+
+                return {
+                    ...prev,
+                    blocks: replaceBlockInTree(prev.blocks || [])
+                };
+            });
+
+            // Delete the original markdown block from backend if it has an ID
+            if (updatedBlock.id && !isStatic && !recipeAPI.isStaticMode()) {
+                recipeAPI.deleteBlock(updatedBlock.id as number).catch(err => {
+                    console.error('Failed to delete markdown block:', err);
+                });
+            }
+
+            // Create new blocks in the backend
+            if (displayArticle.id && !isStatic && !recipeAPI.isStaticMode()) {
+                parsedBlocks.forEach(async (newBlock) => {
+                    try {
+                        await recipeAPI.createArticleBlock(displayArticle.id as number, {
+                            parent_id: newBlock.parent_id,
+                            kind: newBlock.kind || 'text',
+                            data: newBlock.data || {},
+                            extension: newBlock.extension || {}
+                        });
+                    } catch (error) {
+                        console.error('Failed to create block:', error);
+                    }
+                });
+            }
+
+            showToast('Converted!', `Markdown converted to ${parsedBlocks.length} block(s)`, 'success');
+            return;
+        }
+
+        // Normal block update
         // Update local state immediately for responsive UI
         setArticle(prev => {
             if (!prev) return prev;
@@ -1645,9 +1707,47 @@ const ArticleViewEditor: React.FC = () => {
                 )}
             </VStack>
 
+            {/* Quick Input Area - Type to add blocks */}
+            {!readonly && (
+                <Box mt={8}>
+                    <QuickInputArea
+                        onAddBlock={async (block) => {
+                            // Optimistically update the UI
+                            setArticle({ ...displayArticle, blocks: [...(displayArticle.blocks || []), block] });
+
+                            // If we have an article ID and we're not in static mode, create the block on the backend
+                            if (displayArticle.id && !isStatic && !recipeAPI.isStaticMode()) {
+                                try {
+                                    const createdBlock = await recipeAPI.createArticleBlock(displayArticle.id, {
+                                        parent_id: undefined,
+                                        kind: block.kind || 'text',
+                                        data: block.data || {},
+                                        extension: block.extension || {}
+                                    });
+
+                                    // Update the local block with the server-assigned ID
+                                    setArticle(prev => ({
+                                        ...prev!,
+                                        blocks: (prev!.blocks || []).map(b =>
+                                            b.id === block.id ? { ...b, id: createdBlock.id } : b
+                                        )
+                                    }));
+
+                                    // Silent creation - user can see the block appear
+                                    console.log(`Created ${block.kind} block`);
+                                } catch (error) {
+                                    console.error('Failed to create block:', error);
+                                    showToast('Create failed', 'Failed to create block.', 'error');
+                                }
+                            }
+                        }}
+                    />
+                </Box>
+            )}
+
             {/* Add Root Block */}
             {!readonly && (
-                <Box mt={8} textAlign="center">
+                <Box mt={4} textAlign="center">
                     <Button
                         colorScheme="green"
                         variant="outline"
@@ -1738,6 +1838,8 @@ const ArticleViewEditor: React.FC = () => {
                 <Box mt={8} p={4} bg="blue.50" borderRadius="md">
                     <Text fontSize="sm" fontWeight="bold" mb={2}>💡 Editing Tips:</Text>
                     <VStack gap={1} align="flex-start" fontSize="sm">
+                        <Text fontWeight="medium" color="green.700">⚡ Quick Add: Type in the green text area and press Enter to create blocks!</Text>
+                        <Text ml={4}>→ Use <code># Heading</code>, <code>* List item</code>, <code>``` Code</code>, etc.</Text>
                         <Text>• Text blocks are directly editable - just click and type</Text>
                         <Text>• Hover over blocks to see controls (drag, settings, add child)</Text>
                         <Text>• Drag blocks by the ≡ icon to reorder them</Text>

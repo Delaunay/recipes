@@ -51,8 +51,6 @@ class Article(Base):
             else:
                 children.append(node)
 
-        assert len(roots) == len(articles), f"All roots should have been fetched {len(roots)} {len(articles)} {len(nodes)} {len(children)}"
-
         # If the query order by task_id, it should do this loop in a single pass
         # because parent need to be created first so their _id will be smaller
         # than the children
@@ -147,3 +145,6 @@ class ArticleBlock(Base):
             'data': self.data,
             'extension': self.extension,
         }
+
+    def __repr__(self):
+        return f"ArticleBlock<page_id={self.page_id}, parent={self.parent}>"

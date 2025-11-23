@@ -64,7 +64,7 @@ static-build:
 static:
 	cd static_build && python -m http.server
 
-# flask --app recipes.server.run:main 
+# flask --app recipes.server.run:main
 
 local-deploy:
 	cd recipes/website
@@ -79,6 +79,16 @@ local-deploy:
 	python -c 'import secrets; print(f"SECRET_KEY = \"{secrets.token_hex()}\"")' > .venv/var/flaskr-instance/config.py
 	FLASK_STATIC="./static" FLASK_ENV=production waitress-serve --call 'recipes.server.run:main'
 
-	
+
 preprocess-images:
 	(. website/.venv/bin/activate; VITE_USE_STATIC_MODE=true FLASK_STATIC=website python scripts/static_generator.py)
+
+# MCP Tools Generation
+mcp-generate:
+	(. .venv/bin/activate && python -m recipes.cli.mcp --output recipes/server/mcp/tools.json)
+
+mcp-show:
+	(. .venv/bin/activate && python -m recipes.cli.mcp)
+
+mcp-python:
+	(. .venv/bin/activate && python -m recipes.cli.mcp --format python --output recipes/server/mcp/tools.py)

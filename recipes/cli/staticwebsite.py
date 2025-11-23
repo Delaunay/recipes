@@ -11,6 +11,7 @@ from argklass.command import Command, newparser
 
 from recipes.server.server import annotation_registry
 
+
 @dataclass
 class Arguments:
     profile: str = None

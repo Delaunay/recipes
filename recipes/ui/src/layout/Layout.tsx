@@ -74,6 +74,22 @@ const getStaticSidebarSections = (contentItems: { name: string; href: string }[]
     href: '/home-management',
     items: [
       // Add your home management features here
+      { name: 'Taxes', href: '/tax' },
+      { name: 'Retirement', href: '/retirement' }
+    ]
+  },
+  {
+    title: 'Investing',
+    href: '/investing',
+    items: [
+      // Add your home management features here
+    ]
+  },
+  {
+    title: 'Health',
+    href: '/health',
+    items: [
+      // Add your home management features here
     ]
   },
   {
@@ -95,6 +111,7 @@ const getStaticSidebarSections = (contentItems: { name: string; href: string }[]
     items: [
       { name: 'Settings', href: '/settings' },
       { name: 'API Tester', href: '/api-tester' },
+      { name: 'Code Visualization', href: '/code-viz' },
     ]
   },
 ];

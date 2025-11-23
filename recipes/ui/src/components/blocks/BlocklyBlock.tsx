@@ -1,262 +1,207 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, Text, Button, HStack, VStack } from '@chakra-ui/react';
+import { Box, VStack, Button, Spinner, Text } from '@chakra-ui/react';
 import { BlockComponentProps } from './BlockTypes';
 
-export const BlocklyBlock: React.FC<BlockComponentProps> = ({ block, readonly }) => {
-    const blocklyDiv = useRef<HTMLDivElement>(null);
-    const workspaceRef = useRef<any>(null);
-    const [generatedCode, setGeneratedCode] = useState('');
-    const [output, setOutput] = useState('');
-    const [showCode, setShowCode] = useState(false);
+import * as Blockly from 'blockly/core';
+import { recipeAPI } from '../../services/api';
 
-    const toolbox = block.data?.toolbox;
-    const initialBlocks = block.data?.blocks;
-    const caption = block.data?.caption;
-    const height = block.data?.height || 400;
-    const language = block.data?.language || 'JavaScript';
+
+export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly }) => {
+    const blocklyDiv = useRef<HTMLDivElement>(null);
+    const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+    const isInitialized = useRef(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const height = 400;
+
+    // Use hardcoded blocks if no data provided, otherwise use provided data
+    const blocksData = {};
 
     useEffect(() => {
         if (!blocklyDiv.current) return;
 
-        let Blockly: any;
-        let workspace: any;
+        const initWorkspace = async () => {
+            console.log('🔧 Initializing Blockly workspace...');
+            setIsLoading(true);
+            setError(null);
 
-        const initBlockly = async () => {
             try {
-                // Dynamic import of Blockly
-                Blockly = await import('blockly');
-                const { javascriptGenerator } = await import('blockly/javascript');
+                // Load standard blocks
+                try {
+                    await import('blockly/blocks');
+                    console.log('✓ Standard blocks loaded');
+                } catch (err) {
+                    console.warn('⚠ Could not load standard blocks:', err);
+                }
 
-                // Default toolbox if none provided
-                const defaultToolbox = {
-                    kind: 'categoryToolbox',
-                    contents: [
-                        {
-                            kind: 'category',
-                            name: 'Logic',
-                            colour: '210',
-                            contents: [
-                                { kind: 'block', type: 'controls_if' },
-                                { kind: 'block', type: 'logic_compare' },
-                                { kind: 'block', type: 'logic_operation' },
-                                { kind: 'block', type: 'logic_boolean' }
-                            ]
-                        },
-                        {
-                            kind: 'category',
-                            name: 'Loops',
-                            colour: '120',
-                            contents: [
-                                { kind: 'block', type: 'controls_repeat_ext' },
-                                { kind: 'block', type: 'controls_whileUntil' },
-                                { kind: 'block', type: 'controls_for' }
-                            ]
-                        },
-                        {
-                            kind: 'category',
-                            name: 'Math',
-                            colour: '230',
-                            contents: [
-                                { kind: 'block', type: 'math_number' },
-                                { kind: 'block', type: 'math_arithmetic' },
-                                { kind: 'block', type: 'math_single' }
-                            ]
-                        },
-                        {
-                            kind: 'category',
-                            name: 'Text',
-                            colour: '160',
-                            contents: [
-                                { kind: 'block', type: 'text' },
-                                { kind: 'block', type: 'text_print' }
-                            ]
-                        },
-                        {
-                            kind: 'category',
-                            name: 'Variables',
-                            colour: '330',
-                            custom: 'VARIABLE'
-                        }
-                    ]
-                };
+                // Fetch block definitions from the backend
+                console.log('📥 Fetching block definitions...');
+                const definitions = await recipeAPI.getBlocklyDefinitions();
+                console.log('✓ Block definitions loaded:', definitions);
 
-                // Initialize workspace
-                workspace = Blockly.inject(blocklyDiv.current, {
-                    toolbox: toolbox || defaultToolbox,
-                    scrollbars: true,
-                    trashcan: true,
-                    zoom: {
-                        controls: true,
-                        wheel: true,
-                        startScale: 1.0,
-                        maxScale: 3,
-                        minScale: 0.3,
-                        scaleSpeed: 1.2
-                    },
-                    readOnly: readonly,
-                    move: {
-                        scrollbars: true,
-                        drag: !readonly,
-                        wheel: true
-                    }
+                // Fetch toolbox configuration from the backend
+                console.log('📥 Fetching toolbox configuration...');
+                const toolbox = await recipeAPI.getBlocklyToolbox();
+                console.log('✓ Toolbox configuration loaded:', toolbox);
+
+                // Define blocks
+                console.log('Creating workspace...');
+                if (definitions && Array.isArray(definitions)) {
+                    Blockly.common.defineBlocksWithJsonArray(definitions);
+                    console.log(`✓ Defined ${definitions.length} blocks`);
+                }
+
+                // Inject workspace with the toolbox
+                const workspace = Blockly.inject(blocklyDiv.current!, {
+                    toolbox: toolbox
                 });
 
+                console.log('✓ Workspace created and stored in ref');
                 workspaceRef.current = workspace;
+                isInitialized.current = true;
+                setIsLoading(false);
 
-                // Load initial blocks if provided
-                if (initialBlocks) {
-                    try {
-                        Blockly.serialization.workspaces.load(initialBlocks, workspace);
-                    } catch (err) {
-                        console.error('Error loading blocks:', err);
-                    }
-                }
-
-                // Generate code on workspace change
-                if (readonly) {
-                    workspace.addChangeListener(() => {
-                        try {
-                            const code = javascriptGenerator.workspaceToCode(workspace);
-                            setGeneratedCode(code);
-                        } catch (err) {
-                            console.error('Error generating code:', err);
-                        }
-                    });
-
-                    // Initial code generation
-                    try {
-                        const code = javascriptGenerator.workspaceToCode(workspace);
-                        setGeneratedCode(code);
-                    } catch (err) {
-                        console.error('Error generating initial code:', err);
-                    }
-                }
+                // // Load blocks if provided
+                // if (blocksData && Object.keys(blocksData).length > 0) {
+                //     try {
+                //         console.log('Loading blocks into workspace:', blocksData);
+                //         Blockly.serialization.workspaces.load(blocksData, workspace);
+                //         console.log('✓ Blocks loaded successfully');
+                //         console.log('Workspace blocks count:', workspace.getAllBlocks().length);
+                //     } catch (err) {
+                //         console.error('✗ Error loading blocks:', err);
+                //         console.error('Blocks data:', JSON.stringify(blocksData, null, 2));
+                //     }
+                // }
             } catch (err) {
-                console.error('Error initializing Blockly:', err);
+                console.error('❌ Error initializing Blockly workspace:', err);
+                setError(err instanceof Error ? err.message : 'Unknown error');
+                setIsLoading(false);
             }
         };
 
-        initBlockly();
+        initWorkspace();
 
-        // Cleanup
+        // Cleanup on unmount
         return () => {
-            if (workspaceRef.current) {
+            if (workspaceRef.current && isInitialized.current) {
+                console.log('🧹 Disposing workspace');
                 workspaceRef.current.dispose();
+                workspaceRef.current = null;
+                isInitialized.current = false;
             }
         };
-    }, [toolbox, initialBlocks, readonly]);
+    }, [blocksData, readonly]);
 
-    const runCode = () => {
-        if (!generatedCode) {
-            setOutput('No code to execute');
+    const handleSaveWorkspace = () => {
+        console.log('💾 Save button clicked!');
+        console.log('workspaceRef.current:', workspaceRef.current);
+
+        if (!workspaceRef.current) {
+            console.error('❌ No workspace available');
             return;
         }
 
         try {
-            // Capture console.log
-            const logs: string[] = [];
-            const originalLog = console.log;
-            console.log = (...args) => {
-                logs.push(args.map(a => String(a)).join(' '));
-            };
+            console.log('Attempting to save workspace...', workspaceRef.current);
 
-            try {
-                // Execute generated code
-                const result = eval(generatedCode);
-                if (result !== undefined) {
-                    logs.push(`Result: ${result}`);
-                }
-            } finally {
-                console.log = originalLog;
+            // Check what blocks are in the workspace
+            const allBlocks = workspaceRef.current.getAllBlocks(false);
+            console.log('Number of blocks in workspace:', allBlocks.length);
+            console.log('Blocks:', allBlocks);
+
+            if (allBlocks.length > 0) {
+                allBlocks.forEach((block, index) => {
+                    console.log(`Block ${index}:`, {
+                        type: block.type,
+                        id: block.id,
+                        x: block.getRelativeToSurfaceXY().x,
+                        y: block.getRelativeToSurfaceXY().y
+                    });
+                });
             }
 
-            setOutput(logs.join('\n') || 'Code executed successfully (no output)');
-        } catch (err: any) {
-            setOutput(`Error: ${err.message}`);
+            // Save workspace to JSON
+            const json = Blockly.serialization.workspaces.save(workspaceRef.current);
+
+            console.log('='.repeat(60));
+            console.log('📦 WORKSPACE SAVED TO JSON:');
+            console.log('='.repeat(60));
+            console.log(JSON.stringify(json, null, 2));
+            console.log('='.repeat(60));
+
+            // Also log as a single line for easy copying
+            console.log('Single line version:');
+            console.log(JSON.stringify(json));
+        } catch (err) {
+            console.error('❌ Error saving workspace:', err);
         }
     };
 
     return (
         <Box mb={4}>
-            {caption && (
-                <Text fontSize="sm" fontWeight="600" color="gray.700" mb={2}>
-                    {caption}
-                </Text>
-            )}
-
             <VStack align="stretch" gap={2}>
+                {/* Save Button */}
+                <Box>
+                    <Button
+                        size="sm"
+                        colorScheme="blue"
+                        onClick={handleSaveWorkspace}
+                        disabled={isLoading || !!error}
+                    >
+                        💾 Save Workspace to Console
+                    </Button>
+                </Box>
+
+                {/* Error Message */}
+                {error && (
+                    <Box
+                        p={3}
+                        bg="red.50"
+                        border="1px solid"
+                        borderColor="red.200"
+                        borderRadius="md"
+                    >
+                        <Text color="red.700" fontSize="sm">
+                            ❌ Error: {error}
+                        </Text>
+                    </Box>
+                )}
+
                 {/* Blockly Workspace */}
                 <Box
                     border="1px solid"
                     borderColor="gray.300"
                     borderRadius="md"
                     overflow="hidden"
+                    position="relative"
                 >
+                    {isLoading && (
+                        <Box
+                            position="absolute"
+                            top="50%"
+                            left="50%"
+                            transform="translate(-50%, -50%)"
+                            zIndex={10}
+                        >
+                            <VStack>
+                                <Spinner size="xl" color="blue.500" />
+                                <Text fontSize="sm" color="gray.600">
+                                    Loading Blockly workspace...
+                                </Text>
+                            </VStack>
+                        </Box>
+                    )}
                     <div
                         ref={blocklyDiv}
                         style={{
                             height: `${height}px`,
-                            width: '100%'
+                            width: '100%',
+                            opacity: isLoading ? 0.3 : 1
                         }}
                     />
                 </Box>
-
-                {/* Controls */}
-                {readonly && (
-                    <HStack gap={2} justifyContent="space-between" flexWrap="wrap">
-                        <HStack gap={2}>
-                            <Button size="sm" colorScheme="green" onClick={runCode}>
-                                ▶ Run Code
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setShowCode(!showCode)}>
-                                {showCode ? 'Hide' : 'Show'} Code
-                            </Button>
-                        </HStack>
-                        <Text fontSize="xs" color="gray.500">
-                            {language} • Blockly Visual Programming
-                        </Text>
-                    </HStack>
-                )}
-
-                {/* Generated Code */}
-                {readonly && showCode && generatedCode && (
-                    <Box
-                        p={3}
-                        bg="gray.900"
-                        borderRadius="md"
-                        fontFamily="monospace"
-                        fontSize="xs"
-                        color="white"
-                        whiteSpace="pre-wrap"
-                        maxHeight="300px"
-                        overflowY="auto"
-                    >
-                        {generatedCode}
-                    </Box>
-                )}
-
-                {/* Output */}
-                {readonly && output && (
-                    <Box
-                        p={3}
-                        bg={output.startsWith('Error:') ? 'red.50' : 'green.50'}
-                        borderRadius="md"
-                        border="1px solid"
-                        borderColor={output.startsWith('Error:') ? 'red.200' : 'green.200'}
-                    >
-                        <Text fontSize="xs" fontWeight="600" color={output.startsWith('Error:') ? 'red.700' : 'green.700'} mb={1}>
-                            {output.startsWith('Error:') ? 'Error:' : 'Output:'}
-                        </Text>
-                        <Box
-                            fontFamily="monospace"
-                            fontSize="xs"
-                            color={output.startsWith('Error:') ? 'red.800' : 'green.900'}
-                            whiteSpace="pre-wrap"
-                        >
-                            {output.replace(/^Error:\s*/, '')}
-                        </Box>
-                    </Box>
-                )}
             </VStack>
         </Box>
     );

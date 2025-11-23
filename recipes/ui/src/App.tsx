@@ -26,6 +26,7 @@ import ApiTester from './components/ApiTester';
 import ArticleViewEditor from './components/ArticleViewEditor';
 import SectionView from './components/SectionView';
 import ContentView from './components/ContentView';
+import CodeVisualization from './components/CodeVisualization';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -80,6 +81,7 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/api-tester" element={<ApiTester />} />
             <Route path="/article" element={<ArticleViewEditor />} />
+            <Route path="/code-viz" element={<CodeVisualization />} />
           </Routes>
         </Layout>
       </Router>
