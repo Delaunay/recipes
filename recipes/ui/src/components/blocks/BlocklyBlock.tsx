@@ -2,16 +2,33 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Box, VStack, Button, Spinner, Text } from '@chakra-ui/react';
 import { BlockComponentProps } from './BlockTypes';
 
+// import type { WorkspaceSvg } from 'blockly/core'; // Type-only import
+// import type { BlockDefinition } from 'blockly/core/blocks'; // Type-only import
+
 import * as Blockly from 'blockly/core';
 import * as En from 'blockly/msg/en';
-import 'blockly/blocks';
 import * as blocks from 'blockly/blocks';
-import { buildToolboxFromBlocks } from './blockly/utils';
 
+import { buildToolboxFromBlocks } from './blockly/utils';
 
 import { recipeAPI } from '../../services/api';
 
 
+async function getDefaultContext() {
+    const toolbox = buildToolboxFromBlocks(blocks);
+    return {
+        toolbox: toolbox,
+        definitions: blocks
+    }
+}
+
+
+async function getPythonContext() {
+    return {
+        toolbox: await recipeAPI.getBlocklyToolbox(),
+        definitions: await recipeAPI.getBlocklyDefinitions()
+    }
+}
 
 export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly: _readonly }) => {
     const blocklyDiv = useRef<HTMLDivElement>(null);
@@ -19,121 +36,71 @@ export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly: _readonl
     const isInitialized = useRef(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
     const height = 400;
-
-    Blockly.setLocale(En);
-    console.log("MSG", Blockly.Msg)
 
     useEffect(() => {
         if (!blocklyDiv.current || isInitialized.current) return;
 
-        const initWorkspace = async () => {
-            console.log('🔧 Initializing Blockly workspace...');
-            setIsLoading(true);
-            setError(null);
-
+        const init = async () => {
             try {
-                // Load standard blocks
-                try {
-                    await import('blockly/blocks');
-                    console.log('✓ Standard blocks loaded');
-                } catch (err) {
-                    console.warn('⚠ Could not load standard blocks:', err);
-                }
+                setIsLoading(true);
+                setError(null);
 
-                // Fetch block definitions from the backend
-                console.log('📥 Fetching block definitions...');
-                const definitions = await recipeAPI.getBlocklyDefinitions();
-                console.log('✓ Block definitions loaded:', definitions);
+                const { toolbox, definitions } = await getPythonContext();
 
-                // Fetch toolbox configuration from the backend
-                console.log('📥 Fetching toolbox configuration...');
-                const toolbox = await recipeAPI.getBlocklyToolbox();
-                console.log('✓ Toolbox configuration loaded:', toolbox);
+                // Set locale - En is a default export with locale strings
+                Blockly.setLocale(En as any);
 
-                // Define blocks
-                console.log('Creating workspace...');
-                if (definitions && Array.isArray(definitions)) {
-                    Blockly.common.defineBlocksWithJsonArray(definitions);
-                    console.log(`✓ Defined ${definitions.length} blocks`);
-                }
+                // Standard blocks are already loaded via import 'blockly/blocks'
+                Blockly.defineBlocksWithJsonArray(definitions);
 
                 // Inject workspace with the toolbox
-                // blocks.blocks might not exist, so fallback to blocks itself or empty object
-                // const blocksMap = (blocks as any).blocks || blocks || {};
-                console.log( buildToolboxFromBlocks(blocks));
-                const workspace = Blockly.inject(blocklyDiv.current!, {
-                    toolbox: buildToolboxFromBlocks(blocks)
-                });
+                const workspace = Blockly.inject(
+                    blocklyDiv.current!,
+                    {
+                        toolbox: toolbox
+                    }
+                );
 
-                console.log('✓ Workspace created and stored in ref');
                 workspaceRef.current = workspace;
                 isInitialized.current = true;
                 setIsLoading(false);
+
+                console.log('✓ Workspace initialized successfully');
             } catch (err) {
                 console.error('❌ Error initializing Blockly workspace:', err);
                 setError(err instanceof Error ? err.message : 'Unknown error');
                 setIsLoading(false);
             }
-        };
+        }
 
-        initWorkspace();
-
-        // Cleanup on unmount
-        return () => {
+        const unmount = () => {
             if (workspaceRef.current && isInitialized.current) {
                 console.log('🧹 Disposing workspace');
                 workspaceRef.current.dispose();
                 workspaceRef.current = null;
                 isInitialized.current = false;
             }
-        };
+        }
+
+        init();
+
+        return unmount;
     }, []); // Empty dependency array - only run once on mount
 
     const handleSaveWorkspace = () => {
         console.log('💾 Save button clicked!');
         console.log('workspaceRef.current:', workspaceRef.current);
+        console.log('isInitialized.current:', isInitialized.current);
 
         if (!workspaceRef.current) {
             console.error('❌ No workspace available');
             return;
         }
 
-        try {
-            console.log('Attempting to save workspace...', workspaceRef.current);
-
-            // Check what blocks are in the workspace
-            const allBlocks = workspaceRef.current.getAllBlocks(false);
-            console.log('Number of blocks in workspace:', allBlocks.length);
-            console.log('Blocks:', allBlocks);
-
-            if (allBlocks.length > 0) {
-                allBlocks.forEach((block, index) => {
-                    console.log(`Block ${index}:`, {
-                        type: block.type,
-                        id: block.id,
-                        x: block.getRelativeToSurfaceXY().x,
-                        y: block.getRelativeToSurfaceXY().y
-                    });
-                });
-            }
-
-            // Save workspace to JSON
-            const json = Blockly.serialization.workspaces.save(workspaceRef.current);
-
-            console.log('='.repeat(60));
-            console.log('📦 WORKSPACE SAVED TO JSON:');
-            console.log('='.repeat(60));
-            console.log(JSON.stringify(json, null, 2));
-            console.log('='.repeat(60));
-
-            // Also log as a single line for easy copying
-            console.log('Single line version:');
-            console.log(JSON.stringify(json));
-        } catch (err) {
-            console.error('❌ Error saving workspace:', err);
-        }
+        // Save workspace to JSON
+        const json = Blockly.serialization.workspaces.save(workspaceRef.current);
+        console.log(JSON.stringify(json));
     };
 
     return (
