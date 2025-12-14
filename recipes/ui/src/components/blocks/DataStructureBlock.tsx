@@ -150,7 +150,7 @@ export const DataStructureBlock: React.FC<BlockComponentProps> = ({ block }) => 
                 border="1px solid"
                 borderColor="gray.200"
                 borderRadius="md"
-                bg="white"
+                bg="bg"
                 overflowX="auto"
             >
                 {type === 'array' && <ArrayStructure items={data} />}

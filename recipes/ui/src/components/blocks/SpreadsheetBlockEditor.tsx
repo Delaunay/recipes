@@ -90,12 +90,12 @@ export const SpreadsheetBlockEditor: React.FC<BlockEditorProps> = ({ block, onCh
                     fontSize="sm"
                     css={{
                         '& td, & th': {
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--chakra-colors-border)',
                             padding: '0.25rem',
                             minWidth: '80px'
                         },
                         '& th': {
-                            backgroundColor: '#f7fafc',
+                            backgroundColor: 'var(--chakra-colors-gray-50)',
                             fontWeight: '600'
                         }
                     }}

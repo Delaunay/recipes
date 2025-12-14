@@ -266,7 +266,7 @@ export const TimelineBlock: React.FC<BlockComponentProps> = ({ block, allBlocks 
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
-                    bg="white"
+                    bg="bg"
                     zIndex={1}
                     minHeight="200px"
                 >

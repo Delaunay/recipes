@@ -117,7 +117,7 @@ code here
                     rows={15}
                     fontFamily="monospace"
                     fontSize="sm"
-                    bg="white"
+                    bg="bg"
                     borderColor="yellow.300"
                     _focus={{
                         borderColor: 'yellow.500',
@@ -128,7 +128,7 @@ code here
                 {showPreview && markdown && (
                     <Box
                         p={4}
-                        bg="white"
+                        bg="bg"
                         borderRadius="md"
                         borderWidth="1px"
                         borderColor="gray.200"

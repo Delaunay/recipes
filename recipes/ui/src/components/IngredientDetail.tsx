@@ -390,7 +390,7 @@ const IngredientDetail = () => {
                     top="100%"
                     left={0}
                     right={0}
-                    bg="white"
+                    bg="bg"
                     border="1px solid"
                     borderColor="gray.200"
                     borderRadius="md"
@@ -405,7 +405,7 @@ const IngredientDetail = () => {
                         key={food.fdc_id}
                         p={2}
                         cursor="pointer"
-                        _hover={{ bg: "gray.50" }}
+                        _hover={{ bg: "gray.100" }}
                         onMouseDown={(e) => {
                           e.preventDefault();
                           handleUsdaSelect(food.fdc_id);

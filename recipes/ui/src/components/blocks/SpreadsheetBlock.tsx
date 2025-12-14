@@ -15,21 +15,21 @@ export const SpreadsheetBlock: React.FC<BlockComponentProps> = ({ block, readonl
                 borderCollapse="collapse"
                 border="1px solid"
                 borderColor="gray.300"
-                bg="white"
+                bg="bg"
                 css={{
                     '& td, & th': {
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--chakra-colors-border)',
                         padding: '0.5rem 0.75rem',
                         textAlign: 'left',
                         minWidth: '100px'
                     },
                     '& th': {
-                        backgroundColor: '#f7fafc',
+                        backgroundColor: 'var(--chakra-colors-gray-50)',
                         fontWeight: '600',
-                        color: '#2d3748'
+                        color: 'var(--chakra-colors-fg)'
                     },
                     '& tbody tr:hover': readonly ? {} : {
-                        backgroundColor: '#f7fafc'
+                        backgroundColor: 'var(--chakra-colors-gray-50)'
                     }
                 }}
             >

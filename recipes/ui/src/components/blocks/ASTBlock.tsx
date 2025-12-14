@@ -124,7 +124,7 @@ export const ASTBlock: React.FC<BlockComponentProps> = ({ block, readonly }) => 
                 border="1px solid"
                 borderColor="gray.200"
                 borderRadius="md"
-                bg="white"
+                bg="bg"
                 py={2}
                 maxHeight="500px"
                 overflowY="auto"

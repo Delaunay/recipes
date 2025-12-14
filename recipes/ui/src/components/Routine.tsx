@@ -936,7 +936,7 @@ const Routine: React.FC<RoutineProps> = ({
             w="100%"
         >
             {/* Header with Owner and Routine Name */}
-            <Box mb={4} p={4} bg="white" borderRadius="md" boxShadow="sm">
+            <Box mb={4} p={4} bg="bg" borderRadius="md" boxShadow="sm">
                 <VStack gap={4} align="stretch">
                     <HStack justify="space-between" align="center">
                         <Heading size="lg">Routine Template</Heading>
@@ -972,9 +972,9 @@ const Routine: React.FC<RoutineProps> = ({
                                 style={{
                                     padding: '8px',
                                     borderRadius: '6px',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--chakra-colors-border)',
                                     width: '100%',
-                                    backgroundColor: 'white'
+                                    backgroundColor: 'var(--chakra-colors-bg)'
                                 }}
                             >
                                 <option value="work">Work</option>
@@ -1019,26 +1019,26 @@ const Routine: React.FC<RoutineProps> = ({
                                     <Box overflowX="auto">
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                             <thead>
-                                                <tr style={{ backgroundColor: '#f7fafc' }}>
-                                                    <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                <tr style={{ backgroundColor: 'var(--chakra-colors-gray-50)' }}>
+                                                    <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         Event
                                                     </th>
-                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         Total Time
                                                     </th>
-                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         Daily Avg
                                                     </th>
-                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         Avg Block
                                                     </th>
-                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         Longest
                                                     </th>
-                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         Frag
                                                     </th>
-                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600 }}>
+                                                    <th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         %
                                                     </th>
                                                 </tr>
@@ -1051,7 +1051,7 @@ const Routine: React.FC<RoutineProps> = ({
                                                     const dailyAvgMinutes = stat.totalMinutes / 7;
                                                     const dailyAvgHours = dailyAvgMinutes / 60;
                                                     return (
-                                                        <tr key={index} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                        <tr key={index} style={{ borderBottom: '1px solid var(--chakra-colors-border)' }}>
                                                             <td style={{ padding: '8px' }}>
                                                                 <HStack gap={2}>
                                                                     <Box
@@ -1110,7 +1110,7 @@ const Routine: React.FC<RoutineProps> = ({
                                                 })}
                                             </tbody>
                                             <tfoot>
-                                                <tr style={{ backgroundColor: '#f7fafc', fontWeight: 'bold' }}>
+                                                <tr style={{ backgroundColor: 'var(--chakra-colors-gray-50)', fontWeight: 'bold' }}>
                                                     <td style={{ padding: '8px' }}>
                                                         <Text fontSize="sm" fontWeight="bold">Total Scheduled</Text>
                                                     </td>
@@ -1144,7 +1144,7 @@ const Routine: React.FC<RoutineProps> = ({
                                                     </td>
                                                 </tr>
                                                 {/* Unaccounted Time Row */}
-                                                <tr style={{ backgroundColor: '#fafafa' }}>
+                                                <tr style={{ backgroundColor: 'var(--chakra-colors-gray-50)' }}>
                                                     <td style={{ padding: '8px' }}>
                                                         <HStack gap={2}>
                                                             <Box
@@ -1204,7 +1204,7 @@ const Routine: React.FC<RoutineProps> = ({
                     gap={0.5}
                     borderColor="gray.300"
                     borderRadius="md"
-                    bg="white"
+                    bg="bg"
                     className="class-grid"
                     flex="1"
                     width="100%"
@@ -1295,8 +1295,8 @@ const Routine: React.FC<RoutineProps> = ({
                     {/* Content area spanning all 7 days */}
                     <GridItem
                         colSpan={7}
-                        bg="white"
-                        _hover={{ bg: "gray.50" }}
+                        bg="bg"
+                        _hover={{ bg: "gray.100" }}
                         position="relative"
                         display="flex"
                         flexDirection="column"
@@ -1361,8 +1361,8 @@ const Routine: React.FC<RoutineProps> = ({
                                     borderLeft="1px solid"
                                     borderRight="1px solid"
                                     borderColor="gray.200"
-                                    bg="white"
-                                    _hover={{ bg: "gray.50" }}
+                                    bg="bg"
+                                    _hover={{ bg: "gray.100" }}
                                     minH="200px"
                                     id={`routine-${day}`}
                                     position="relative"

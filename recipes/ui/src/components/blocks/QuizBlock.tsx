@@ -25,7 +25,7 @@ export const QuizBlock: React.FC<BlockComponentProps> = ({ block, readonly }) =>
     const isCorrect = selectedAnswer === correctAnswer;
 
     return (
-        <Box mb={4} p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+        <Box mb={4} p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
             <Text fontSize="md" fontWeight="600" color="gray.800" mb={4}>
                 {question}
             </Text>

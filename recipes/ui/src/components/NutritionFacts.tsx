@@ -264,7 +264,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
     };
 
     return (
-        <Box p={6} bg="white" borderRadius="lg" border="2px solid" borderColor="gray.800">
+        <Box p={6} bg="bg" borderRadius="lg" border="2px solid" borderColor="gray.800">
             <Flex justify="space-between" align="center" mb={2} pb={2} borderBottom="4px solid" borderColor="gray.800">
                 <VStack align="start" gap={0}>
                     <HStack>
@@ -280,11 +280,11 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                     style={{
                                         padding: '2px 8px',
                                         fontSize: '14px',
-                                        border: '1px solid #CBD5E0',
+                                        border: '1px solid var(--chakra-colors-border)',
                                         borderRadius: '4px',
-                                        backgroundColor: 'white',
+                                        backgroundColor: 'var(--chakra-colors-bg)',
                                         cursor: 'pointer',
-                                        color: '#1A202C',
+                                        color: 'var(--chakra-colors-fg)',
                                     }}
                                 >
                                     {sources.map((src) => (
@@ -314,7 +314,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                 style={{
                                     width: '60px',
                                     padding: '2px 4px',
-                                    border: '1px solid #3182ce',
+                                    border: '1px solid var(--chakra-colors-blue-500)',
                                     borderRadius: '3px',
                                     fontSize: '14px',
                                     textAlign: 'center',
@@ -393,7 +393,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                     style={{
                                         width: '45px',
                                         padding: '2px 4px',
-                                        border: '1px solid #cbd5e0',
+                                        border: '1px solid var(--chakra-colors-border)',
                                         borderRadius: '3px',
                                         fontSize: '12px',
                                         textAlign: 'center',
@@ -416,7 +416,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                             width: '100px',
                                             flex: '1',
                                             padding: '4px 8px',
-                                            border: '1px solid #cbd5e0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '4px',
                                             fontSize: '14px',
                                             fontWeight: 'bold',
@@ -431,7 +431,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                             width: '100px',
                                             flex: '1',
                                             padding: '4px 8px',
-                                            border: '1px solid #cbd5e0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '4px',
                                             fontSize: '13px',
                                         }}
@@ -445,7 +445,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                         style={{
                                             width: '40px',
                                             padding: '4px 8px',
-                                            border: '1px solid #cbd5e0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '4px',
                                             fontSize: '14px',
                                             textAlign: 'right',
@@ -459,7 +459,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                         style={{
                                             width: '30px',
                                             padding: '4px',
-                                            border: '1px solid #cbd5e0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '4px',
                                             fontSize: '13px',
                                         }}
@@ -473,7 +473,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                         style={{
                                             width: '30px',
                                             padding: '4px 8px',
-                                            border: '1px solid #cbd5e0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '4px',
                                             fontSize: '14px',
                                             textAlign: 'right',
@@ -499,7 +499,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
 
                 {/* Existing compositions */}
                 {processedCompositions.length === 0 && !isAdding ? (
-                    <Box textAlign="center" py={6} bg="white" borderRadius="md">
+                    <Box textAlign="center" py={6} bg="bg" borderRadius="md">
                         <Text fontSize="sm" color="gray.500" mb={2}>
                             No nutritional composition data available
                         </Text>
@@ -537,7 +537,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                     style={{
                                                         width: '100%',
                                                         padding: '8px',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--chakra-colors-border)',
                                                         borderRadius: '4px',
                                                         fontSize: '14px',
                                                     }}
@@ -554,7 +554,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                     style={{
                                                         width: '100%',
                                                         padding: '8px',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--chakra-colors-border)',
                                                         borderRadius: '4px',
                                                         fontSize: '14px',
                                                     }}
@@ -576,7 +576,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                     style={{
                                                         width: '100%',
                                                         padding: '8px',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--chakra-colors-border)',
                                                         borderRadius: '4px',
                                                         fontSize: '14px',
                                                     }}
@@ -603,7 +603,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                     style={{
                                                         width: '100%',
                                                         padding: '8px',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--chakra-colors-border)',
                                                         borderRadius: '4px',
                                                         fontSize: '14px',
                                                     }}
@@ -620,7 +620,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                     style={{
                                                         width: '100%',
                                                         padding: '8px',
-                                                        border: '1px solid #e2e8f0',
+                                                        border: '1px solid var(--chakra-colors-border)',
                                                         borderRadius: '4px',
                                                         fontSize: '14px',
                                                     }}
@@ -641,7 +641,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                                                 style={{
                                                     width: '100%',
                                                     padding: '8px',
-                                                    border: '1px solid #e2e8f0',
+                                                    border: '1px solid var(--chakra-colors-border)',
                                                     borderRadius: '4px',
                                                     fontSize: '14px',
                                                 }}

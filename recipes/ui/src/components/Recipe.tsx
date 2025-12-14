@@ -282,7 +282,7 @@ const InstructionTextRenderer: FC<InstructionTextRendererProps> = ({
 
         const displayQuantity = `${finalQuantity.toFixed(2).replace(/\.?0+$/, '')} ${unit}`;
         elements.push(
-          <Text as="span" key={`ref-${index}`} fontWeight="bold" color="black">
+          <Text as="span" key={`ref-${index}`} fontWeight="bold" color="fg">
             {ingredient.name} ({displayQuantity})
           </Text>
         );
@@ -301,7 +301,7 @@ const InstructionTextRenderer: FC<InstructionTextRendererProps> = ({
           as="span"
           key={`temp-${index}`}
           fontWeight="bold"
-          color="black"
+          color="fg"
           cursor="pointer"
           onClick={() => setTemperatureUnit(temperatureUnit === 'C' ? 'F' : 'C')}
           _hover={{
@@ -326,7 +326,7 @@ const InstructionTextRenderer: FC<InstructionTextRendererProps> = ({
           as="span"
           key={`time-${index}`}
           fontWeight="bold"
-          color={activeTimer?.isRunning ? "green.600" : activeTimer?.isFinished ? "red.600" : "black"}
+          color={activeTimer?.isRunning ? "green.600" : activeTimer?.isFinished ? "red.600" : "fg"}
           cursor="pointer"
           onClick={() => onTimerStart?.(timerId, command.time, command.unit)}
           _hover={{
@@ -544,7 +544,7 @@ const IngredientNameInput: FC<IngredientNameInputProps> = ({
           top="100%"
           left={0}
           right={0}
-          bg="white"
+          bg="bg"
           border="1px solid"
           borderColor="gray.200"
           borderRadius="md"
@@ -686,7 +686,7 @@ const UsdaFoodSelector: FC<UsdaFoodSelectorProps> = ({
           top="100%"
           left={0}
           right={0}
-          bg="white"
+          bg="bg"
           border="1px solid"
           borderColor="gray.200"
           borderRadius="md"
@@ -1067,9 +1067,10 @@ const IngredientItem: FC<IngredientItemProps> = ({
                 style={{
                   padding: '4px 8px',
                   borderRadius: '4px',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--chakra-colors-border)',
                   fontSize: '14px',
-                  minWidth: '80px'
+                  minWidth: '80px',
+                  backgroundColor: 'var(--chakra-colors-bg)'
                 }}
               >
                 {availableUnits.map((unit: string) => (
@@ -1658,7 +1659,7 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
       p={4}
     >
       <Box
-        bg="white"
+        bg="bg"
         borderRadius="md"
         p={6}
         maxW="600px"
@@ -1721,9 +1722,9 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
                     style={{
                       padding: '0.375rem 0.5rem',
                       borderRadius: '0.375rem',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--chakra-colors-border)',
                       fontSize: '0.875rem',
-                      backgroundColor: 'white'
+                      backgroundColor: 'var(--chakra-colors-bg)'
                     }}
                   >
                     {volumeUnits.map(unit => (
@@ -1760,9 +1761,9 @@ const DensityCalculationModal: FC<DensityCalculationModalProps> = ({
                     style={{
                       padding: '0.375rem 0.5rem',
                       borderRadius: '0.375rem',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--chakra-colors-border)',
                       fontSize: '0.875rem',
-                      backgroundColor: 'white'
+                      backgroundColor: 'var(--chakra-colors-bg)'
                     }}
                   >
                     {massUnits.map(unit => (
@@ -2152,7 +2153,7 @@ const InstructionStep: FC<InstructionStepProps> = ({
       gap={3}
       p={4}
       borderRadius="md"
-      bg={dragOverIndex === index ? "blue.50" : "gray.50"}
+      bg={dragOverIndex === index ? "blue.50" : "bg"}
       border={dragOverIndex === index ? "2px dashed" : "1px solid"}
       borderColor={dragOverIndex === index ? "blue.400" : "transparent"}
       opacity={draggedIndex === index ? 0.5 : 1}
@@ -2825,7 +2826,7 @@ const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose
             cx="60"
             cy="60"
             r="50"
-            stroke="rgba(255,255,255,0.3)"
+            stroke="whiteAlpha.300"
             strokeWidth="6"
             fill="none"
           />
@@ -2834,7 +2835,7 @@ const TimerOverlay: FC<TimerOverlayProps> = ({ timer, onToggle, onReset, onClose
             cx="60"
             cy="60"
             r="50"
-            stroke={timer.isFinished ? "#f56565" : timer.isRunning ? "#4299e6" : "#a0aec0"}
+            stroke={timer.isFinished ? "red.400" : timer.isRunning ? "blue.500" : "gray.400"}
             strokeWidth="6"
             fill="none"
             strokeLinecap="round"
@@ -2940,7 +2941,7 @@ const Recipe: FC<RecipeProps> = ({
           });
           // Add a brief highlight effect
           stepElement.style.transition = 'background-color 0.3s ease';
-          stepElement.style.backgroundColor = '#fef3c7';
+          stepElement.style.backgroundColor = 'var(--chakra-colors-yellow-100)';
           setTimeout(() => {
             stepElement.style.backgroundColor = '';
           }, 2000);
@@ -3370,7 +3371,7 @@ const Recipe: FC<RecipeProps> = ({
   }, []);
 
   return (
-    <Box maxW="4xl" mx="auto" p={6} borderWidth="1px" borderRadius="lg" shadow="lg" bg="white">
+    <Box maxW="4xl" mx="auto" p={6} borderWidth="1px" borderRadius="lg" shadow="lg" bg="bg">
       <VStack gap={6} align="stretch" className='recipe-cls'>
         {/* Static Mode Notice */}
         {isStatic && (
@@ -3395,7 +3396,7 @@ const Recipe: FC<RecipeProps> = ({
                 fontWeight="bold"
                 border="none"
                 px={0}
-                _focus={{ boxShadow: "0 0 0 1px #3182ce" }}
+                _focus={{ boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)" }}
                 placeholder="Recipe title"
               />
             ) : (
@@ -3609,10 +3610,10 @@ const Recipe: FC<RecipeProps> = ({
                 style={{
                   width: '100%',
                   padding: '8px',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--chakra-colors-border)',
                   borderRadius: '4px',
                   fontSize: '14px',
-                  backgroundColor: '#f7fafc',
+                  backgroundColor: 'var(--chakra-colors-gray-50)',
                 }}
                 placeholder="1.0"
               />

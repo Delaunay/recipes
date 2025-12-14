@@ -182,7 +182,7 @@ print(f"Result: {result}")`);
                 </Box>
 
                 {/* Text Code Block */}
-                <Box borderWidth={2} borderColor="blue.500" borderRadius="lg" p={6} bg="white">
+                <Box borderWidth={2} borderColor="blue.500" borderRadius="lg" p={6} bg="bg">
                     <VStack gap={4} align="stretch">
                         <HStack justify="space-between">
                             <Heading size="lg">1. Text-Based Code Editor</Heading>
@@ -231,7 +231,7 @@ print(f"Result: {result}")`);
                 </Box>
 
                 {/* Visual Graph Nodes Block */}
-                <Box borderWidth={2} borderColor="green.500" borderRadius="lg" p={6} bg="white">
+                <Box borderWidth={2} borderColor="green.500" borderRadius="lg" p={6} bg="bg">
                     <VStack gap={4} align="stretch">
                         <HStack justify="space-between">
                             <Heading size="lg">2. Visual Programming with Graph Nodes</Heading>
@@ -271,7 +271,7 @@ print(f"Result: {result}")`);
                 </Box>
 
                 {/* Blockly Visual Programming Block */}
-                <Box borderWidth={2} borderColor="purple.500" borderRadius="lg" p={6} bg="white">
+                <Box borderWidth={2} borderColor="purple.500" borderRadius="lg" p={6} bg="bg">
                     <VStack gap={4} align="stretch">
                         <HStack justify="space-between">
                             <Heading size="lg">3. Blockly Visual Programming</Heading>

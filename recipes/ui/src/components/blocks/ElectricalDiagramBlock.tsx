@@ -174,7 +174,7 @@ export const ElectricalDiagramBlock: React.FC<BlockComponentProps> = ({ block })
                 border="1px solid"
                 borderColor="gray.200"
                 borderRadius="md"
-                bg="white"
+                bg="bg"
                 p={4}
                 overflow="auto"
             >
@@ -182,13 +182,13 @@ export const ElectricalDiagramBlock: React.FC<BlockComponentProps> = ({ block })
                     {/* Grid background */}
                     <defs>
                         <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5" />
+                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--chakra-colors-gray-200)" strokeWidth="0.5" />
                         </pattern>
                     </defs>
                     <rect width="100%" height="100%" fill="url(#grid)" />
 
                     {/* Wires */}
-                    <g stroke="#1f2937" strokeWidth="2" fill="none">
+                    <g stroke="var(--chakra-colors-gray-800)" strokeWidth="2" fill="none">
                         {wires.map((wire, idx) => {
                             const pathData = wire.points
                                 .map((point, i) => `${i === 0 ? 'M' : 'L'}${point[0]},${point[1]}`)
@@ -198,7 +198,7 @@ export const ElectricalDiagramBlock: React.FC<BlockComponentProps> = ({ block })
                     </g>
 
                     {/* Components */}
-                    <g color="#1f2937">
+                    <g color="var(--chakra-colors-gray-800)">
                         {components.map((component, idx) => (
                             <ComponentSymbol key={idx} component={component} />
                         ))}

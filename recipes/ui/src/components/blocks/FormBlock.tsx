@@ -30,7 +30,7 @@ export const FormBlock: React.FC<BlockComponentProps> = ({ block, readonly }) =>
     };
 
     return (
-        <Box mb={4} p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+        <Box mb={4} p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
             <Text fontSize="lg" fontWeight="600" mb={4}>
                 {title}
             </Text>
@@ -91,7 +91,7 @@ export const FormBlock: React.FC<BlockComponentProps> = ({ block, readonly }) =>
                                             width: '100%',
                                             padding: '6px 12px',
                                             fontSize: '14px',
-                                            border: '1px solid #e2e8f0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '6px'
                                         }}
                                     >

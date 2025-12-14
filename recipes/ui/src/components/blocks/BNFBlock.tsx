@@ -42,7 +42,7 @@ export const BNFBlock: React.FC<BlockComponentProps> = ({ block }) => {
                     </Text>
                 </Box>
 
-                <VStack align="stretch" gap={0} bg="white">
+                <VStack align="stretch" gap={0} bg="bg">
                     {rules.map((rule, index) => (
                         <Box
                             key={index}

@@ -247,7 +247,7 @@ const QuickInputArea: React.FC<QuickInputAreaProps> = ({ onAddBlock }) => {
 $$ LaTeX formula
 Plain text for paragraph"
                         minHeight="100px"
-                        bg="white"
+                        bg="bg"
                         borderColor="green.200"
                         _focus={{ borderColor: 'green.400', boxShadow: '0 0 0 1px var(--chakra-colors-green-400)' }}
                         fontFamily="monospace"

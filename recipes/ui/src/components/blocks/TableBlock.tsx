@@ -89,24 +89,24 @@ export const TableBlock: React.FC<BlockComponentProps> = ({ block }) => {
                     borderCollapse="collapse"
                     border="1px solid"
                     borderColor="gray.300"
-                    bg="white"
+                    bg="bg"
                     css={{
                         '& td, & th': {
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--chakra-colors-border)',
                             padding: '0.5rem 0.75rem',
                             textAlign: 'left',
                             fontSize: '0.875rem'
                         },
                         '& th': {
-                            backgroundColor: '#f7fafc',
+                            backgroundColor: 'var(--chakra-colors-gray-50)',
                             fontWeight: '600',
-                            color: '#2d3748'
+                            color: 'var(--chakra-colors-fg)'
                         },
                         '& tbody tr:nth-of-type(even)': {
-                            backgroundColor: '#fafafa'
+                            backgroundColor: 'var(--chakra-colors-gray-50)'
                         },
                         '& tbody tr:hover': {
-                            backgroundColor: '#f0f0f0'
+                            backgroundColor: 'var(--chakra-colors-gray-100)'
                         }
                     }}
                 >

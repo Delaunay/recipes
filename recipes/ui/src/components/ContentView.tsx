@@ -77,7 +77,7 @@ const ContentView: FC = () => {
     return (
         <Box>
             <HStack justify="space-between" align="center" mb={6}>
-                <Heading size="2xl" color="#f56500">
+                <Heading size="2xl" color="orange.500">
                     Content
                 </Heading>
                 {!isStatic && (

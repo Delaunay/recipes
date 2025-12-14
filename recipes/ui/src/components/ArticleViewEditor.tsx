@@ -413,7 +413,7 @@ const BlockSettingsModal: React.FC<BlockSettingsModalProps> = ({
                 position="fixed"
                 top={modalTop}
                 left={modalLeft}
-                bg="white"
+                bg="bg"
                 boxShadow="2xl"
                 borderRadius="lg"
                 p={4}
@@ -664,7 +664,7 @@ const AddBlockMenu: React.FC<AddBlockMenuProps> = ({ onSelect, onClose, position
                 position="fixed"
                 top={`${position.top}px`}
                 left={`${position.left}px`}
-                bg="white"
+                bg="bg"
                 boxShadow="lg"
                 borderRadius="md"
                 p={2}
@@ -937,7 +937,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                     bg="blue.400"
                     borderRadius="full"
                     zIndex={20}
-                    boxShadow="0 0 8px rgba(66, 153, 225, 0.6)"
+                    boxShadow="0 0 8px var(--chakra-colors-blue-400)"
                 />
             )}
 
@@ -1038,7 +1038,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                             _focus={{
                                 outline: 'none',
                                 borderColor: 'blue.500',
-                                boxShadow: '0 0 0 3px rgba(66, 153, 225, 0.1)'
+                                boxShadow: '0 0 0 3px var(--chakra-colors-blue-100)'
                             }}
                             onClick={(e) => e.stopPropagation()}
                         />
@@ -1132,7 +1132,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                     bg="blue.400"
                     borderRadius="full"
                     zIndex={20}
-                    boxShadow="0 0 8px rgba(66, 153, 225, 0.6)"
+                    boxShadow="0 0 8px var(--chakra-colors-blue-400)"
                 />
             )}
 
@@ -1591,7 +1591,7 @@ const ArticleViewEditor: React.FC = () => {
     return (
         <Container maxW="container.lg" py={8}>
             {/* Top Toolbar */}
-            <Box mb={6} p={4} bg="white" borderRadius="md" boxShadow="sm" position="sticky" top={0} zIndex={100}>
+            <Box mb={6} p={4} bg="bg" borderRadius="md" boxShadow="sm" position="sticky" top={0} zIndex={100}>
                 <HStack gap={4} justify="space-between" flexWrap="wrap">
                     <HStack gap={2}>
                         <Button
@@ -1718,7 +1718,7 @@ const ArticleViewEditor: React.FC = () => {
                             fontSize="2xl"
                             fontWeight="bold"
                             size="lg"
-                            bg="white"
+                            bg="bg"
                         />
                     </VStack>
                 )}
@@ -1740,7 +1740,7 @@ const ArticleViewEditor: React.FC = () => {
                             onChange={(e) => updateArticle({ namespace: e.target.value })}
                             placeholder="e.g., tutorials/web-dev"
                             size="sm"
-                            bg="white"
+                            bg="bg"
                         />
                     </VStack>
                 )}
@@ -1766,7 +1766,7 @@ const ArticleViewEditor: React.FC = () => {
                             fontFamily="monospace"
                             fontSize="xs"
                             minHeight="80px"
-                            bg="white"
+                            bg="bg"
                         />
                         <Text fontSize="xs" color="gray.500">
                             Additional metadata like author, date, custom fields (must be valid JSON)
@@ -1943,7 +1943,7 @@ const ArticleViewEditor: React.FC = () => {
                                 >
                                     <Box
                                         p={3}
-                                        bg="white"
+                                        bg="bg"
                                         borderRadius="md"
                                         borderWidth="1px"
                                         borderColor="purple.200"

@@ -23,7 +23,6 @@ export class TextBlock extends BlockBase {
         if (this.children.length > 0) {
             return this.children.map(child => child.component(mode))
         }
-        console.log(this.def.data.style)
         switch (this.def.data.style) {
             case "strong":
                 return <Text className="STRONG" display="inline" as={this.def.data.style}>{this.def.data.text}</Text>

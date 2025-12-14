@@ -182,7 +182,7 @@ export const MarkdownEditorBlock: React.FC<BlockComponentProps> = ({ block }) =>
                 </HStack>
                 <Box
                     p={3}
-                    bg="white"
+                    bg="bg"
                     borderRadius="md"
                     fontFamily="monospace"
                     fontSize="sm"

@@ -11,7 +11,7 @@ const Home = () => {
   return (
     <Box>
       <Box textAlign="center" mb={8}>
-        <Heading size="2xl" mb={4} color="#f56500">
+        <Heading size="2xl" mb={4} color="orange.500">
           Welcome to (O)KaaSan
         </Heading>
         <Text fontSize="xl" color="gray.600">
@@ -37,7 +37,7 @@ const Home = () => {
               borderColor="gray.200"
               transition="all 0.2s"
               _hover={{
-                borderColor: '#f56500',
+                borderColor: 'orange.500',
                 boxShadow: 'lg',
                 transform: 'translateY(-2px)'
               }}

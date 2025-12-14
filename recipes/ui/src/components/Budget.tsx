@@ -222,7 +222,7 @@ const Budget: React.FC = () => {
 
                 {/* Budget Overview */}
                 <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={4}>
-                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack align="stretch" gap={3}>
                             <Text fontSize="sm" color="gray.500">Monthly Budget</Text>
                             <Text fontSize="3xl" fontWeight="bold" color="blue.600">
@@ -232,7 +232,7 @@ const Budget: React.FC = () => {
                         </VStack>
                     </Box>
 
-                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack align="stretch" gap={3}>
                             <Text fontSize="sm" color="gray.500">Total Spent</Text>
                             <Text fontSize="3xl" fontWeight="bold" color="green.600">
@@ -249,7 +249,7 @@ const Budget: React.FC = () => {
                         </VStack>
                     </Box>
 
-                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack align="stretch" gap={3}>
                             <Text fontSize="sm" color="gray.500">Remaining</Text>
                             <Text
@@ -265,7 +265,7 @@ const Budget: React.FC = () => {
                         </VStack>
                     </Box>
 
-                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack align="stretch" gap={3}>
                             <Text fontSize="sm" color="gray.500">Weekly Average</Text>
                             <Text fontSize="3xl" fontWeight="bold" color="purple.600">
@@ -279,7 +279,7 @@ const Budget: React.FC = () => {
                 </Grid>
 
                 {/* Category Breakdown */}
-                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                     <Heading size="md" mb={4}>Spending by Category</Heading>
                     <VStack gap={4} align="stretch">
                         {currentBudget.categories.map((category, index) => {
@@ -317,7 +317,7 @@ const Budget: React.FC = () => {
 
                 <Grid templateColumns="repeat(auto-fit, minmax(400px, 1fr))" gap={6}>
                     {/* Weekly Spending Trend */}
-                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <Heading size="md" mb={4}>Weekly Spending Trend</Heading>
                         <VStack gap={3} align="stretch">
                             {weeklySpending.map((week, index) => {
@@ -344,7 +344,7 @@ const Budget: React.FC = () => {
                     </Box>
 
                     {/* Spending by Store */}
-                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <Heading size="md" mb={4}>Spending by Store</Heading>
                         <VStack gap={3} align="stretch">
                             {storeSpending.map((store, index) => {
@@ -372,7 +372,7 @@ const Budget: React.FC = () => {
                 </Grid>
 
                 {/* Recent Transactions */}
-                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                     <Heading size="md" mb={4}>Recent Transactions</Heading>
                     <VStack gap={2} align="stretch">
                         {recentSpending.map((entry) => (
@@ -423,7 +423,7 @@ const Budget: React.FC = () => {
                     p={4}
                 >
                     <Box
-                        bg="white"
+                        bg="bg"
                         borderRadius="md"
                         p={6}
                         maxW="600px"

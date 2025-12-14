@@ -142,7 +142,7 @@ const IngredientUnitsManager: React.FC<IngredientUnitsManagerProps> = ({ ingredi
                 {/* Units List */}
                 <VStack gap={3} align="stretch">
                     {unitsData.units_used.map(unit => (
-                        <Box key={unit} p={4} bg="white" borderRadius="md" shadow="sm">
+                        <Box key={unit} p={4} bg="bg" borderRadius="md" shadow="sm">
                             <VStack gap={3} align="stretch">
                                 {/* Unit Header */}
                                 <HStack justify="space-between" align="center">
@@ -206,8 +206,8 @@ const IngredientUnitsManager: React.FC<IngredientUnitsManagerProps> = ({ ingredi
                                                             width: '100%',
                                                             padding: '6px 8px',
                                                             borderRadius: '4px',
-                                                            border: '1px solid #cbd5e0',
-                                                            backgroundColor: 'white',
+                                                            border: '1px solid var(--chakra-colors-border)',
+                                                            backgroundColor: 'var(--chakra-colors-bg)',
                                                             fontSize: '14px'
                                                         }}
                                                     >
@@ -231,7 +231,7 @@ const IngredientUnitsManager: React.FC<IngredientUnitsManagerProps> = ({ ingredi
                                                         onChange={(e) => setConversionData({ ...conversionData, conversion_factor: e.target.value })}
                                                         placeholder="e.g., 240"
                                                         size="sm"
-                                                        bg="white"
+                                                        bg="bg"
                                                     />
                                                 </Box>
                                             </SimpleGrid>

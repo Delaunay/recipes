@@ -105,7 +105,7 @@ const ApiTester = () => {
                             width: '120px',
                             padding: '8px',
                             borderRadius: '6px',
-                            border: '1px solid #E2E8F0',
+                            border: '1px solid var(--chakra-colors-border)',
                             fontSize: '14px',
                         }}
                     >

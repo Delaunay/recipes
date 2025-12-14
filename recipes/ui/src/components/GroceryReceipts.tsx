@@ -413,7 +413,7 @@ const GroceryReceipts: React.FC = () => {
                 </Box>
 
                 {/* Receipt Information */}
-                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                     <Heading size="md" mb={4}>Receipt Information</Heading>
                     <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={4}>
                         <Box>
@@ -463,7 +463,7 @@ const GroceryReceipts: React.FC = () => {
                 </Box>
 
                 {/* Items */}
-                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                     <HStack justify="space-between" mb={4}>
                         <Heading size="md">Items ({items.length})</Heading>
                         <Button onClick={addItem} colorScheme="green" size="sm">
@@ -529,9 +529,9 @@ const GroceryReceipts: React.FC = () => {
                                         style={{
                                             width: '100%',
                                             padding: '6px',
-                                            border: '1px solid #e2e8f0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '4px',
-                                            backgroundColor: 'white',
+                                            backgroundColor: 'var(--chakra-colors-bg)',
                                             fontSize: '14px'
                                         }}
                                     >
@@ -548,9 +548,9 @@ const GroceryReceipts: React.FC = () => {
                                         style={{
                                             width: '100%',
                                             padding: '6px',
-                                            border: '1px solid #e2e8f0',
+                                            border: '1px solid var(--chakra-colors-border)',
                                             borderRadius: '4px',
-                                            backgroundColor: 'white',
+                                            backgroundColor: 'var(--chakra-colors-bg)',
                                             fontSize: '14px'
                                         }}
                                     >
@@ -634,7 +634,7 @@ const GroceryReceipts: React.FC = () => {
                     p={4}
                 >
                     <Box
-                        bg="white"
+                        bg="bg"
                         borderRadius="md"
                         p={6}
                         maxW="600px"

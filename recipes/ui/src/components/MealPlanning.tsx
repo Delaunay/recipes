@@ -529,7 +529,7 @@ const MealPlanning: React.FC = () => {
 
                 {/* Summary Cards */}
                 <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack>
                             <Text fontSize="sm" color="gray.500">Total Portions Needed</Text>
                             <Text fontSize="2xl" fontWeight="bold">{totalPortionsNeeded}</Text>
@@ -539,21 +539,21 @@ const MealPlanning: React.FC = () => {
                         </VStack>
                     </Box>
 
-                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack>
                             <Text fontSize="sm" color="gray.500">Portions Available</Text>
                             <Text fontSize="2xl" fontWeight="bold" color="blue.500">{totalPortionsAvailable}</Text>
                         </VStack>
                     </Box>
 
-                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack>
                             <Text fontSize="sm" color="gray.500">Portions Planned</Text>
                             <Text fontSize="2xl" fontWeight="bold" color="green.500">{totalPortionsPlanned}</Text>
                         </VStack>
                     </Box>
 
-                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack>
                             <Text fontSize="sm" color="gray.500">Remaining Needed</Text>
                             <Text
@@ -566,7 +566,7 @@ const MealPlanning: React.FC = () => {
                         </VStack>
                     </Box>
 
-                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack>
                             <Text fontSize="sm" color="gray.500">People</Text>
                             <Input
@@ -586,7 +586,7 @@ const MealPlanning: React.FC = () => {
                     <Heading size="md" mb={4}>Weekly Meal Schedule</Heading>
                     <Box overflowX="auto" border="1px" borderColor="gray.200" borderRadius="md">
                         <Box as="table" width="100%" borderCollapse="collapse">
-                            <Box as="thead" bg="gray.50">
+                            <Box as="thead" bg="bg">
                                 <Box as="tr">
                                     <Box as="th" p={3} textAlign="left" fontWeight="semibold" borderBottom="1px" borderColor="gray.200">Meal</Box>
                                     {DAYS.map(day => (
@@ -600,7 +600,7 @@ const MealPlanning: React.FC = () => {
                                 {MEAL_TYPES.map(mealType => {
                                     const typedMealType = mealType as 'breakfast' | 'lunch' | 'dinner';
                                     return (
-                                        <Box as="tr" key={mealType} _hover={{ bg: 'gray.50' }}>
+                                        <Box as="tr" key={mealType} _hover={{ bg: 'gray.900' }}>
                                             <Box as="td" p={3} fontWeight="semibold" textTransform="capitalize" borderBottom="1px" borderColor="gray.100">
                                                 {mealType}
                                             </Box>
@@ -617,13 +617,13 @@ const MealPlanning: React.FC = () => {
                                                         borderColor="gray.100"
                                                         cursor="pointer"
                                                         onClick={() => openMealModal(day, typedMealType)}
-                                                        _hover={{ bg: 'blue.50' }}
+                                                        _hover={{ bg: 'gray.800' }}
                                                         position="relative"
                                                     >
                                                         {hasMeals ? (
                                                             <VStack align="stretch" gap={1}>
                                                                 {meals.map(meal => (
-                                                                    <Box key={meal.id} p={2} border="1px" borderColor={meal.recipeId === 'skip' ? 'gray.300' : 'blue.200'} borderRadius="md" bg={meal.recipeId === 'skip' ? 'gray.100' : 'blue.50'}>
+                                                                    <Box key={meal.id} p={2} border="1px" borderColor={meal.recipeId === 'skip' ? 'gray.300' : 'blue.200'} borderRadius="md" bg={meal.recipeId === 'skip' ? 'gray.200' : 'blue.200'}>
                                                                         <VStack align="stretch" gap={1}>
                                                                             <Text fontSize="xs" fontWeight="semibold">
                                                                                 {meal.recipeName}
@@ -695,9 +695,9 @@ const MealPlanning: React.FC = () => {
                                         border="1px"
                                         borderColor="gray.200"
                                         borderRadius="md"
-                                        bg="white"
+                                        bg="bg"
                                         mb={2}
-                                        _hover={{ bg: 'gray.50' }}
+                                        _hover={{ bg: 'black.900' }}
                                     >
                                         <Flex justify="space-between" align="center">
                                             <HStack gap={2}>
@@ -821,9 +821,9 @@ const MealPlanning: React.FC = () => {
                                     border="1px"
                                     borderColor="gray.200"
                                     borderRadius="md"
-                                    bg="white"
+                                    bg="bg"
                                     mb={0}
-                                    _hover={{ bg: 'gray.50' }}
+                                    _hover={{ bg: 'gray.100' }}
                                 >
                                     <HStack justify="space-between" align="center">
                                         <Text fontSize="md">{item.name}</Text>
@@ -842,9 +842,9 @@ const MealPlanning: React.FC = () => {
                                 border="1px"
                                 borderColor="gray.200"
                                 borderRadius="md"
-                                bg="white"
+                                bg="bg"
                                 mb={2}
-                                _hover={{ bg: 'gray.50' }}
+                                _hover={{ bg: 'gray.900' }}
                             >
                             </Box>
                         </Box>
@@ -867,7 +867,7 @@ const MealPlanning: React.FC = () => {
                         p={4}
                     >
                         <Box
-                            bg="white"
+                            bg="bg"
                             borderRadius="md"
                             p={6}
                             maxW="500px"
@@ -918,10 +918,10 @@ const MealPlanning: React.FC = () => {
                                                         style={{
                                                             flex: 1,
                                                             padding: '8px',
-                                                            border: '1px solid #e2e8f0',
+                                                            border: '1px solid var(--chakra-colors-border)',
                                                             borderRadius: '4px',
                                                             fontSize: '14px',
-                                                            backgroundColor: 'white',
+                                                            backgroundColor: 'var(--chakra-colors-bg)',
                                                         }}
                                                     >
                                                         <option value="">Select recipe</option>
@@ -1051,7 +1051,7 @@ const MealPlanning: React.FC = () => {
                         p={4}
                     >
                         <Box
-                            bg="white"
+                            bg="bg"
                             borderRadius="md"
                             p={6}
                             maxW="400px"
@@ -1122,7 +1122,7 @@ const MealPlanning: React.FC = () => {
                         p={4}
                     >
                         <Box
-                            bg="white"
+                            bg="bg"
                             borderRadius="md"
                             p={6}
                             maxW="400px"
@@ -1153,10 +1153,10 @@ const MealPlanning: React.FC = () => {
                                             style={{
                                                 width: '100%',
                                                 padding: '8px',
-                                                border: '1px solid #e2e8f0',
+                                                border: '1px solid var(--chakra-colors-border)',
                                                 borderRadius: '4px',
                                                 fontSize: '14px',
-                                                backgroundColor: 'white',
+                                                backgroundColor: 'var(--chakra-colors-bg)',
                                             }}
                                         >
                                             <option value="">Choose a meal plan to load</option>

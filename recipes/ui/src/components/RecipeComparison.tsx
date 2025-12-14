@@ -500,8 +500,8 @@ const RecipeComparison = () => {
                                                                                                             padding: '2px 4px',
                                                                                                             fontSize: '12px',
                                                                                                             borderRadius: '4px',
-                                                                                                            border: '1px solid #e2e8f0',
-                                                                                                            backgroundColor: isConverting ? '#f7fafc' : 'white',
+                                                                                                            border: '1px solid var(--chakra-colors-border)',
+                                                                                                            backgroundColor: isConverting ? 'var(--chakra-colors-gray-50)' : 'var(--chakra-colors-bg)',
                                                                                                             cursor: isConverting ? 'wait' : 'pointer',
                                                                                                         }}
                                                                                                     >

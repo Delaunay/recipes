@@ -170,8 +170,8 @@ const UnitManager: React.FC = () => {
                                             width: '100%',
                                             padding: '8px 12px',
                                             borderRadius: '6px',
-                                            border: '1px solid #e2e8f0',
-                                            backgroundColor: 'white',
+                                            border: '1px solid var(--chakra-colors-border)',
+                                            backgroundColor: 'var(--chakra-colors-bg)',
                                             fontSize: '14px'
                                         }}
                                     >
@@ -191,8 +191,8 @@ const UnitManager: React.FC = () => {
                                             width: '100%',
                                             padding: '8px 12px',
                                             borderRadius: '6px',
-                                            border: '1px solid #e2e8f0',
-                                            backgroundColor: 'white',
+                                            border: '1px solid var(--chakra-colors-border)',
+                                            backgroundColor: 'var(--chakra-colors-bg)',
                                             fontSize: '14px'
                                         }}
                                     >
@@ -212,7 +212,7 @@ const UnitManager: React.FC = () => {
                                     value={formData.conversion_factor}
                                     onChange={(e) => setFormData({ ...formData, conversion_factor: e.target.value })}
                                     placeholder="e.g., 1000 (1 kg = 1000 g)"
-                                    bg="white"
+                                    bg="bg"
                                 />
                                 <Text fontSize="xs" color="blue.600" mt={1}>
                                     How many {formData.to_unit || '[target unit]'} equal 1 {formData.from_unit || '[source unit]'}
@@ -228,8 +228,8 @@ const UnitManager: React.FC = () => {
                                         width: '100%',
                                         padding: '8px 12px',
                                         borderRadius: '6px',
-                                        border: '1px solid #e2e8f0',
-                                        backgroundColor: 'white',
+                                        border: '1px solid var(--chakra-colors-border)',
+                                        backgroundColor: 'var(--chakra-colors-bg)',
                                         fontSize: '14px'
                                     }}
                                 >
@@ -294,7 +294,7 @@ const UnitManager: React.FC = () => {
                     <Heading size="md" mb={4}>Units Currently Used in Recipes</Heading>
                     <SimpleGrid columns={{ base: 2, md: 4, lg: 6 }} gap={3}>
                         {unitsData.units_in_recipes.map(unit => (
-                            <Box key={unit} p={3} bg="white" borderRadius="md" shadow="sm">
+                            <Box key={unit} p={3} bg="bg" borderRadius="md" shadow="sm">
                                 <HStack justify="space-between">
                                     <Text fontWeight="medium">{unit}</Text>
                                     <Badge colorScheme="blue" variant="subtle">
@@ -316,7 +316,7 @@ const UnitManager: React.FC = () => {
                     <Heading size="md" mb={4}>All Available Units (from conversions)</Heading>
                     <SimpleGrid columns={{ base: 3, md: 6, lg: 8 }} gap={2}>
                         {unitsData.all_available_units.map(unit => (
-                            <Box key={unit} p={2} bg="white" borderRadius="md" shadow="sm" textAlign="center">
+                            <Box key={unit} p={2} bg="bg" borderRadius="md" shadow="sm" textAlign="center">
                                 <Text fontSize="sm" fontWeight="medium">{unit}</Text>
                             </Box>
                         ))}

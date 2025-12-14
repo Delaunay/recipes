@@ -5,7 +5,7 @@
 
 .sidebar {
   width: 240px;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid var(--chakra-colors-border);
   position: fixed;
   height: 100vh;
   left: 0;
@@ -20,7 +20,7 @@
 .sidebar-title {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #f56500;
+  color: var(--chakra-colors-orange-500);
   margin: 0;
 }
 
@@ -51,17 +51,11 @@
   text-decoration: none;
 }
 
-.nav-section-title:hover {
+.nav-section-title:hover {}
 
-}
+.nav-section-title:visited {}
 
-.nav-section-title:visited {
-
-}
-
-.nav-section-title:visited:hover {
-
-}
+.nav-section-title:visited:hover {}
 
 .nav-section-title.active-section {
 
@@ -98,8 +92,8 @@
 }
 
 .nav-item:hover {
-  color: #f56500;
-  border-left-color: #f56500;
+  color: var(--chakra-colors-orange-500);
+  border-left-color: var(--chakra-colors-orange-500);
 }
 
 .main-content {
@@ -111,7 +105,7 @@
 .content-wrapper {
   border-radius: 0.5rem;
   padding: 2rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--chakra-shadows-sm);
   min-height: calc(100vh - 6rem);
 }
 

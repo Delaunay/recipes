@@ -332,7 +332,7 @@ const Pantry: React.FC = () => {
 
                 {/* Summary Cards */}
                 <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                    <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                         <VStack>
                             <Text fontSize="sm" color="gray.500">Total Items</Text>
                             <Text fontSize="2xl" fontWeight="bold">{pantryItems.length}</Text>
@@ -355,7 +355,7 @@ const Pantry: React.FC = () => {
                 </Grid>
 
                 {/* Filters */}
-                <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                <Box p={4} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                     <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4} alignItems="end">
                         <Box>
                             <Text mb={2} fontSize="sm" fontWeight="semibold">Search Items</Text>
@@ -375,9 +375,9 @@ const Pantry: React.FC = () => {
                                 style={{
                                     width: '100%',
                                     padding: '6px',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--chakra-colors-border)',
                                     borderRadius: '4px',
-                                    backgroundColor: 'white',
+                                    backgroundColor: 'var(--chakra-colors-bg)',
                                     fontSize: '14px'
                                 }}
                             >
@@ -396,9 +396,9 @@ const Pantry: React.FC = () => {
                                 style={{
                                     width: '100%',
                                     padding: '6px',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--chakra-colors-border)',
                                     borderRadius: '4px',
-                                    backgroundColor: 'white',
+                                    backgroundColor: 'var(--chakra-colors-bg)',
                                     fontSize: '14px'
                                 }}
                             >
@@ -423,7 +423,7 @@ const Pantry: React.FC = () => {
                 </Box>
 
                 {/* Items List */}
-                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="white">
+                <Box p={6} border="1px solid" borderColor="gray.200" borderRadius="md" bg="bg">
                     <Heading size="md" mb={4}>
                         Pantry Items ({filteredItems.length})
                     </Heading>
@@ -562,7 +562,7 @@ const Pantry: React.FC = () => {
                     p={4}
                 >
                     <Box
-                        bg="white"
+                        bg="bg"
                         borderRadius="md"
                         p={6}
                         maxW="500px"
@@ -621,9 +621,9 @@ const Pantry: React.FC = () => {
                                             style={{
                                                 width: '100%',
                                                 padding: '8px',
-                                                border: '1px solid #e2e8f0',
+                                                border: '1px solid var(--chakra-colors-border)',
                                                 borderRadius: '4px',
-                                                backgroundColor: 'white',
+                                                backgroundColor: 'var(--chakra-colors-bg)',
                                             }}
                                         >
                                             {COMMON_UNITS.map(unit => (
@@ -642,9 +642,9 @@ const Pantry: React.FC = () => {
                                             style={{
                                                 width: '100%',
                                                 padding: '8px',
-                                                border: '1px solid #e2e8f0',
+                                                border: '1px solid var(--chakra-colors-border)',
                                                 borderRadius: '4px',
-                                                backgroundColor: 'white',
+                                                backgroundColor: 'var(--chakra-colors-bg)',
                                             }}
                                         >
                                             {PANTRY_LOCATIONS.map(location => (
@@ -661,9 +661,9 @@ const Pantry: React.FC = () => {
                                             style={{
                                                 width: '100%',
                                                 padding: '8px',
-                                                border: '1px solid #e2e8f0',
+                                                border: '1px solid var(--chakra-colors-border)',
                                                 borderRadius: '4px',
-                                                backgroundColor: 'white',
+                                                backgroundColor: 'var(--chakra-colors-bg)',
                                             }}
                                         >
                                             {PANTRY_CATEGORIES.map(category => (

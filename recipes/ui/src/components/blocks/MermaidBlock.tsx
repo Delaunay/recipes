@@ -57,7 +57,7 @@ export const MermaidBlock: React.FC<BlockComponentProps> = ({ block }) => {
                 Mermaid Diagram
             </Text>
             <Box
-                bg="white"
+                bg="bg"
                 p={4}
                 borderRadius="md"
                 ref={containerRef}

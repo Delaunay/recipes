@@ -144,7 +144,7 @@ export const TelegramSettings: React.FC<TelegramSettingsProps> = ({ isOpen, onCl
       justifyContent="center"
     >
       <Box
-        bg="white"
+        bg="bg"
         borderRadius="md"
         p={6}
         maxW="50%"
@@ -171,97 +171,97 @@ export const TelegramSettings: React.FC<TelegramSettingsProps> = ({ isOpen, onCl
 
           {/* Instructions */}
           <HStack justify="space-between" align="flex-start" >
-          <Box>
-            <Text fontSize="sm" color="gray.600" mb={4}>
-              To use Telegram messaging, you need to create a bot and get your chat ID:
-            </Text>
-            
-            <VStack align="start" gap={2} fontSize="sm">
-              <Text fontWeight="semibold">1. Create a Bot:</Text>
-              <Box ml={4}>
-                <Text>• Message @BotFather on Telegram</Text>
-                <Text>• Send /newbot and follow the instructions</Text>
-                <Text>• Copy the bot token (looks like: 123456789:ABCdef...)</Text>
-              </Box>
-
-              <Text fontWeight="semibold" mt={3}>2. Get Your Chat ID:</Text>
-              <Box ml={4}>
-                <Text>• Message your new bot anything</Text>
-                <Text>• Visit: https://api.telegram.org/bot&lt;YOUR_BOT_TOKEN&gt;/getUpdates</Text>
-                <Text>• Find your chat ID in the response</Text>
-              </Box>
-            </VStack>
-          </Box>
-
-          <Box h="1px" bg="gray.200" />
-
-          {/* Form */}
-          <VStack gap={4} align="stretch">
             <Box>
-              <Text fontWeight="semibold" mb={2}>Bot Token</Text>
-              <Input
-                type="password"
-                value={botToken}
-                onChange={(e) => setBotToken(e.target.value)}
-                placeholder="123456789:ABCdefghijklmnopqrstuvwxyz"
-              />
+              <Text fontSize="sm" color="gray.600" mb={4}>
+                To use Telegram messaging, you need to create a bot and get your chat ID:
+              </Text>
+
+              <VStack align="start" gap={2} fontSize="sm">
+                <Text fontWeight="semibold">1. Create a Bot:</Text>
+                <Box ml={4}>
+                  <Text>• Message @BotFather on Telegram</Text>
+                  <Text>• Send /newbot and follow the instructions</Text>
+                  <Text>• Copy the bot token (looks like: 123456789:ABCdef...)</Text>
+                </Box>
+
+                <Text fontWeight="semibold" mt={3}>2. Get Your Chat ID:</Text>
+                <Box ml={4}>
+                  <Text>• Message your new bot anything</Text>
+                  <Text>• Visit: https://api.telegram.org/bot&lt;YOUR_BOT_TOKEN&gt;/getUpdates</Text>
+                  <Text>• Find your chat ID in the response</Text>
+                </Box>
+              </VStack>
             </Box>
 
-            <Box>
-              <Text fontWeight="semibold" mb={2}>Chat ID</Text>
-              <Input
-                value={chatId}
-                onChange={(e) => setChatId(e.target.value)}
-                placeholder="123456789 or -123456789 for groups"
-              />
-            </Box>
+            <Box h="1px" bg="gray.200" />
 
-            {hasCredentials && (
-              <Box p={3} bg="green.50" border="1px" borderColor="green.200" borderRadius="md">
-                <Text fontSize="sm" color="green.800">Credentials are saved and ready to use</Text>
+            {/* Form */}
+            <VStack gap={4} align="stretch">
+              <Box>
+                <Text fontWeight="semibold" mb={2}>Bot Token</Text>
+                <Input
+                  type="password"
+                  value={botToken}
+                  onChange={(e) => setBotToken(e.target.value)}
+                  placeholder="123456789:ABCdefghijklmnopqrstuvwxyz"
+                />
               </Box>
-            )}
 
-            {/* Interactive Mode Control */}
-            {hasCredentials && (
-              <Box p={4} bg="blue.50" border="1px" borderColor="blue.200" borderRadius="md">
-                <VStack gap={3} align="stretch">
-                  <Text fontWeight="semibold" color="blue.800">Interactive Mode</Text>
-                  <Text fontSize="sm" color="blue.700">
-                    Enable this to make checklist buttons clickable in Telegram. 
-                    When enabled, users can click the ⬜/✅ buttons to toggle items.
-                  </Text>
-                  <HStack justify="space-between">
-                    <Text fontSize="sm" fontWeight="medium">
-                      Status: {isInteractiveMode ? '🟢 Running' : '🔴 Stopped'}
+              <Box>
+                <Text fontWeight="semibold" mb={2}>Chat ID</Text>
+                <Input
+                  value={chatId}
+                  onChange={(e) => setChatId(e.target.value)}
+                  placeholder="123456789 or -123456789 for groups"
+                />
+              </Box>
+
+              {hasCredentials && (
+                <Box p={3} bg="green.50" border="1px" borderColor="green.200" borderRadius="md">
+                  <Text fontSize="sm" color="green.800">Credentials are saved and ready to use</Text>
+                </Box>
+              )}
+
+              {/* Interactive Mode Control */}
+              {hasCredentials && (
+                <Box p={4} bg="blue.50" border="1px" borderColor="blue.200" borderRadius="md">
+                  <VStack gap={3} align="stretch">
+                    <Text fontWeight="semibold" color="blue.800">Interactive Mode</Text>
+                    <Text fontSize="sm" color="blue.700">
+                      Enable this to make checklist buttons clickable in Telegram.
+                      When enabled, users can click the ⬜/✅ buttons to toggle items.
                     </Text>
-                    <Button
-                      size="sm"
-                      colorScheme={isInteractiveMode ? 'red' : 'green'}
-                      variant="outline"
-                      onClick={toggleInteractiveMode}
-                    >
-                      {isInteractiveMode ? 'Stop Interactive Mode' : 'Start Interactive Mode'}
-                    </Button>
-                  </HStack>
-                </VStack>
-              </Box>
-            )}
+                    <HStack justify="space-between">
+                      <Text fontSize="sm" fontWeight="medium">
+                        Status: {isInteractiveMode ? '🟢 Running' : '🔴 Stopped'}
+                      </Text>
+                      <Button
+                        size="sm"
+                        colorScheme={isInteractiveMode ? 'red' : 'green'}
+                        variant="outline"
+                        onClick={toggleInteractiveMode}
+                      >
+                        {isInteractiveMode ? 'Stop Interactive Mode' : 'Start Interactive Mode'}
+                      </Button>
+                    </HStack>
+                  </VStack>
+                </Box>
+              )}
 
-            {message && (
-              <Box 
-                p={3} 
-                bg={message.type === 'success' ? 'green.50' : message.type === 'error' ? 'red.50' : 'blue.50'}
-                border="1px" 
-                borderColor={message.type === 'success' ? 'green.200' : message.type === 'error' ? 'red.200' : 'blue.200'}
-                borderRadius="md"
-              >
-                <Text fontSize="sm" color={message.type === 'success' ? 'green.800' : message.type === 'error' ? 'red.800' : 'blue.800'}>
-                  {message.text}
-                </Text>
-              </Box>
-            )}
-          </VStack>
+              {message && (
+                <Box
+                  p={3}
+                  bg={message.type === 'success' ? 'green.50' : message.type === 'error' ? 'red.50' : 'blue.50'}
+                  border="1px"
+                  borderColor={message.type === 'success' ? 'green.200' : message.type === 'error' ? 'red.200' : 'blue.200'}
+                  borderRadius="md"
+                >
+                  <Text fontSize="sm" color={message.type === 'success' ? 'green.800' : message.type === 'error' ? 'red.800' : 'blue.800'}>
+                    {message.text}
+                  </Text>
+                </Box>
+              )}
+            </VStack>
           </HStack>
 
           {/* Actions */}

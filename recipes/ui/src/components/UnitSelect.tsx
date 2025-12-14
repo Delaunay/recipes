@@ -135,10 +135,10 @@ const UnitSelect: React.FC<UnitSelectProps> = ({
                 placeholder={placeholder}
                 disabled={disabled}
                 size={inputSize}
-                bg="white"
+                bg="bg"
                 borderColor="gray.200"
                 _hover={{ borderColor: "gray.300" }}
-                _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
+                _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px var(--chakra-colors-blue-500)" }}
             />
 
             {showSuggestions && !disabled && (
@@ -147,7 +147,7 @@ const UnitSelect: React.FC<UnitSelectProps> = ({
                     top="100%"
                     left={0}
                     right={0}
-                    bg="white"
+                    bg="bg"
                     border="1px solid"
                     borderColor="gray.200"
                     borderRadius="md"

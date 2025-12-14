@@ -104,10 +104,10 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
       style={{
         minHeight: multiline ? '60px' : 'auto',
         padding: isEditable ? '8px' : '0',
-        border: isEditable ? '1px solid #e2e8f0' : 'none',
+        border: isEditable ? '1px solid var(--chakra-colors-border)' : 'none',
         borderRadius: isEditable ? '4px' : '0',
         outline: 'none',
-        backgroundColor: isEditable ? '#f7fafc' : 'transparent',
+        backgroundColor: isEditable ? 'var(--chakra-colors-gray-50)' : 'transparent',
       }}
       data-placeholder={placeholder}
     >
@@ -184,7 +184,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
       borderWidth="1px"
       borderRadius="lg"
       overflow="hidden"
-      bg="white"
+      bg="bg"
       shadow="sm"
       _hover={{
         shadow: "lg",
@@ -204,7 +204,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
 
       {/* Ingredient Icon/Placeholder */}
       <Box
-        bg="gray.100"
+        bg="gray.200"
         height="120px"
         display="flex"
         alignItems="center"
@@ -252,7 +252,7 @@ const IngredientListItem: FC<IngredientListItemProps> = ({
               <Button
                 size="xs"
                 variant="ghost"
-                bg="white"
+                bg="bg"
                 onClick={(e) => {
                   e.stopPropagation();
                   onStartEdit();

@@ -16,7 +16,7 @@ interface SectionViewProps {
 const SectionView: FC<SectionViewProps> = ({ title, items }) => {
     return (
         <Box>
-            <Heading size="2xl" mb={6} color="#f56500">
+            <Heading size="2xl" mb={6} color="orange.500">
                 {title}
             </Heading>
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
@@ -33,7 +33,7 @@ const SectionView: FC<SectionViewProps> = ({ title, items }) => {
                             borderColor="gray.200"
                             transition="all 0.2s"
                             _hover={{
-                                borderColor: '#f56500',
+                                borderColor: 'orange.500',
                                 boxShadow: 'lg',
                                 transform: 'translateY(-2px)'
                             }}

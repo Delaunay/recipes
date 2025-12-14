@@ -14,7 +14,7 @@ export const HeadingBlockEditor: React.FC<BlockEditorProps> = ({ block, onChange
                         width: '100%',
                         padding: '0.25rem',
                         borderRadius: '0.25rem',
-                        border: '1px solid #e2e8f0'
+                        border: '1px solid var(--chakra-colors-border)'
                     }}
                 >
                     {[1, 2, 3, 4, 5, 6].map(level => (

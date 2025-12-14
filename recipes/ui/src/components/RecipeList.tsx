@@ -164,7 +164,7 @@ const RecipeList = () => {
       <Box py={6}>
         <VStack gap={6} align="stretch">
           {/* Filter Controls */}
-          <Box p={4} bg="gray.50" borderRadius="md">
+          <Box p={4} bg="bg" borderRadius="md">
             <Text fontSize="lg" fontWeight="semibold" mb={3}>Filters</Text>
             <Flex gap={6} wrap="wrap" align="center">
               <Box>
@@ -177,6 +177,7 @@ const RecipeList = () => {
                     gap={2}
                     p={2}
                     borderRadius="md"
+                    bg="bg"
                     _hover={{ bg: "gray.100" }}
                     cursor="pointer"
                   >
@@ -186,13 +187,13 @@ const RecipeList = () => {
                       border="2px solid"
                       borderColor={componentFilter === 'components' ? "blue.500" : "gray.300"}
                       borderRadius="sm"
-                      bg={componentFilter === 'components' ? "blue.500" : componentFilter === 'all' ? "gray.200" : "white"}
+                      bg={componentFilter === 'components' ? "blue.500" : "bg"}
                       display="flex"
                       alignItems="center"
                       justifyContent="center"
                     >
                       {componentFilter === 'components' && (
-                        <Box w={2} h={2} bg="white" borderRadius="xs" />
+                        <Box w={2} h={2} bg="bg" borderRadius="xs" />
                       )}
                       {componentFilter === 'all' && (
                         <Box w={2} h={1} bg="gray.600" />
@@ -207,7 +208,7 @@ const RecipeList = () => {
                   placeholder="Filter by tags, title, or description..."
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
-                  bg="white"
+                  bg="bg"
                 />
               </Box>
             </Flex>
@@ -268,7 +269,7 @@ const RecipeList = () => {
 
           <HStack justify="space-between" width="100%">
             {/* Filter Controls */}
-            <Box bg="gray.50" borderRadius="md" width="100%">
+            <Box bg="bg" borderRadius="md" width="100%">
               <Flex gap={6} wrap="wrap" align="center">
                 <Box>
                   <HStack>
@@ -280,6 +281,7 @@ const RecipeList = () => {
                       gap={2}
                       p={2}
                       borderRadius="md"
+                      bg="bg"
                       _hover={{ bg: "gray.100" }}
                       cursor="pointer"
                     >
@@ -289,13 +291,13 @@ const RecipeList = () => {
                         border="2px solid"
                         borderColor={componentFilter === 'components' ? "blue.500" : "gray.300"}
                         borderRadius="sm"
-                        bg={componentFilter === 'components' ? "blue.500" : componentFilter === 'all' ? "gray.200" : "white"}
+                        bg={componentFilter === 'components' ? "blue.500" : "bg"}
                         display="flex"
                         alignItems="center"
                         justifyContent="center"
                       >
                         {componentFilter === 'components' && (
-                          <Box w={2} h={2} bg="white" borderRadius="xs" />
+                          <Box w={2} h={2} bg="bg" borderRadius="xs" />
                         )}
                         {componentFilter === 'all' && (
                           <Box w={2} h={1} bg="gray.600" />
@@ -310,7 +312,7 @@ const RecipeList = () => {
                     placeholder="Filter"
                     value={tagFilter}
                     onChange={(e) => setTagFilter(e.target.value)}
-                    bg="white"
+                    bg="bg"
                   />
                 </Box>
               </Flex>
@@ -332,7 +334,7 @@ const RecipeList = () => {
                 borderWidth="1px"
                 borderRadius="lg"
                 overflow="hidden"
-                bg="white"
+                bg="bg"
                 shadow="sm"
                 _hover={{
                   shadow: "lg",

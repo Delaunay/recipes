@@ -946,7 +946,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
             w="100%"
         >
             {/* Navigation Header */}
-            <Box mb={4} p={2} bg="white" borderRadius="md" boxShadow="sm">
+            <Box mb={4} p={2} bg="bg" borderRadius="md" boxShadow="sm">
                 <HStack justify="space-between" align="center">
 
                     <Button
@@ -983,7 +983,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     gap={0.5}
                     borderColor="gray.300"
                     borderRadius="md"
-                    bg="white"
+                    bg="bg"
                     // minH="600px"
                     className="class-grid"
                     flex="1"
@@ -1058,8 +1058,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     {/* One massive content area spanning all 7 days and all hours */}
                     <GridItem
                         colSpan={7}
-                        bg="white"
-                        _hover={{ bg: "gray.50" }}
+                        bg="bg"
+                        _hover={{ bg: "gray.100" }}
                         position="relative"
                         display="flex"
                         flexDirection="column"
@@ -1125,8 +1125,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                     borderRight="1px solid"
                                     borderColor={"gray.200"}
                                     // borderColor={isDayToday(dayIndex)  ?"gray.500" : "gray.200" }
-                                    bg={isDayToday(dayIndex) ? "#fffae6" : "white"}
-                                    _hover={{ bg: "gray.50" }}
+                                    bg={isDayToday(dayIndex) ? "yellow.50" : "bg"}
+                                    _hover={{ bg: "gray.100" }}
                                     minH="200px"
                                     id={`calendar-${day}`}
                                     // className={isToday(dayIndex) ? "current-day" : ""}

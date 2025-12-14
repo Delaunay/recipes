@@ -136,7 +136,7 @@ export const AccordionBlock: React.FC<BlockComponentProps> = ({ block, readonly,
                             <Box
                                 px={4}
                                 py={3}
-                                bg="white"
+                                bg="bg"
                                 borderTop="1px solid"
                                 borderColor="gray.100"
                             >

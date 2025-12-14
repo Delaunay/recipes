@@ -340,10 +340,10 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                   style={{
                     width: '100%',
                     padding: '8px',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--chakra-colors-border)',
                     borderRadius: '4px',
                     fontSize: '14px',
-                    backgroundColor: 'white',
+                    backgroundColor: 'var(--chakra-colors-bg)',
                   }}
                 >
                   <option value="">General (applies to all ingredients)</option>
@@ -390,7 +390,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
               onChange={(e) => setFilterCategory(e.target.value)}
               style={{
                 padding: '8px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--chakra-colors-border)',
                 borderRadius: '4px',
                 fontSize: '14px',
                 width: '150px'
@@ -419,7 +419,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
               }}
               style={{
                 padding: '8px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--chakra-colors-border)',
                 borderRadius: '4px',
                 fontSize: '14px',
                 width: '200px'
@@ -518,7 +518,7 @@ const UnitConversions = ({ isAuthorized = false }: UnitConversionsProps) => {
                     style={{
                       width: '100%',
                       padding: '4px 8px',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--chakra-colors-border)',
                       borderRadius: '4px',
                       fontSize: '14px'
                     }}

@@ -31,27 +31,27 @@ type AlertType = 'info' | 'success' | 'warning' | 'error';
 
 const alertStyles: Record<AlertType, { bg: string; border: string; icon: string; iconComponent: React.FC }> = {
     info: {
-        bg: '#ebf8ff',
-        border: '#3182ce',
-        icon: '#2c5282',
+        bg: 'blue.50',
+        border: 'blue.500',
+        icon: 'blue.700',
         iconComponent: InfoIcon
     },
     success: {
-        bg: '#f0fff4',
-        border: '#38a169',
-        icon: '#276749',
+        bg: 'green.50',
+        border: 'green.500',
+        icon: 'green.700',
         iconComponent: SuccessIcon
     },
     warning: {
-        bg: '#fffaf0',
-        border: '#dd6b20',
-        icon: '#c05621',
+        bg: 'orange.50',
+        border: 'orange.500',
+        icon: 'orange.700',
         iconComponent: WarningIcon
     },
     error: {
-        bg: '#fff5f5',
-        border: '#e53e3e',
-        icon: '#c53030',
+        bg: 'red.50',
+        border: 'red.500',
+        icon: 'red.700',
         iconComponent: ErrorIcon
     }
 };

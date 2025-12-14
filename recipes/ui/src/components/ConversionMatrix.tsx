@@ -103,15 +103,15 @@ const ConversionMatrix: React.FC<ConversionMatrixProps> = ({ matrix, loading, er
                 </Box>
 
                 <Box overflowX="auto">
-                    <table style={{ borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table style={{ borderCollapse: 'collapse', backgroundColor: 'var(--chakra-colors-bg)', borderRadius: '8px', overflow: 'hidden' }}>
                         <thead>
-                            <tr style={{ backgroundColor: '#FED7AA' }}>
+                            <tr style={{ backgroundColor: 'var(--chakra-colors-orange-200)' }}>
                                 <th style={{
                                     padding: '12px',
                                     textAlign: 'left',
                                     fontWeight: 'bold',
-                                    color: '#9A3412',
-                                    borderBottom: '2px solid #FB923C',
+                                    color: 'var(--chakra-colors-orange-700)',
+                                    borderBottom: '2px solid var(--chakra-colors-orange-500)',
                                     minWidth: '120px'
                                 }}>
                                 </th>
@@ -120,13 +120,13 @@ const ConversionMatrix: React.FC<ConversionMatrixProps> = ({ matrix, loading, er
                                         padding: '12px',
                                         textAlign: 'center',
                                         fontWeight: 'bold',
-                                        color: '#9A3412',
-                                        borderBottom: '2px solid #FB923C',
+                                        color: 'var(--chakra-colors-orange-700)',
+                                        borderBottom: '2px solid var(--chakra-colors-orange-500)',
                                         minWidth: '80px'
                                     }}>
                                         <div>
                                             <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{weightUnit}</div>
-                                            <div style={{ fontSize: '12px', color: '#C2410C', fontWeight: 'normal' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--chakra-colors-orange-600)', fontWeight: 'normal' }}>
                                                 {getUnitDisplayName(weightUnit)}
                                             </div>
                                         </div>
@@ -137,20 +137,20 @@ const ConversionMatrix: React.FC<ConversionMatrixProps> = ({ matrix, loading, er
                         <tbody>
                             {filteredVolumeUnits.map((volumeUnit, index) => (
                                 <tr key={volumeUnit} style={{
-                                    backgroundColor: index % 2 === 0 ? 'white' : '#FFF7ED',
+                                    backgroundColor: index % 2 === 0 ? 'var(--chakra-colors-bg)' : 'var(--chakra-colors-orange-50)',
                                     transition: 'background-color 0.2s'
                                 }}>
                                     <td style={{
                                         padding: '12px',
                                         fontWeight: 'medium',
-                                        borderBottom: '1px solid #FED7AA',
-                                        borderRight: '2px solid #FB923C'
+                                        borderBottom: '1px solid var(--chakra-colors-orange-200)',
+                                        borderRight: '2px solid var(--chakra-colors-orange-500)'
                                     }}>
                                         <div>
-                                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1F2937' }}>
+                                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--chakra-colors-fg)' }}>
                                                 {volumeUnit}
                                             </div>
-                                            <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--chakra-colors-gray-500)' }}>
                                                 {getUnitDisplayName(volumeUnit)}
                                             </div>
                                         </div>
@@ -163,7 +163,7 @@ const ConversionMatrix: React.FC<ConversionMatrixProps> = ({ matrix, loading, er
                                             <td key={`${volumeUnit}-${weightUnit}`} style={{
                                                 padding: '12px',
                                                 textAlign: 'center',
-                                                borderBottom: '1px solid #FED7AA'
+                                                borderBottom: '1px solid var(--chakra-colors-orange-200)'
                                             }}>
                                                 <Text
                                                     fontSize="sm"

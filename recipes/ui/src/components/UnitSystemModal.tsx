@@ -113,7 +113,7 @@ const UnitSystemModal: React.FC<UnitSystemModalProps> = ({ isOpen, onClose }) =>
             justifyContent="center"
         >
             <Box
-                bg="white"
+                bg="bg"
                 borderRadius="md"
                 p={6}
                 maxW="600px"
@@ -179,7 +179,7 @@ const UnitSystemModal: React.FC<UnitSystemModalProps> = ({ isOpen, onClose }) =>
                                                 w={2}
                                                 h={2}
                                                 borderRadius="full"
-                                                bg="white"
+                                                bg="bg"
                                             />
                                         )}
                                     </Box>

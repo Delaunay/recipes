@@ -415,7 +415,7 @@ const Tasks: React.FC = () => {
             <>
                 {isRootTask && (
                     <Box
-                        bg="white"
+                        bg="bg"
                         borderRadius="md"
                         border="1px solid"
                         borderColor="gray.200"
@@ -687,7 +687,7 @@ const Tasks: React.FC = () => {
         <Box p={6}>
             <Flex mb={6} align="center">
                 <VStack align="flex-start" gap={1}>
-                    <Text fontSize="2xl" fontWeight="bold" color="#f56500">
+                    <Text fontSize="2xl" fontWeight="bold" color="orange.500">
                         Tasks
                     </Text>
                 </VStack>
@@ -792,12 +792,12 @@ const Tasks: React.FC = () => {
                 onClick={handleCreateTask}
                 style={{ transition: 'all 0.2s' }}
                 onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#f56500';
-                    e.currentTarget.style.backgroundColor = '#fff5f0';
+                    e.currentTarget.style.borderColor = 'var(--chakra-colors-orange-500)';
+                    e.currentTarget.style.backgroundColor = 'var(--chakra-colors-orange-50)';
                 }}
                 onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.backgroundColor = '#f7fafc';
+                    e.currentTarget.style.borderColor = 'var(--chakra-colors-border)';
+                    e.currentTarget.style.backgroundColor = 'var(--chakra-colors-gray-50)';
                 }}
             >
                 <HStack gap={3} align="center">
@@ -824,7 +824,7 @@ const Tasks: React.FC = () => {
                     left="0"
                     width="100vw"
                     height="100vh"
-                    bg="rgba(0, 0, 0, 0.5)"
+                    bg="blackAlpha.600"
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
@@ -832,7 +832,7 @@ const Tasks: React.FC = () => {
                     onClick={handleModalCancel}
                 >
                     <Box
-                        bg="white"
+                        bg="bg"
                         borderRadius="lg"
                         p={6}
                         maxWidth="600px"
@@ -843,7 +843,7 @@ const Tasks: React.FC = () => {
                     >
                         <VStack gap={4} align="stretch">
                             <HStack justify="space-between">
-                                <Text fontSize="xl" fontWeight="bold" color="#f56500">
+                                <Text fontSize="xl" fontWeight="bold" color="orange.500">
                                     Edit Task
                                 </Text>
                                 <Button

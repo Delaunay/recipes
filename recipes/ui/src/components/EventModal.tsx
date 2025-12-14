@@ -240,7 +240,7 @@ const EventModal: React.FC<EventModalProps> = ({
         >
             {/* Modal Content */}
             <Box
-                bg="white"
+                bg="bg"
                 borderRadius="lg"
                 boxShadow="xl"
                 p={6}
@@ -327,7 +327,7 @@ const EventModal: React.FC<EventModalProps> = ({
                                 style={{
                                     padding: '8px',
                                     borderRadius: '6px',
-                                    border: '1px solid #e2e8f0',
+                                    border: '1px solid var(--chakra-colors-border)',
                                     width: '100%'
                                 }}
                             >

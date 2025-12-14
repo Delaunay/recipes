@@ -46,6 +46,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -54,13 +55,13 @@
 .main-title {
   font-size: 2rem;
   font-weight: bold;
-  color: #f56500;
+  color: var(--chakra-colors-orange-500);
   margin-bottom: 1.5rem;
 }
 
 .main-description {
   font-size: 1.125rem;
-  color: #718096;
+  color: var(--chakra-colors-gray-500);
   margin-bottom: 2rem;
   line-height: 1.6;
 }
@@ -68,7 +69,7 @@
 .section-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--chakra-colors-fg);
   margin-bottom: 1rem;
 }
 
@@ -82,7 +83,7 @@
 .recipe-card {
 
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  box-shadow: var(--chakra-shadows-sm);
   overflow: hidden;
   transition: all 0.3s ease;
 
@@ -90,7 +91,7 @@
 
 .recipe-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--chakra-shadows-md);
 }
 
 .recipe-image {
@@ -106,18 +107,18 @@
 .recipe-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--chakra-colors-fg);
   margin-bottom: 0.75rem;
 }
 
 .recipe-description {
- 
+
   margin-bottom: 1rem;
   line-height: 1.5;
 }
 
 .recipe-time {
-  color: #f56500;
+  color: var(--chakra-colors-orange-500);
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -127,11 +128,11 @@
   .recipe-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .main-title {
     font-size: 1.5rem;
   }
-  
+
   .main-description {
     font-size: 1rem;
   }
@@ -139,5 +140,5 @@
 
 
 .current-day {
-  background: #fffae6 !important;
+  background: var(--chakra-colors-yellow-50) !important;
 }

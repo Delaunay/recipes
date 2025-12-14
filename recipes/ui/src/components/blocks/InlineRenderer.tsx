@@ -24,7 +24,7 @@ export const InlineRenderer: React.FC<InlineRendererProps> = ({ block }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                        color: '#3182ce',
+                        color: 'var(--chakra-colors-blue-500)',
                         textDecoration: 'underline',
                         cursor: 'pointer'
                     }}
@@ -40,12 +40,12 @@ export const InlineRenderer: React.FC<InlineRendererProps> = ({ block }) => {
             return (
                 <code
                     style={{
-                        backgroundColor: '#f7fafc',
+                        backgroundColor: 'var(--chakra-colors-gray-50)',
                         padding: '2px 6px',
                         borderRadius: '3px',
                         fontFamily: 'monospace',
                         fontSize: '0.9em',
-                        border: '1px solid #e2e8f0'
+                        border: '1px solid var(--chakra-colors-border)'
                     }}
                 >
                     {block.text}
