@@ -76,7 +76,29 @@ export const comprehensiveArticle: Article = {
                     'Heading blocks with 6 levels',
                     'Code blocks with syntax highlighting'
                 ]
-            }
+            },
+            children: [
+                {
+                    kind: "text",
+                    data: {
+                        text: "another item"
+                    }
+                },
+                {
+                    kind: "list",
+                    data: {
+                        items: []
+                    },
+                    children: [
+                        {
+                            kind: "text",
+                            data: {
+                                text: "nested list"
+                            }
+                        },
+                    ]
+                }
+            ]
         },
         // Heading Level 2
         {
@@ -1523,7 +1545,7 @@ doubled`
             }
         },
         {
-            id: 112,
+            id: 1100,
             page_id: 1,
             kind: 'animation',
             data: {

@@ -24,6 +24,7 @@ import Settings from './components/Settings';
 import RecipeComparison from './components/RecipeComparison';
 import ApiTester from './components/ApiTester';
 import ArticleViewEditor from './components/ArticleViewEditor';
+import ArticleTestPage from './components/ArticleTestPage';
 import SectionView from './components/SectionView';
 import ContentView from './components/ContentView';
 import CodeVisualization from './components/CodeVisualization';
@@ -81,6 +82,7 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/api-tester" element={<ApiTester />} />
             <Route path="/article" element={<ArticleViewEditor />} />
+            <Route path="/article-test" element={<ArticleTestPage />} />
             <Route path="/code-viz" element={<CodeVisualization />} />
           </Routes>
         </Layout>

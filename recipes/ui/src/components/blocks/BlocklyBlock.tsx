@@ -14,7 +14,7 @@ import { buildToolboxFromBlocks } from './blockly/utils';
 import { recipeAPI } from '../../services/api';
 
 
-async function getDefaultContext() {
+export async function getDefaultContext() {
     const toolbox = buildToolboxFromBlocks(blocks);
     return {
         toolbox: toolbox,
@@ -23,7 +23,7 @@ async function getDefaultContext() {
 }
 
 
-async function getPythonContext() {
+export async function getPythonContext() {
     return {
         toolbox: await recipeAPI.getBlocklyToolbox(),
         definitions: await recipeAPI.getBlocklyDefinitions()
@@ -46,11 +46,11 @@ export const BlocklyBlock: React.FC<BlockComponentProps> = ({ readonly: _readonl
                 setIsLoading(true);
                 setError(null);
 
-                const { toolbox, definitions } = await getPythonContext();
-
                 // Set locale - En is a default export with locale strings
                 Blockly.setLocale(En as any);
 
+                const { toolbox, definitions } = await getPythonContext();
+            
                 // Standard blocks are already loaded via import 'blockly/blocks'
                 Blockly.defineBlocksWithJsonArray(definitions);
 

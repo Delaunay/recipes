@@ -107,3 +107,7 @@ export { MarkdownEditorBlockEditor } from './MarkdownEditorBlockEditor';
 export { BlockFactory, BlockRenderer, BlockEditorRenderer } from './BlockFactory';
 export type { BlockComponentProps, BlockEditorProps, BlockRenderer as BlockRendererInterface } from './BlockTypes';
 
+// Export text block utilities
+export { isTextBasedBlock, blockToText, textToBlock } from './TextBlockUtils';
+export type { ModificationAction } from './TextBlockUtils';
+

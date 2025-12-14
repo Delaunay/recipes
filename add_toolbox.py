@@ -55,3 +55,4 @@ print("✓ Successfully added __toolbox__() methods to all dataclasses")
 count = new_content.count("def __toolbox__():")
 print(f"✓ Total __toolbox__() methods found in file: {count}")
 
+

@@ -19,6 +19,7 @@ import mockArticles from '../mock/ArticleMockData';
 import { BlockRenderer, BlockEditorRenderer, setBlockViewEditor } from './blocks';
 import { recipeAPI } from '../services/api';
 import QuickInputArea from './QuickInputArea';
+import { ModificationAction, isTextBasedBlock, blockToText, textToBlock } from './blocks/TextBlockUtils';
 
 // Simple toast notification system (since Chakra UI v3 has different API)
 const showToast = (title: string, description: string, status: 'success' | 'error' | 'warning' | 'info' = 'info') => {
@@ -79,40 +80,78 @@ const DragIcon = () => (
 );
 
 /**
- * Custom hook for batching block updates to minimize API requests.
- * Accumulates updates over a 5-second period and sends them in one batch.
+ * Custom hook for batching block modifications to minimize API requests.
+ * Accumulates modifications over a 5-second period and sends them in one batch.
  */
-const useBatchBlockUpdates = (_articleId: number | undefined, onSuccess?: () => void) => {
-    const [pendingUpdates, setPendingUpdates] = useState<Map<number, Partial<ArticleBlock>>>(new Map());
+const useBatchBlockModifications = (_articleId: number | undefined, onSuccess?: () => void) => {
+    const [pendingModifications, setPendingModifications] = useState<ModificationAction[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Function to flush pending updates to the server
-    const flushUpdates = useCallback(async () => {
-        if (pendingUpdates.size === 0) return;
+    // Function to flush pending modifications to the server
+    const flushModifications = useCallback(async () => {
+        if (pendingModifications.length === 0) return;
 
-        const updates = Array.from(pendingUpdates.values());
-        setPendingUpdates(new Map());
+        const modifications = [...pendingModifications];
+        setPendingModifications([]);
 
         try {
-            await recipeAPI.updateBlocksBatch(updates);
+            // Group modifications by action type for efficient processing
+            const updates: Partial<ArticleBlock>[] = [];
+            const deletes: number[] = [];
+
+            for (const mod of modifications) {
+                if (mod.action === 'delete') {
+                    deletes.push(mod.id);
+                } else if (mod.action === 'update') {
+                    updates.push({ id: mod.id, ...mod.data });
+                }
+            }
+
+            // Execute deletes first, then updates
+            if (deletes.length > 0) {
+                await Promise.all(deletes.map(id => recipeAPI.deleteBlock(id)));
+            }
+            if (updates.length > 0) {
+                await recipeAPI.updateBlocksBatch(updates);
+            }
+
             if (onSuccess) {
                 onSuccess();
             }
             // Silent auto-save - no toast notification to avoid interrupting the user
-            console.log(`Auto-saved ${updates.length} block(s)`);
+            console.log(`Auto-saved ${modifications.length} modification(s)`);
         } catch (error) {
             console.error('Failed to save changes:', error);
             showToast('Save failed', 'Failed to save changes. Please try again.', 'error');
+            // Restore modifications on error
+            setPendingModifications(prev => [...modifications, ...prev]);
         }
-    }, [pendingUpdates, onSuccess]);
+    }, [pendingModifications, onSuccess]);
 
-    // Queue an update for a block
-    const queueUpdate = useCallback((blockId: number, update: Partial<ArticleBlock>) => {
-        setPendingUpdates(prev => {
-            const newMap = new Map(prev);
-            const existing = newMap.get(blockId) || { id: blockId };
-            newMap.set(blockId, { ...existing, ...update });
-            return newMap;
+    // Add a modification action
+    const addModification = useCallback((modification: ModificationAction) => {
+        setPendingModifications(prev => {
+            // If it's an update, merge with existing update for same ID
+            if (modification.action === 'update') {
+                const existingIndex = prev.findIndex(
+                    m => m.action === 'update' && m.id === modification.id
+                );
+                if (existingIndex >= 0) {
+                    const newMods = [...prev];
+                    const existingUpdate = newMods[existingIndex] as { action: 'update'; id: number; data: Partial<ArticleBlock> };
+                    newMods[existingIndex] = {
+                        action: 'update',
+                        id: modification.id,
+                        data: { ...existingUpdate.data, ...modification.data }
+                    };
+                    return newMods;
+                }
+            }
+            // If it's a delete, remove any pending updates for the same ID
+            if (modification.action === 'delete') {
+                return prev.filter(m => !(m.action === 'update' && m.id === modification.id)).concat([modification]);
+            }
+            return [...prev, modification];
         });
 
         // Reset the timer
@@ -122,9 +161,9 @@ const useBatchBlockUpdates = (_articleId: number | undefined, onSuccess?: () => 
 
         // Set a new timer to flush after 5 seconds
         timerRef.current = setTimeout(() => {
-            flushUpdates();
+            flushModifications();
         }, 5000);
-    }, [flushUpdates]);
+    }, [flushModifications]);
 
     // Manual flush function
     const flush = useCallback(() => {
@@ -132,8 +171,8 @@ const useBatchBlockUpdates = (_articleId: number | undefined, onSuccess?: () => 
             clearTimeout(timerRef.current);
             timerRef.current = null;
         }
-        flushUpdates();
-    }, [flushUpdates]);
+        flushModifications();
+    }, [flushModifications]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -144,7 +183,7 @@ const useBatchBlockUpdates = (_articleId: number | undefined, onSuccess?: () => 
         };
     }, []);
 
-    return { queueUpdate, flush, hasPendingUpdates: pendingUpdates.size > 0 };
+    return { addModification, flush, hasPendingModifications: pendingModifications.length > 0 };
 };
 
 // Block type definitions
@@ -678,6 +717,7 @@ interface BlockViewEditorProps {
     draggedBlockId?: number | undefined;
     article?: Article; // For TOC and other auto-generated blocks
     allBlocks?: ArticleBlock[]; // All blocks for cross-referencing
+    onAddModification?: (modification: ModificationAction) => void; // For tracking modifications
 }
 
 const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
@@ -696,15 +736,19 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
     onDrop,
     draggedBlockId,
     article,
-    allBlocks
+    allBlocks,
+    onAddModification
 }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [settingsPosition, setSettingsPosition] = useState({ top: 0, left: 0 });
     const [addMenuPosition, setAddMenuPosition] = useState({ top: 0, left: 0 });
     const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+    const [isEditingText, setIsEditingText] = useState(false);
+    const [textValue, setTextValue] = useState('');
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
+    const textInputRef = useRef<HTMLTextAreaElement>(null);
 
     // Only this specific block is hovered (not children)
     const isDirectlyHovered = hoveredBlockId === block.id;
@@ -729,6 +773,51 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
             left: rect.left
         });
         setShowAddMenu(true);
+    };
+
+    // Handle click on text-based blocks to enter edit mode
+    const handleBlockClick = (e: React.MouseEvent) => {
+        if (readonly || !isTextBasedBlock(block.kind) || isEditingText) return;
+
+        // Don't enter edit mode if clicking on controls
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('[data-control]')) {
+            return;
+        }
+
+        e.stopPropagation();
+        setTextValue(blockToText(block));
+        setIsEditingText(true);
+
+        // Focus the textarea after React renders it
+        setTimeout(() => {
+            textInputRef.current?.focus();
+            textInputRef.current?.select();
+        }, 0);
+    };
+
+    // Handle blur to exit edit mode and parse text
+    const handleTextBlur = () => {
+        if (!isEditingText) return;
+
+        setIsEditingText(false);
+
+        // Parse the text back to a block
+        const parsedBlock = textToBlock(textValue, block);
+        if (parsedBlock && onUpdate) {
+            onUpdate(parsedBlock);
+        }
+    };
+
+    // Handle Escape key to cancel editing
+    const handleTextKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Escape') {
+            setIsEditingText(false);
+            setTextValue('');
+        } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            // Cmd/Ctrl+Enter to save
+            handleTextBlur();
+        }
     };
 
     const renderBlock = () => {
@@ -930,8 +1019,32 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                 )}
 
                 {/* Block Content */}
-                <Box ref={contentRef}>
-                    {renderBlock()}
+                <Box ref={contentRef} onClick={handleBlockClick} cursor={!readonly && isTextBasedBlock(block.kind) && !isEditingText ? 'text' : 'default'}>
+                    {isEditingText ? (
+                        <Textarea
+                            ref={textInputRef}
+                            value={textValue}
+                            onChange={(e) => setTextValue(e.target.value)}
+                            onBlur={handleTextBlur}
+                            onKeyDown={handleTextKeyDown}
+                            fontFamily="monospace"
+                            fontSize="sm"
+                            minH="100px"
+                            resize="vertical"
+                            border="2px solid"
+                            borderColor="blue.400"
+                            borderRadius="md"
+                            p={3}
+                            _focus={{
+                                outline: 'none',
+                                borderColor: 'blue.500',
+                                boxShadow: '0 0 0 3px rgba(66, 153, 225, 0.1)'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        renderBlock()
+                    )}
                 </Box>
 
                 {/* Children (for non-layout blocks) */}
@@ -950,9 +1063,17 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                                     }
                                 } : undefined}
                                 onDelete={onDelete ? () => {
+                                    const childToDelete = block.children?.[index];
                                     if (block.children && onUpdate) {
                                         const newChildren = block.children.filter((_, i) => i !== index);
                                         onUpdate({ ...block, children: newChildren });
+                                    }
+                                    // Queue delete modification if child has an ID
+                                    if (childToDelete?.id && onAddModification) {
+                                        onAddModification({
+                                            action: 'delete',
+                                            id: childToDelete.id as number
+                                        });
                                     }
                                 } : undefined}
                                 onMoveUp={index > 0 && onUpdate ? () => {
@@ -993,6 +1114,7 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                                 draggedBlockId={draggedBlockId}
                                 article={article}
                                 allBlocks={allBlocks}
+                                onAddModification={onAddModification}
                             />
                         ))}
                     </Box>
@@ -1020,7 +1142,18 @@ const BlockViewEditor: React.FC<BlockViewEditorProps> = ({
                     block={block}
                     onUpdate={onUpdate}
                     onClose={() => setShowSettings(false)}
-                    onDelete={onDelete!}
+                    onDelete={() => {
+                        if (onDelete) {
+                            onDelete();
+                        }
+                        // Queue delete modification if block has an ID
+                        if (block.id && onAddModification) {
+                            onAddModification({
+                                action: 'delete',
+                                id: block.id as number
+                            });
+                        }
+                    }}
                     onMoveUp={onMoveUp}
                     onMoveDown={onMoveDown}
                     position={settingsPosition}
@@ -1064,10 +1197,10 @@ const ArticleViewEditor: React.FC = () => {
         return idParam ? parseInt(idParam, 10) : null;
     };
 
-    // Use the batch update hook
+    // Use the batch modifications hook
     // Note: We don't reload the article after save to avoid interrupting the editing flow
     // The optimistic updates already keep the UI in sync
-    const { queueUpdate, flush, hasPendingUpdates } = useBatchBlockUpdates(article?.id);
+    const { addModification, flush, hasPendingModifications } = useBatchBlockModifications(article?.id);
 
     const handleBlockHoverChange = (blockId: number | undefined, isHovering: boolean) => {
         if (isHovering) {
@@ -1403,14 +1536,18 @@ const ArticleViewEditor: React.FC = () => {
             };
         });
 
-        // Queue the update for batching (only if we have an ID and not in static mode)
+        // Queue the update modification for batching (only if we have an ID and not in static mode)
         if (updatedBlock.id && !isStatic && !recipeAPI.isStaticMode()) {
-            queueUpdate(updatedBlock.id as number, {
-                id: updatedBlock.id,
-                kind: updatedBlock.kind,
-                data: updatedBlock.data,
-                extension: updatedBlock.extension,
-                parent_id: updatedBlock.parent_id
+            addModification({
+                action: 'update',
+                id: updatedBlock.id as number,
+                data: {
+                    id: updatedBlock.id,
+                    kind: updatedBlock.kind,
+                    data: updatedBlock.data,
+                    extension: updatedBlock.extension,
+                    parent_id: updatedBlock.parent_id
+                }
             });
         }
     };
@@ -1470,12 +1607,12 @@ const ArticleViewEditor: React.FC = () => {
                             <>
                                 <Button
                                     size="sm"
-                                    colorScheme={hasPendingUpdates ? "orange" : "blue"}
+                                    colorScheme={hasPendingModifications ? "orange" : "blue"}
                                     onClick={handleSave}
                                     position="relative"
                                 >
                                     <SaveIcon /> Save
-                                    {hasPendingUpdates && (
+                                    {hasPendingModifications && (
                                         <Badge
                                             position="absolute"
                                             top="-8px"
@@ -1665,8 +1802,17 @@ const ArticleViewEditor: React.FC = () => {
                             readonly={readonly}
                             onUpdate={!readonly ? handleBlockUpdate : undefined}
                             onDelete={!readonly ? () => {
+                                const blockToDelete = displayArticle.blocks?.[index];
                                 const newBlocks = (displayArticle.blocks || []).filter((_: ArticleBlock, i: number) => i !== index);
                                 updateArticle({ blocks: newBlocks });
+
+                                // Queue delete modification if block has an ID
+                                if (blockToDelete?.id && !isStatic && !recipeAPI.isStaticMode()) {
+                                    addModification({
+                                        action: 'delete',
+                                        id: blockToDelete.id as number
+                                    });
+                                }
                             } : undefined}
                             onMoveUp={!readonly && index > 0 ? () => {
                                 const newBlocks = [...(displayArticle.blocks || [])];
@@ -1702,6 +1848,7 @@ const ArticleViewEditor: React.FC = () => {
                             draggedBlockId={draggedBlockId}
                             article={displayArticle}
                             allBlocks={displayArticle.blocks || []}
+                            onAddModification={!readonly && !isStatic && !recipeAPI.isStaticMode() ? addModification : undefined}
                         />
                     ))
                 )}

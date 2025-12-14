@@ -3,6 +3,19 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 
+
+COLORS = {
+    "dict": 230,
+    "list": 230,
+    "set": 230,
+    "tuple": 230, 
+    "flow": 230,
+    "loop": 230,
+    "str": 230,
+    "number": 230, 
+}
+
+
 class BlocklyNode:
     @classmethod
     def __def_blockly__(cls):
@@ -90,7 +103,7 @@ class Expression(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Expression %1",
+            "message0": " %1",
             "args0": [{"type": "input_value", "name": "BODY"}],
             "colour": 230,
         }
@@ -181,8 +194,8 @@ class JoinedStr(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "F-String %1",
-            "args0": [{"type": "input_statement", "name": "VALUES"}],
+            "message0": "f'%1'",
+            "args0": [{"type": "input_value", "name": "VALUES"}],
             "output": None,
             "colour": 160,
         }
@@ -208,8 +221,8 @@ class List(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "List %1",
-            "args0": [{"type": "input_statement", "name": "ELEMENTS"}],
+            "message0": "[%1]",
+            "args0": [{"type": "input_value", "name": "ELEMENTS"}],
             "output": None,
             "colour": 260,
         }
@@ -235,8 +248,8 @@ class Tuple(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Tuple %1",
-            "args0": [{"type": "input_statement", "name": "ELEMENTS"}],
+            "message0": "(%1)",
+            "args0": [{"type": "input_value", "name": "ELEMENTS"}],
             "output": None,
             "colour": 260,
         }
@@ -261,8 +274,8 @@ class Set(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Set %1",
-            "args0": [{"type": "input_statement", "name": "ELEMENTS"}],
+            "message0": "{%1}",
+            "args0": [{"type": "input_value", "name": "ELEMENTS"}],
             "output": None,
             "colour": 260,
         }
@@ -288,10 +301,10 @@ class Dict(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Dict keys %1 values %2",
+            "message0": "{%1: %2}",
             "args0": [
-                {"type": "input_statement", "name": "KEYS"},
-                {"type": "input_statement", "name": "VALUES"},
+                {"type": "input_value", "name": "KEYS"},
+                {"type": "input_value", "name": "VALUES"},
             ],
             "output": None,
             "colour": 260,
@@ -321,7 +334,7 @@ class Name(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Variable %1",
+            "message0": "%1",
             "args0": [{"type": "field_input", "name": "ID", "text": "name"}],
             "output": None,
             "colour": 330,
@@ -681,7 +694,7 @@ class Slice(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "%1 : %2 : %3",
+            "message0": "Slice(start=%1 end=%2 step=%3)",
             "args0": [
                 {"type": "input_value", "name": "LOWER"},
                 {"type": "input_value", "name": "UPPER"},
@@ -829,10 +842,15 @@ class GeneratorExp(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Generator %1 for %2",
+            "inputsInline": True,
+            "message0": "( %1",
             "args0": [
                 {"type": "input_value", "name": "ELT"},
-                {"type": "input_statement", "name": "GENERATORS"},
+            ],
+            "message1": "for %1 in %2 )",
+            "args1": [
+                {"type": "input_value", "name": "TARGET"},
+                {"type": "input_value", "name": "ITERATOR"},
             ],
             "output": None,
             "colour": 260,
@@ -867,7 +885,7 @@ class Assign(BlocklyNode):
             "message0": "%1 = %2",
             "inputsInline": True,
             "args0": [
-                {"type": "input_statement", "name": "TARGETS"},
+                {"type": "input_value", "name": "TARGETS"},
                 {"type": "input_value", "name": "VALUE"},
             ],
             "previousStatement": None,
@@ -1018,7 +1036,7 @@ class Delete(BlocklyNode):
         return {
             "type": cls.__typename__(),
             "message0": "del %1",
-            "args0": [{"type": "input_statement", "name": "TARGETS"}],
+            "args0": [{"type": "input_value", "name": "TARGETS"}],
             "previousStatement": None,
             "nextStatement": None,
             "colour": 290,
@@ -1457,7 +1475,7 @@ class Import(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Import %1",
+            "message0": "import %1",
             "args0": [{"type": "input_statement", "name": "NAMES"}],
             "previousStatement": None,
             "nextStatement": None,
@@ -1487,7 +1505,7 @@ class ImportFrom(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "From %1 import %2",
+            "message0": "from %1 import %2",
             "args0": [
                 {"type": "field_input", "name": "MODULE", "text": ""},
                 {"type": "input_statement", "name": "NAMES"},
@@ -1630,7 +1648,7 @@ class ClassDef(BlocklyNode):
             "message0": "class %1(%2):",
             "args0": [
                 {"type": "field_input", "name": "NAME", "text": "ClassName"},
-                {"type": "input_statement", "name": "BASES"},
+                {"type": "input_value", "name": "BASES"},
             ],
             "message1": "%1",
             "args1": [
@@ -1669,10 +1687,13 @@ class Lambda(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Lambda %1 : %2",
+            "message0": "lambda %1:",
             "args0": [
                 {"type": "input_value", "name": "ARGS"},
-                {"type": "input_value", "name": "BODY"},
+            ],
+            "message1": "%1",
+            "args1": [
+                {"type": "input_statement", "name": "BODY"},
             ],
             "output": None,
             "colour": 290,
@@ -1756,7 +1777,7 @@ class AsyncWith(BlocklyNode):
             "type": cls.__typename__(),
             "message0": "async with %1:",
             "args0": [
-                {"type": "input_statement", "name": "ITEMS"},
+                {"type": "input_value", "name": "ITEMS"},
             ],
             "message1": "%1",
             "args1": [
@@ -1789,7 +1810,7 @@ class Await(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Await %1",
+            "message0": "await %1",
             "args0": [{"type": "input_value", "name": "VALUE"}],
             "output": None,
             "colour": 290,
@@ -1815,7 +1836,7 @@ class Yield(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Yield %1",
+            "message0": "yield %1",
             "args0": [{"type": "input_value", "name": "VALUE"}],
             "output": None,
             "colour": 290,
@@ -1841,7 +1862,7 @@ class YieldFrom(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Yield from %1",
+            "message0": "yield from %1",
             "args0": [{"type": "input_value", "name": "VALUE"}],
             "output": None,
             "colour": 290,
@@ -1906,7 +1927,9 @@ class MatchValue(BlocklyNode):
         return {
             "type": cls.__typename__(),
             "message0": "Match value %1",
-            "args0": [{"type": "input_value", "name": "VALUE"}],
+            "args0": [{"type": "input_value", "name": "PAT"}],
+            # "previousStatement": None,
+            # "nextStatement": None,
             "output": None,
             "colour": 210,
         }
@@ -1958,7 +1981,7 @@ class MatchSequence(BlocklyNode):
         return {
             "type": cls.__typename__(),
             "message0": "Match sequence %1",
-            "args0": [{"type": "input_statement", "name": "PATTERNS"}],
+            "args0": [{"type": "input_value", "name": "PATTERNS"}],
             "output": None,
             "colour": 210,
         }
@@ -1987,8 +2010,8 @@ class MatchMapping(BlocklyNode):
             "type": cls.__typename__(),
             "message0": "Match mapping keys %1 patterns %2 rest %3",
             "args0": [
-                {"type": "input_statement", "name": "KEYS"},
-                {"type": "input_statement", "name": "PATTERNS"},
+                {"type": "input_value", "name": "KEYS"},
+                {"type": "input_value", "name": "PATTERNS"},
                 {"type": "field_input", "name": "REST", "text": ""},
             ],
             "output": None,
@@ -2022,7 +2045,7 @@ class MatchClass(BlocklyNode):
             "message0": "Match class %1 patterns %2",
             "args0": [
                 {"type": "input_value", "name": "CLS"},
-                {"type": "input_statement", "name": "PATTERNS"},
+                {"type": "input_value", "name": "PATTERNS"},
             ],
             "output": None,
             "colour": 210,
@@ -2112,7 +2135,7 @@ class MatchOr(BlocklyNode):
         return {
             "type": cls.__typename__(),
             "message0": "Match or %1",
-            "args0": [{"type": "input_statement", "name": "PATTERNS"}],
+            "args0": [{"type": "input_value", "name": "PATTERNS"}],
             "output": None,
             "colour": 210,
         }
@@ -2261,7 +2284,7 @@ class Arg(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Arg %1 : %2",
+            "message0": "%1 : %2",
             "args0": [
                 {"type": "field_input", "name": "ARG", "text": "arg"},
                 {"type": "input_value", "name": "ANNOTATION"},
@@ -2325,7 +2348,7 @@ class Alias(BlocklyNode):
     def __def_blockly__(cls):
         return {
             "type": cls.__typename__(),
-            "message0": "Alias %1 as %2",
+            "message0": "%1 as %2",
             "args0": [
                 {"type": "field_input", "name": "NAME", "text": "module"},
                 {"type": "field_input", "name": "ASNAME", "text": ""},
@@ -2565,13 +2588,13 @@ STATEMENTS = set(
 PATTERN = set(
     [
         MatchValue,
-        MatchSingleton,
-        MatchSequence,
-        MatchMapping,
-        MatchClass,
-        MatchStar,
-        MatchAs,
-        MatchOr,
+        # MatchSingleton,
+        # MatchSequence,
+        # MatchMapping,
+        # MatchClass,
+        # # MatchStar,
+        # MatchAs,
+        # # MatchOr,
     ]
 )
 
@@ -2670,6 +2693,7 @@ TOOLBOX = {
     "contents": [
         _category("Statements", STATEMENTS),
         _category("Expressions", EXPRESSIONS),
+        _category("Patterns", PATTERN),
         # _category("Comprehension", COMPREHENSION),
         # _category("Literals", LITTERAL_NODES),
         # _category("Operators", OPERATORS),
