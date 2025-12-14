@@ -4,6 +4,7 @@ import {
   createSystem,
   defaultConfig
 } from '@chakra-ui/react';
+import { ColorModeProvider } from "@/components/ui/color-mode"
 import Layout, { sidebarSections } from './layout/Layout';
 import Home from './components/Home';
 import RecipeList from './components/RecipeList';
@@ -35,7 +36,9 @@ const system = createSystem(defaultConfig);
 
 function App() {
   return (
+    <>
     <ChakraProvider value={system}>
+    <ColorModeProvider>
       <Router>
         <Layout>
           <Routes>
@@ -87,7 +90,9 @@ function App() {
           </Routes>
         </Layout>
       </Router>
+      </ColorModeProvider>
     </ChakraProvider>
+    </>
   );
 }
 

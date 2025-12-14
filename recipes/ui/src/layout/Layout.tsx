@@ -1,5 +1,6 @@
 import { FC, ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { ColorModeButton } from "@/components/ui/color-mode"
 import { IconButton, Box } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
 import { Article } from '../services/type';
@@ -228,8 +229,10 @@ const Layout: FC<LayoutProps> = ({ children }) => {
       <div className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <h2 className="sidebar-title">
+            <ColorModeButton />
             <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }} onClick={closeMobileMenu}>
               (O)KaaSan
+              
               {/* <br></br>
               (お)母さん */}
             </Link>
@@ -288,7 +291,6 @@ const Layout: FC<LayoutProps> = ({ children }) => {
           left={0}
           right={0}
           bottom={0}
-          bg="blackAlpha.600"
           zIndex={999}
           onClick={closeMobileMenu}
           display={{ base: 'block', md: 'none' }}
