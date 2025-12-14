@@ -28,7 +28,10 @@ export class ItemBlock extends BlockBase {
     }
 
     component(mode: string) {
-        return <>{this.children.map(child => child.component(mode))}</>
+        if (this.children.length > 0) {
+            return <>{this.children.map(child => child.component(mode))}</>
+        }
+        return <Box flex="1" minH="50px" display="flex" border="1px solid"></Box>
     }
 
     is_md_representable(): boolean {

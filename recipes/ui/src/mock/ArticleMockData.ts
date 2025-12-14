@@ -222,66 +222,66 @@ function renderBlock(block: ArticleBlock) {
             page_id: 1,
             kind: 'layout',
             data: {
-                columns: 3
+                layout: "column",
+                column: 3
             },
             children: [
                 {
                     id: 17,
                     page_id: 1,
                     parent_id: 16,
-                    kind: 'heading',
-                    data: {
-                        level: 3,
-                        text: 'Column 1'
-                    }
+                    kind: 'item',
+                    data: {},
+                    children: [
+                        {
+                            id: 19,
+                            page_id: 1,
+                            parent_id: 16,
+                            kind: 'heading',
+                            data: {
+                                level: 3,
+                                text: 'Column 1'
+                            }
+                        },
+                        {
+                            id: 20,
+                            page_id: 1,
+                            parent_id: 16,
+                            kind: 'paragraph',
+                            data: {
+                                text: 'Each column can contain any block type. This is the second column.'
+                            }
+                        },
+                    ]
                 },
                 {
-                    id: 18,
+                    id: 17,
                     page_id: 1,
                     parent_id: 16,
-                    kind: 'paragraph',
-                    data: {
-                        text: 'Layout blocks create responsive multi-column layouts. This is the first column.'
-                    }
+                    kind: 'item',
+                    data: {},
+                    children: [
+                        {
+                            id: 19,
+                            page_id: 1,
+                            parent_id: 16,
+                            kind: 'heading',
+                            data: {
+                                level: 3,
+                                text: 'Column 2'
+                            }
+                        },
+                        {
+                            id: 20,
+                            page_id: 1,
+                            parent_id: 16,
+                            kind: 'paragraph',
+                            data: {
+                                text: 'Each column can contain any block type. This is the second column.'
+                            }
+                        },
+                    ]
                 },
-                {
-                    id: 19,
-                    page_id: 1,
-                    parent_id: 16,
-                    kind: 'heading',
-                    data: {
-                        level: 3,
-                        text: 'Column 2'
-                    }
-                },
-                {
-                    id: 20,
-                    page_id: 1,
-                    parent_id: 16,
-                    kind: 'paragraph',
-                    data: {
-                        text: 'Each column can contain any block type. This is the second column.'
-                    }
-                },
-                {
-                    id: 21,
-                    page_id: 1,
-                    parent_id: 16,
-                    kind: 'heading',
-                    data: {
-                        level: 3,
-                        text: 'Column 3'
-                    }
-                },
-                {
-                    id: 22,
-                    page_id: 1,
-                    parent_id: 16,
-                    kind: 'paragraph',
-                    data: {
-                        text: 'Columns stack responsively on mobile. This is the third column.'
-                    }
-                }
             ]
         },
         // Heading Level 2

@@ -107,7 +107,9 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   }
 
   return (
-    <div
+    <Box
+      className="TOP_LEVEL_BLOCK"
+      display="flex" flexDirection="column" flex="1" minH={0}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => setFocused(true)} 
@@ -117,7 +119,7 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
     >
       {is_md_ok && mode === "edit" ? 
         <MarkdownEditor text={markdown} onChange={updateMarkdown}></MarkdownEditor> : block.component(mode)}
-    </div>
+    </Box>
   );
 };
 

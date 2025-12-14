@@ -13,6 +13,7 @@ import "./blocks/paragraph"
 import "./blocks/text"
 import "./blocks/list"
 import "./blocks/item"
+import "./blocks/layout"
 
 
 class ArticleInstance {
@@ -26,7 +27,7 @@ class ArticleInstance {
 
     react() {
         return (
-                <Box>{this.def.title}
+                <Box flex="1">{this.def.title}
                     {this.blocks.map(child => child.react())}
                 </Box>
         ) 

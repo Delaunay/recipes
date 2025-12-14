@@ -64,7 +64,12 @@ const renderer = {
 
     },
     paragraph(token: Tokens.Paragraph): any {
-
+        return {
+            kind: "paragraph",
+            data: {
+            },
+            children: token.tokens.map(reconstructBlock)
+        }
     },
     table(token: Tokens.Table): any {
 
@@ -121,6 +126,7 @@ const renderer = {
                     "style": null,
                     "text": token.text
                 },
+                // we want to try to avoid this
                 children: token.tokens?.map(reconstructBlock)
             }
         }
@@ -143,7 +149,7 @@ const renderer = {
 
 function reconstructBlock(token: any) {
     const fun = renderer[token.type]
-    // console.log(token.type, fun);
+    console.log(token.type, fun);
     return fun(token);
 }
 
@@ -155,7 +161,15 @@ export function parseMarkdown(src: string): any {
         
         const arr = tokens.map(reconstructBlock)
     
-        // console.log(arr.length)
+        if (arr.length > 1) {
+            return {
+                kind: "item",
+                data: {},
+                children: arr
+            }
+        }
+
+        console.log(arr.length)
         return arr[0]
     // } catch {
     //     return {}
