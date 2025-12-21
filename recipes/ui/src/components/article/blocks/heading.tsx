@@ -49,7 +49,7 @@ export class HeadingBlock extends BlockBase {
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const level = Math.min(Math.max(this.def.data.level || 1, 1), 6); // clamp 1..6
-        return `${"#".repeat(level)} ${this.def.data.text} ${this.children.map(child => child.as_markdown(ctx))}\n`;
+        return `${"#".repeat(level)} ${this.def.data.text} ${this.children.map(child => child.as_markdown(ctx))}`;
     }
 }
 

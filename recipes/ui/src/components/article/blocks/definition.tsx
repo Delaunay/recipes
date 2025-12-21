@@ -22,17 +22,17 @@ export class DefinitionBlock extends BlockBase {
 
     component(mode: string): React.ReactNode {
         return (
-            <Box p={4} borderLeft="4px solid" borderColor="blue.500" bg="blue.50" borderRadius="md">
+            <Box p={4} borderLeft="4px solid" borderColor="border.accent" bg="bg.accent.subtle" borderRadius="md">
                 <Heading size="md" mb={2}>
                     {this.def.data.term}
                     {this.def.data.pronunciation && (
-                        <Text as="span" fontSize="sm" fontWeight="normal" color="gray.600" ml={2}>
+                        <Text as="span" fontSize="sm" fontWeight="normal" color="fg.muted" ml={2}>
                             ({this.def.data.pronunciation})
                         </Text>
                     )}
                 </Heading>
                 {this.def.data.partOfSpeech && (
-                    <Text fontSize="sm" color="gray.600" mb={2} fontStyle="italic">
+                    <Text fontSize="sm" color="fg.muted" mb={2} fontStyle="italic">
                         {this.def.data.partOfSpeech}
                     </Text>
                 )}

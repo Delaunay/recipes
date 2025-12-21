@@ -23,20 +23,7 @@ export class VideoBlock extends BlockBase {
         if (mode === "edit") {
             return <VideoEditor block={this} />;
         }
-        return (
-            <Box>
-                <video
-                    src={this.def.data.url}
-                    controls
-                    style={{ width: "100%", borderRadius: "8px" }}
-                />
-                {this.def.data.caption && (
-                    <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
-                        {this.def.data.caption}
-                    </Text>
-                )}
-            </Box>
-        );
+        return <VideoEditor block={this} />;
     }
 
     is_md_representable(): boolean {
@@ -50,33 +37,8 @@ export class VideoBlock extends BlockBase {
 
 function VideoEditor({ block }: { block: VideoBlock }) {
     const [url, setUrl] = useState(block.def.data.url || "");
-    const [caption, setCaption] = useState(block.def.data.caption || "");
-
-    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setUrl(e.target.value);
-        block.def.data.url = e.target.value;
-        block.version += 1;
-    };
-
-    const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setCaption(e.target.value);
-        block.def.data.caption = e.target.value;
-        block.version += 1;
-    };
-
     return (
         <Box>
-            <Input
-                value={url}
-                onChange={handleUrlChange}
-                placeholder="Video URL"
-                mb={2}
-            />
-            <Input
-                value={caption}
-                onChange={handleCaptionChange}
-                placeholder="Caption (optional)"
-            />
             {url && (
                 <Box mt={4}>
                     <video src={url} controls style={{ width: "100%", borderRadius: "8px" }} />

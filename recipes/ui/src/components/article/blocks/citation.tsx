@@ -22,9 +22,9 @@ export class CitationBlock extends BlockBase {
 
     component(mode: string): React.ReactNode {
         return (
-            <Box p={3} borderLeft="4px solid" borderColor="purple.500" pl={4} fontStyle="italic">
+            <Box p={3} borderLeft="4px solid" borderColor="border.accent" pl={4} fontStyle="italic">
                 <Text>"{this.def.data.text}"</Text>
-                <Text fontSize="sm" color="gray.600" mt={1}>
+                <Text fontSize="sm" color="fg.muted" mt={1}>
                     — {this.def.data.author}
                     {this.def.data.year && ` (${this.def.data.year})`}
                     {this.def.data.page && `, p. ${this.def.data.page}`}

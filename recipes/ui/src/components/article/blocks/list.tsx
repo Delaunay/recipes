@@ -38,11 +38,13 @@ export class ListBlock extends BlockBase {
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const indent = "  ".repeat(ctx.level);
 
-        const items = this.def.data.items
-            .map(item => {
+
+        const items = this.def.data.items ? 
+            this.def.data.items.map(item => {
                 return `${indent}* ${item}`
             })
-            .join("\n");
+            .join("\n"):
+            "";
 
         const childrenMd = this.children
             .map(child => {
@@ -53,7 +55,7 @@ export class ListBlock extends BlockBase {
             })
             .join("\n");
 
-        if (this.def.data.items.length) {
+        if (this.def.data.items?.length) {
             return [items, childrenMd].join("\n");
         }
 
@@ -72,7 +74,7 @@ function ListDisplay({ block, mode }: { block: ListBlock, mode: string }) {
 
     return (
         <List.Root ps="5">
-            {block.def.data.items.map((text: string) => (
+            {block.def.data.items?.map((text: string) => (
                 <List.Item>{text}</List.Item>
             ))}
             {block.children.map((child) => (

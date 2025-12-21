@@ -75,14 +75,14 @@ function FormDisplay({ block }: { block: FormBlock }) {
                                     </CheckboxControl>
                                     <CheckboxLabel>
                                         {field.label}
-                                        {field.required && <Text as="span" color="red.500"> *</Text>}
+                                        {field.required && <Text as="span" colorPalette="red"> *</Text>}
                                     </CheckboxLabel>
                                 </CheckboxRoot>
                             ) : (
                                 <>
                                     <Text as="label" display="block" mb={1} fontWeight="medium">
                                         {field.label}
-                                        {field.required && <Text as="span" color="red.500"> *</Text>}
+                                        {field.required && <Text as="span" colorPalette="red"> *</Text>}
                                     </Text>
                                     {field.type === 'textarea' ? (
                                         <Textarea

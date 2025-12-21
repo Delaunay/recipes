@@ -291,6 +291,7 @@ const Layout: FC<LayoutProps> = ({ children }) => {
           left={0}
           right={0}
           bottom={0}
+          bg="blackAlpha.600"
           zIndex={999}
           onClick={closeMobileMenu}
           display={{ base: 'block', md: 'none' }}

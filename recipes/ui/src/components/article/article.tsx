@@ -1,11 +1,11 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback,  } from 'react';
 import {
     Box,
 } from '@chakra-ui/react';
 
 
-import { BlockBase, newBlock, ArticleDef } from './base'
+import { BlockBase, newBlock, ArticleDef, BlockDef } from './base'
 
 
 import "./blocks/heading"
@@ -64,18 +64,37 @@ import "./blocks/bnf"
 class ArticleInstance {
     def: ArticleDef;
     blocks: Array<BlockBase>;
+    listeners = new Set<() => void>();
 
+    notify() {
+        for (const l of this.listeners) l();
+    }
     constructor(article: ArticleDef) {
         this.def = article
         this.blocks = this.def.blocks.map(child => newBlock(this, child))
     }
 
+    insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: Array<BlockDef>) {
+        const index = this.blocks.indexOf(blockTarget);
+
+        if (index === -1) {
+            throw new Error("Target block not found in ArticleInstance");
+        }
+    
+        const newBlocks = blocksToInsert.map(def =>
+            newBlock(this, def)
+        );
+    
+        console.log(this.blocks.length)
+        this.blocks.splice(index + 1, 0, ...newBlocks);
+        console.log(this.blocks.length)
+
+        console.log("New blocks inserted")
+        this.notify()
+    }
+
     react() {
-        return (
-            <Box flex="1">{this.def.title}
-                {this.blocks.map(child => child.react())}
-            </Box>
-        )
+        return ArticleView({article: this})
     }
 }
 
@@ -86,9 +105,34 @@ interface ArticleProps {
 
 
 const Article: React.FC<ArticleProps> = ({ article }) => {
-    const instance = new ArticleInstance(article)
-    return instance.react()
+    const instanceRef = useRef<ArticleInstance | null>(null);
+
+    if (!instanceRef.current) {
+        instanceRef.current = new ArticleInstance(article);
+    }
+
+    return <ArticleView article={instanceRef.current} />;
 }
 
 export default Article;
+
+
+const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
+    const [, setTick] = useState(0);
+
+    useEffect(() => {
+        const rerender = () => setTick(t => t + 1);
+        article.listeners.add(rerender);
+        return () => article.listeners.delete(rerender);
+    }, [article]);
+
+    console.log("RENDERING", article.blocks.length);
+
+    return (
+        <Box flex="1">
+            {article.def.title}
+            {article.blocks.map(child => child.react())}
+        </Box>
+    );
+};
 

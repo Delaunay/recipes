@@ -21,7 +21,7 @@ export class AlertBlock extends BlockBase {
     }
 
     component(mode: string): React.ReactNode {
-        const colorScheme = {
+        const colorPalette = {
             info: 'blue',
             success: 'green',
             warning: 'orange',
@@ -29,7 +29,7 @@ export class AlertBlock extends BlockBase {
         }[this.def.data.type] || 'blue';
 
         return (
-            <Alert.Root status={this.def.data.type}>
+            <Alert.Root status={this.def.data.type} colorPalette={colorPalette}>
                 <Alert.Title>{this.def.data.title || this.def.data.type}</Alert.Title>
                 <Alert.Description>{this.def.data.message}</Alert.Description>
             </Alert.Root>

@@ -37,30 +37,34 @@ export class TraceBlock extends BlockBase {
                     </Text>
                 )}
                 <Box display="flex" flexDirection="column" gap={2}>
-                    {steps.map((step, idx) => (
-                        <Box
-                            key={idx}
-                            p={2}
-                            bg={step.type === "call" ? "blue.50" : "green.50"}
-                            borderRadius="md"
-                            borderLeft="4px solid"
-                            borderColor={step.type === "call" ? "blue.500" : "green.500"}
-                        >
-                            <Text fontSize="sm" fontWeight="bold">
-                                [{step.timestamp}] {step.function}
-                            </Text>
-                            {step.message && (
-                                <Text fontSize="xs" color="gray.600" mt={1}>
-                                    {step.message}
+                    {steps.map((step, idx) => {
+                        const colorPalette = step.type === "call" ? "blue" : "green";
+                        return (
+                            <Box
+                                key={idx}
+                                p={2}
+                                bg="bg.subtle"
+                                borderRadius="md"
+                                borderLeft="4px solid"
+                                borderColor="border.accent"
+                                colorPalette={colorPalette}
+                            >
+                                <Text fontSize="sm" fontWeight="bold">
+                                    [{step.timestamp}] {step.function}
                                 </Text>
-                            )}
-                            {step.variables && Object.keys(step.variables).length > 0 && (
-                                <Code fontSize="xs" mt={1} display="block" p={1} bg="white">
-                                    {JSON.stringify(step.variables, null, 2)}
-                                </Code>
-                            )}
-                        </Box>
-                    ))}
+                                {step.message && (
+                                    <Text fontSize="xs" color="fg.muted" mt={1}>
+                                        {step.message}
+                                    </Text>
+                                )}
+                                {step.variables && Object.keys(step.variables).length > 0 && (
+                                    <Code fontSize="xs" mt={1} display="block" p={1} bg="bg.canvas">
+                                        {JSON.stringify(step.variables, null, 2)}
+                                    </Code>
+                                )}
+                            </Box>
+                        );
+                    })}
                 </Box>
             </Box>
         );

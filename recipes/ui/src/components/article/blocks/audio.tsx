@@ -23,20 +23,7 @@ export class AudioBlock extends BlockBase {
         if (mode === "edit") {
             return <AudioEditor block={this} />;
         }
-        return (
-            <Box>
-                <audio
-                    src={this.def.data.url}
-                    controls
-                    style={{ width: "100%" }}
-                />
-                {this.def.data.caption && (
-                    <Text fontSize="sm" color="gray.600" mt={2} textAlign="center">
-                        {this.def.data.caption}
-                    </Text>
-                )}
-            </Box>
-        );
+        return <AudioEditor block={this} />;
     }
 
     is_md_representable(): boolean {
@@ -66,17 +53,6 @@ function AudioEditor({ block }: { block: AudioBlock }) {
 
     return (
         <Box>
-            <Input
-                value={url}
-                onChange={handleUrlChange}
-                placeholder="Audio URL"
-                mb={2}
-            />
-            <Input
-                value={caption}
-                onChange={handleCaptionChange}
-                placeholder="Caption (optional)"
-            />
             {url && (
                 <Box mt={4}>
                     <audio src={url} controls style={{ width: "100%" }} />

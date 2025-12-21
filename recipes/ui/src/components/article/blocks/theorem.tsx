@@ -25,7 +25,7 @@ export class TheoremBlock extends BlockBase {
         const label = type === "proof" ? "Proof" : `Theorem ${this.def.data.number || ""}`;
 
         return (
-            <Box p={4} border="1px solid" borderColor="gray.300" borderRadius="md" bg="gray.50">
+            <Box p={4} border="1px solid" borderColor="border.emphasized" borderRadius="md" bg="bg.subtle">
                 <Heading size="sm" mb={2}>
                     {this.def.data.title || label}
                 </Heading>

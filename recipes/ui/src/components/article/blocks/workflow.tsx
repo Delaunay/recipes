@@ -37,22 +37,25 @@ export class WorkflowBlock extends BlockBase {
                     </Text>
                 )}
                 <Box display="flex" flexDirection="column" gap={2}>
-                    {nodes.map((node, idx) => (
-                        <Box
-                            key={node.id}
-                            p={3}
-                            bg={
-                                node.type === "start" ? "green.100" :
-                                    node.type === "end" ? "red.100" :
-                                        node.type === "decision" ? "yellow.100" :
-                                            "blue.100"
-                            }
-                            borderRadius="md"
-                            textAlign="center"
-                        >
-                            <Text fontWeight="bold">{node.label}</Text>
-                        </Box>
-                    ))}
+                    {nodes.map((node, idx) => {
+                        const colorPalette =
+                            node.type === "start" ? "green" :
+                                node.type === "end" ? "red" :
+                                    node.type === "decision" ? "yellow" :
+                                        "blue";
+                        return (
+                            <Box
+                                key={node.id}
+                                p={3}
+                                bg="bg.subtle"
+                                borderRadius="md"
+                                textAlign="center"
+                                colorPalette={colorPalette}
+                            >
+                                <Text fontWeight="bold">{node.label}</Text>
+                            </Box>
+                        );
+                    })}
                 </Box>
             </Box>
         );

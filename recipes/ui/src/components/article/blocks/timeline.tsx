@@ -1,5 +1,5 @@
 import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
-import { Box, Text, VStack, HStack } from '@chakra-ui/react';
+import { Box, Text } from '@chakra-ui/react';
 
 export interface TimelineItem {
     task: string;
@@ -39,32 +39,32 @@ export class TimelineBlock extends BlockBase {
                 )}
                 <Box display="flex" flexDirection="column" gap={4}>
                     {items.map((item, idx) => (
-                        <Box key={idx} pl={4} borderLeft="2px solid" borderColor="blue.500">
+                        <Box key={idx} pl={4} borderLeft="2px solid" borderColor="border.accent">
                             <Box display="flex" justifyContent="space-between" mb={1}>
                                 <Text fontWeight="bold">{item.task}</Text>
-                                <Text fontSize="sm" color="gray.600">
+                                <Text fontSize="sm" color="fg.muted">
                                     {item.start} - {item.end}
                                 </Text>
                             </Box>
                             {item.category && (
-                                <Text fontSize="sm" color="gray.500">{item.category}</Text>
+                                <Text fontSize="sm" color="fg.muted">{item.category}</Text>
                             )}
                             {showProgress && item.progress !== undefined && (
                                 <Box mt={2}>
                                     <Box
-                                        bg="gray.200"
+                                        bg="bg.subtle"
                                         h="4px"
                                         borderRadius="full"
                                         overflow="hidden"
                                     >
                                         <Box
-                                            bg="blue.500"
+                                            bg="bg.accent"
                                             h="100%"
                                             w={`${item.progress}%`}
                                             transition="width 0.3s"
                                         />
                                     </Box>
-                                    <Text fontSize="xs" color="gray.600" mt={1}>
+                                    <Text fontSize="xs" color="fg.muted" mt={1}>
                                         {item.progress}%
                                     </Text>
                                 </Box>

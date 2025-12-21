@@ -20,7 +20,15 @@ const renderer = {
         }
     },
     space(token: Tokens.Space): any {
-
+        return {
+            kind: "separator",
+            data: {
+                "style": null,
+                "text": ""
+            },
+            // we want to try to avoid this
+            children: []
+        }
     },
     code(token: Tokens.Code): any {
 

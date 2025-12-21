@@ -42,15 +42,15 @@ export class ConstraintBlock extends BlockBase {
                             key={idx}
                             p={3}
                             border="1px solid"
-                            borderColor={constraint.satisfied ? "green.300" : "red.300"}
+                            borderColor={constraint.satisfied ? "border.success" : "border.error"}
                             borderRadius="md"
-                            bg={constraint.satisfied ? "green.50" : "red.50"}
+                            bg={constraint.satisfied ? "bg.success.subtle" : "bg.error.subtle"}
                         >
                             <Box display="flex" justifyContent="space-between" mb={1}>
                                 <Text fontWeight="bold">{constraint.name}</Text>
                                 <Text
                                     fontSize="sm"
-                                    color={constraint.satisfied ? "green.700" : "red.700"}
+                                    colorPalette={constraint.satisfied ? "green" : "red"}
                                 >
                                     {constraint.satisfied ? "✓" : "✗"}
                                 </Text>
@@ -59,7 +59,7 @@ export class ConstraintBlock extends BlockBase {
                                 {constraint.expression}
                             </Text>
                             {constraint.description && (
-                                <Text fontSize="xs" color="gray.600">
+                                <Text fontSize="xs" color="fg.muted">
                                     {constraint.description}
                                 </Text>
                             )}

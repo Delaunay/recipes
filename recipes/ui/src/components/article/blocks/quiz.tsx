@@ -46,7 +46,7 @@ function QuizDisplay({ block, mode }: { block: QuizBlock, mode: string }) {
     const isCorrect = selected !== undefined && parseInt(selected) === block.def.data.correctAnswer;
 
     return (
-        <Box p={4} border="1px solid" borderColor="gray.300" borderRadius="md">
+        <Box p={4} border="1px solid" borderColor="border.emphasized" borderRadius="md">
             <Text fontWeight="bold" mb={3}>{block.def.data.question}</Text>
             <RadioGroup.Root value={selected} onValueChange={handleSelect}>
                 <Box display="flex" flexDirection="column" gap={2}>
@@ -59,8 +59,8 @@ function QuizDisplay({ block, mode }: { block: QuizBlock, mode: string }) {
                 </Box>
             </RadioGroup.Root>
             {showAnswer && (
-                <Box mt={4} p={3} bg={isCorrect ? "green.50" : "red.50"} borderRadius="md">
-                    <Text fontWeight="bold" color={isCorrect ? "green.700" : "red.700"}>
+                <Box mt={4} p={3} bg={isCorrect ? "bg.success.subtle" : "bg.error.subtle"} borderRadius="md">
+                    <Text fontWeight="bold" colorPalette={isCorrect ? "green" : "red"}>
                         {isCorrect ? "Correct!" : "Incorrect"}
                     </Text>
                     {block.def.data.explanation && (

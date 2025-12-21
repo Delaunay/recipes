@@ -4,6 +4,7 @@ import {
 } from '@chakra-ui/react';
 import { Textarea, Input } from '@chakra-ui/react';
 import { parseMarkdown } from './markdown';
+import { insertAfter } from 'blockly/core/utils/dom';
 
 export interface BlockDef {
   id: number;
@@ -58,7 +59,8 @@ interface BlockWrapperProps {
 
 interface MarkdownEditorProps {
   text: string;
-  onChange: any;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onExit?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
 }
 
 const _objectIds = new WeakMap<object, number>();
@@ -72,11 +74,19 @@ export function getId(obj: object): number {
 }
 
 
-const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ text, onChange }) => {
+const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ text, onChange, onExit }) => {
   const lineCount = text.split("\n").length || 1;
 
-  return <Textarea value={text} onChange={onChange} rows={lineCount}></Textarea >
-}
+  return (
+    <Textarea
+      value={text}
+      onChange={onChange}
+      onBlur={onExit}
+      rows={lineCount}
+    />
+  );
+};
+
 
 const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   const [hovered, setHovered] = useState(false);
@@ -86,28 +96,64 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   const is_md_ok = block.is_md_representable();
   const mode = focused || hovered ? "edit" : "view";
 
+
+  const updateBlock = (parsedDef) => {
+    block.def = {
+      ...block.def,
+      ...parsedDef
+    }
+    block.children = block.def.children ? block.def.children?.map(child => newBlock(block.article, child)) : [];
+    console.log("after", block.def)
+  }
+
   const updateMarkdown = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMarkdown(e.target.value)
+  }
+
+  const updateBlocks = (e: React.FocusEvent<HTMLInputElement>) => {
     const parsed = parseMarkdown(e.target.value);
     
     console.log("parsed", parsed)
     console.log("before", block.def)
 
-    block.def = {
-      ...block.def,
-      ...parsed
+
+    // We are parsing the same type as before, carry on
+    if (block.def.kind === parsed.kind) {
+      updateBlock(parsed)
     }
 
-    console.log("merged", block.def)
+    // The markdown parser is parsing a different type:
+    //  we might have to insert new blocks
+    let blocksToInsert: Array<BlockDef>  = []
+    let foundOriginal = false;
+    let hasSeparator = false;
 
-    Object.assign(block.def, parsed);
+    if (parsed.kind === "item") {
+      parsed.children.forEach(child => {
+        if (child.kind === block.def.kind) {
+          updateBlock(child)
 
-    block.children = block.def.children ? block.def.children?.map(child => newBlock(block.article, child)) : [];
-
-    setMarkdown(e.target.value)
+          // We need to reset the markdown to be something that ONLY represents this blocks
+          setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
+          foundOriginal = true;
+        }
+        if (child.kind == "separator") {
+          hasSeparator = true;
+          return
+        }
+        if (foundOriginal && hasSeparator) {
+          blocksToInsert.push(child)
+        }
+      })
+      console.log("Inserting blocks", blocksToInsert)
+      block.article.insertBlocksAfterBlock(block, blocksToInsert)
+      return
+    }
   }
 
   return (
     <Box
+      padding="5px"
       className="TOP_LEVEL_BLOCK"
       display="flex" flexDirection="column" flex="1" minH={0}
       onMouseEnter={() => setHovered(true)}
@@ -118,7 +164,7 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
       style={{ outline: focused ? "2px solid blue" : "none" }}
     >
       {is_md_ok && mode === "edit" ? 
-        <MarkdownEditor text={markdown} onChange={updateMarkdown}></MarkdownEditor> : block.component(mode)}
+        <MarkdownEditor text={markdown} onChange={updateMarkdown} onExit={updateBlocks}></MarkdownEditor> : block.component(mode)}
     </Box>
   );
 };
