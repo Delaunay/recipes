@@ -72,7 +72,7 @@ function loadUncomittedChange(): Array<BlockUpdate> {
 }
 
 
-class ArticleInstance {
+export class ArticleInstance {
     // Change are appended to a changelist array
     // The change are saved to the browser cache
     // The changes are pushed to the server
@@ -105,7 +105,7 @@ class ArticleInstance {
         this.saveUncomittedChange()
     }
 
-    fetchReferenceByID(blockID: string|number): BlockBase {
+    public fetchReferenceByID(blockID: string|number): BlockBase {
         for (const block of this.blocks) {
             if (block.def.id === blockID) {
                 return block;
@@ -114,7 +114,17 @@ class ArticleInstance {
         throw new Error(`Block with id ${blockID} not found`);
     }
 
-    insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: Array<BlockDef>) {
+    public deleteBlock(blockTarget: BlockBase) {
+        const index = this.blocks.indexOf(blockTarget);
+        if (index === -1) {
+            console.warn("Block not found, cannot delete:", blockTarget);
+            return;
+        }
+        this.blocks.splice(index, 1);
+        this.notify()
+    }
+
+    public insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: Array<BlockDef>) {
         const index = this.blocks.indexOf(blockTarget);
 
         if (index === -1) {

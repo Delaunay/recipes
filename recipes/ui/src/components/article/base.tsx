@@ -3,9 +3,10 @@ import {
   HStack,
   Box,
   Grid,
+  Heading,
 } from '@chakra-ui/react';
 import { IconButton, Flex } from "@chakra-ui/react";
-import { GripVertical, Settings } from "lucide-react";
+import { Trash, GripVertical, Settings } from "lucide-react";
 import { Textarea, Input } from '@chakra-ui/react';
 import { parseMarkdown } from './markdown';
 import {
@@ -13,6 +14,7 @@ import {
   Field,
   NumberInput,
 } from "@chakra-ui/react"
+import type { ArticleInstance } from "./article"
 
 export interface BlockDef {
   id: number;
@@ -34,9 +36,6 @@ export interface ArticleDef {
   extension: any;
   blocks: Array<BlockDef>;
 }
-
-
-declare class ArticleInstance { }
 
 type BlockCtor = new (owner: ArticleInstance, def: BlockDef) => BlockBase;
 
@@ -215,15 +214,15 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
                   <Dialog.Header>
                     <Dialog.Title>Dialog Title</Dialog.Title>
                   </Dialog.Header>
-                  <Dialog.Body>
+                  <Dialog.Body margin="10px">
                     {block.settingWithPreview()}
                   </Dialog.Body>
-                  <Dialog.Footer>
+                  {/* <Dialog.Footer>
                     <Dialog.ActionTrigger asChild>
                       <Button variant="outline">Cancel</Button>
                     </Dialog.ActionTrigger>
                     <Button>Save</Button>
-                  </Dialog.Footer>
+                  </Dialog.Footer> */}
                   <Dialog.CloseTrigger asChild>
                     <CloseButton size="sm" />
                   </Dialog.CloseTrigger>
@@ -232,6 +231,24 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
             </Portal>
           </Dialog.Root>
       )}
+
+        {/* Delete button (bottom-right) */}
+        <IconButton
+          position="absolute"
+          bottom="4px"
+          right="4px"
+          size="xs"
+          variant="ghost"
+          aria-label="Delete block"
+          opacity={hovered ? 1 : 0}
+          transition="opacity 0.15s ease"
+          zIndex="1000"
+          onClick={() => {
+            block.article.deleteBlock(block)
+          }}
+        >
+          <Trash size={14} />
+        </IconButton>
 
       {is_md_ok && mode === "edit" ? 
         <MarkdownEditor block={block}></MarkdownEditor> : block.component(mode)}
@@ -304,12 +321,16 @@ export abstract class BlockBase {
   }
 
   settingWithPreview(): React.ReactNode { 
-    return <Grid templateColumns="1fr 1fr" gap="6" w="100%">
+    return <Grid templateColumns="1fr 1fr" gap="6" w="100%" h="100%">
       <Box minW="0">
-        {this.react()}
+        <Heading>Preview</Heading>
+        <Box minW="0" height="100%" border="1px solid">
+          {this.react()}
+        </Box>
       </Box>
 
       <Box minW="0">
+        <Heading>Settings</Heading>
         {this.settingForm()}
       </Box>
     </Grid>

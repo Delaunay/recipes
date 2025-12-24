@@ -23,10 +23,7 @@ export class ImageBlock extends BlockBase {
     }
 
     component(mode: string): React.ReactNode {
-        if (mode === "edit") {
-            return <ImageEditor block={this} />;
-        }
-        return <ImageEditor block={this} />; 
+        return <ImageView block={this} />; 
     }
 
     is_md_representable(): boolean {
@@ -51,20 +48,14 @@ export class ImageBlock extends BlockBase {
     }
 }
 
-function ImageEditor({ block }: { block: ImageBlock }) {
+function ImageView({ block }: { block: ImageBlock }) {
     return (
-        <Box>
-            {(
-                <Box mt={4}>
-                    <Image 
-                        src={block.def.data.url}
-                        alt={block.def.data.alt} 
-                        maxW="100%" 
-                        width={block.def.data.width} 
-                        height={block.def.data.height}
-                        borderRadius="md" />
-                </Box>
-            )}
-        </Box>
+        <Image 
+            src={block.def.data.url}
+            alt={block.def.data.alt} 
+            maxW="100%" 
+            width={block.def.data.width} 
+            height={block.def.data.height}
+            borderRadius="md" />
     );
 }
