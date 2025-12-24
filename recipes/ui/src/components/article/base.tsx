@@ -1,10 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
+  HStack,
   Box,
+  Grid,
 } from '@chakra-ui/react';
+import { IconButton, Flex } from "@chakra-ui/react";
+import { GripVertical, Settings } from "lucide-react";
 import { Textarea, Input } from '@chakra-ui/react';
 import { parseMarkdown } from './markdown';
-import { insertAfter } from 'blockly/core/utils/dom';
+import {
+  Stack,
+  Field,
+  NumberInput,
+} from "@chakra-ui/react"
 
 export interface BlockDef {
   id: number;
@@ -53,14 +61,17 @@ export function newBlock(owner: ArticleInstance, def: BlockDef): BlockBase {
 }
 
 
+export interface BlockSetting {
+
+}
+
+
 interface BlockWrapperProps {
   block: BlockBase;
 }
 
 interface MarkdownEditorProps {
-  text: string;
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onExit?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
+  block: BlockBase
 }
 
 const _objectIds = new WeakMap<object, number>();
@@ -74,28 +85,10 @@ export function getId(obj: object): number {
 }
 
 
-const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ text, onChange, onExit }) => {
-  const lineCount = text.split("\n").length || 1;
+const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
-  return (
-    <Textarea
-      value={text}
-      onChange={onChange}
-      onBlur={onExit}
-      rows={lineCount}
-    />
-  );
-};
-
-
-const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
   const [markdown, setMarkdown] = useState(block.as_markdown(new MarkdownGeneratorContext()));
-
-  const is_md_ok = block.is_md_representable();
-  const mode = focused || hovered ? "edit" : "view";
-
+  const lineCount = markdown.split("\n").length || 1;
 
   const updateBlock = (parsedDef) => {
     block.def = {
@@ -106,11 +99,11 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
     console.log("after", block.def)
   }
 
-  const updateMarkdown = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const updateMarkdown = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMarkdown(e.target.value)
   }
 
-  const updateBlocks = (e: React.FocusEvent<HTMLInputElement>) => {
+  const updateBlocks = (e: React.FocusEvent<HTMLTextAreaElement>) => {
     const parsed = parseMarkdown(e.target.value);
     
     console.log("parsed", parsed)
@@ -152,6 +145,25 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   }
 
   return (
+    <Textarea
+      value={markdown}
+      onChange={updateMarkdown}
+      onBlur={updateBlocks}
+      rows={lineCount}
+    />
+  );
+};
+
+import { Button, CloseButton, Dialog, Portal } from "@chakra-ui/react";
+
+const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+
+  const is_md_ok = block.is_md_representable();
+  const mode = focused || hovered ? "edit" : "view";
+
+  return (
     <Box
       padding="5px"
       className="TOP_LEVEL_BLOCK"
@@ -161,10 +173,68 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
       onClick={() => setFocused(true)} 
       onBlur={() => setFocused(false)}
       tabIndex={0} // makes div focusable
+      position="relative"
       style={{ outline: focused ? "2px solid blue" : "none" }}
+      minHeight="2rem"
     >
+      {/* Drag handle (left) */}
+      <Box
+        position="absolute"
+        insetInlineStart="-20px"
+        insetBlockStart="50%"
+        transform="translateY(-50%)"
+        opacity={hovered ? "1" : "0.1"}
+        cursor="grab"
+        transition="opacity 0.15s ease"
+      >
+        <GripVertical size={16} />
+      </Box>
+
+      {/* Config button (top-right) */}
+      {block.has_settings() && (
+        <Dialog.Root size="cover" placement="center" motionPreset="slide-in-bottom">
+          <Dialog.Trigger asChild>
+              <IconButton
+                position="absolute"
+                insetBlockStart="4px"
+                insetInlineEnd="4px"
+                size="xs"
+                variant="ghost"
+                aria-label="Configure block"
+                opacity={hovered ? 1 : 0}
+                transition="opacity 0.15s ease"
+                zIndex="1000"
+              >
+                <Settings size={14} />
+              </IconButton>
+            </Dialog.Trigger>
+            <Portal>
+              <Dialog.Backdrop />
+              <Dialog.Positioner>
+                <Dialog.Content>
+                  <Dialog.Header>
+                    <Dialog.Title>Dialog Title</Dialog.Title>
+                  </Dialog.Header>
+                  <Dialog.Body>
+                    {block.settingWithPreview()}
+                  </Dialog.Body>
+                  <Dialog.Footer>
+                    <Dialog.ActionTrigger asChild>
+                      <Button variant="outline">Cancel</Button>
+                    </Dialog.ActionTrigger>
+                    <Button>Save</Button>
+                  </Dialog.Footer>
+                  <Dialog.CloseTrigger asChild>
+                    <CloseButton size="sm" />
+                  </Dialog.CloseTrigger>
+                </Dialog.Content>
+              </Dialog.Positioner>
+            </Portal>
+          </Dialog.Root>
+      )}
+
       {is_md_ok && mode === "edit" ? 
-        <MarkdownEditor text={markdown} onChange={updateMarkdown} onExit={updateBlocks}></MarkdownEditor> : block.component(mode)}
+        <MarkdownEditor block={block}></MarkdownEditor> : block.component(mode)}
     </Box>
   );
 };
@@ -233,6 +303,35 @@ export abstract class BlockBase {
     return <BlockWrapper key={`ev-${getId(this)}`} block={this}></BlockWrapper>
   }
 
+  settingWithPreview(): React.ReactNode { 
+    return <Grid templateColumns="1fr 1fr" gap="6" w="100%">
+      <Box minW="0">
+        {this.react()}
+      </Box>
+
+      <Box minW="0">
+        {this.settingForm()}
+      </Box>
+    </Grid>
+  }
+
+  settingForm(): React.ReactNode {
+    return <AutoBlockSettingsForm 
+      schema={this.settings()} 
+      values={this.def.data} 
+      onSubmit={(data) => this.def.data=data}/>
+  }
+
+  settings(): BlockSetting {
+    return {}
+  }
+
+  has_settings(): boolean {
+    // If the block is not md representable then for sure it will have a way to 
+    // configure it
+    return !this.is_md_representable();
+  }
+
   is_md_representable(): boolean {
     return true;
   }
@@ -256,3 +355,75 @@ export class UnknownBlock extends BlockBase {
   }
 }
 
+
+
+
+
+type SettingsFormProps = {
+  schema: BlockSetting
+  values: Record<string, any>
+  onSubmit: (values: Record<string, any>) => void
+}
+
+export function AutoBlockSettingsForm({
+  schema,
+  values,
+  onSubmit,
+}: SettingsFormProps) {
+  const [state, setState] = useState(values)
+
+  function update(key: string, value: any) {
+    setState((s) => ({ ...s, [key]: value }))
+    onSubmit(state)
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        onSubmit(state)
+      }}
+    >
+      <Stack gap="4" width="100%">
+        {Object.entries(schema).map(([key, def]) => {
+          const label = key[0].toUpperCase() + key.slice(1)
+
+          switch (def.type) {
+            case "string":
+              return (
+                <Field.Root key={key}>
+                  <Field.Label>{label}</Field.Label>
+                  <Input
+                    value={state[key] ?? ""}
+                    onChange={(e) => update(key, e.target.value)}
+                  />
+                </Field.Root>
+              )
+
+            case "int":
+              return (
+                <Field.Root key={key}>
+                  <Field.Label>{label}</Field.Label>
+                  <NumberInput.Root
+                    value={state[key] ?? ""}
+                    onValueChange={(v) =>
+                      update(key, v.valueAsNumber)
+                    }
+                  >
+                    <NumberInput.Input />
+                  </NumberInput.Root>
+                </Field.Root>
+              )
+
+            default:
+              return null
+          }
+        })}
+
+        <Button type="submit" alignSelf="flex-end">
+          Save
+        </Button>
+      </Stack>
+    </form>
+  )
+}

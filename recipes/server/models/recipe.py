@@ -5,6 +5,14 @@ from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from .common import Base
 
 
+# TASTE
+#   SWEET   |           | Sugar
+#   SOUR    | ACIDE     | CITRUS
+#   SALT    |           | SALT
+#   BITTER  |           | COFFE| CITRUS PEEL
+#   Umami   |           |
+#   FAT
+
 # Recipe ingredients association model
 class RecipeIngredient(Base):
     __tablename__ = 'recipe_ingredients'

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, BlockSetting } from "../base";
 import { Box, Code, Textarea } from '@chakra-ui/react';
 
 export interface CodeData {
     language?: string;
+    theme?: string;
     code: string;
 }
 
@@ -30,14 +31,23 @@ export class CodeBlock extends BlockBase {
                     whiteSpace="pre-wrap"
                     p={4}
                     borderRadius="md"
-                    bg="gray.100"
-                    color="gray.800"
                     overflowX="auto"
                 >
                     {this.def.data.code}
                 </Code>
             </Box>
         );
+    }
+
+    has_settings(): boolean {
+        return true;
+    }
+
+    settings(): BlockSetting {
+        return {
+            language: { "type": "string", "required": false },
+            theme:    { "type": "string", "required": false },
+        }
     }
 
     is_md_representable(): boolean {

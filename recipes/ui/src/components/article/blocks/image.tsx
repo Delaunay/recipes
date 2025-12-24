@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, BlockSetting } from "../base";
 import { Box, Image, Text, Input } from '@chakra-ui/react';
 
 export interface ImageData {
     url: string;
     alt?: string;
     caption?: string;
+    width?: string
+    height?: string
 }
 
 export interface ImageBlockDef extends BlockDef {
@@ -28,8 +30,18 @@ export class ImageBlock extends BlockBase {
     }
 
     is_md_representable(): boolean {
-        // Technically it is representable but it is very disruptive ot make it so
+        // Technically it is representable but it is svery disruptive ot make it so
         return false;
+    }
+
+    settings(): BlockSetting {
+        return {
+            url:    { "type": "string", "required": false },
+            alt:    { "type": "string", "required": false },
+            caption:{ "type": "string", "required": false },
+            width:  { "type": "int"   , "required": false },
+            height: { "type": "int"   , "required": false },
+        }
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
@@ -40,14 +52,17 @@ export class ImageBlock extends BlockBase {
 }
 
 function ImageEditor({ block }: { block: ImageBlock }) {
-    const [url, setUrl] = useState(block.def.data.url || "");
-    const [alt, setAlt] = useState(block.def.data.alt || "");
-
     return (
         <Box>
             {(
                 <Box mt={4}>
-                    <Image src={url} alt={alt} maxW="100%" borderRadius="md" />
+                    <Image 
+                        src={block.def.data.url}
+                        alt={block.def.data.alt} 
+                        maxW="100%" 
+                        width={block.def.data.width} 
+                        height={block.def.data.height}
+                        borderRadius="md" />
                 </Box>
             )}
         </Box>

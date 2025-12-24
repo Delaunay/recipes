@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, BlockSetting } from "../base";
 import { Box, Text, Input } from '@chakra-ui/react';
 
 export interface AudioData {
@@ -24,6 +24,13 @@ export class AudioBlock extends BlockBase {
             return <AudioEditor block={this} />;
         }
         return <AudioEditor block={this} />;
+    }
+
+    settings(): BlockSetting {
+        return {
+            url:    { "type": "string", "required": false },
+            caption:{ "type": "string", "required": false },
+        }
     }
 
     is_md_representable(): boolean {

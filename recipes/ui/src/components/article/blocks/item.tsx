@@ -16,6 +16,7 @@ export interface ItemBlockDef extends BlockDef {
   }
 
 export class ItemBlock extends BlockBase {
+    // Item block holds a group of children
     static kind = "item";
  
     static {
@@ -39,6 +40,6 @@ export class ItemBlock extends BlockBase {
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
-        return this.children.map(child => child.as_markdown(ctx)).join(" ");
+        return this.children.map(child => child.as_markdown(ctx)).join("\n\n");
     }
 }

@@ -5,6 +5,8 @@ import { Box, Text, Input } from '@chakra-ui/react';
 export interface VideoData {
     url: string;
     caption?: string;
+    width?: string
+    height?: string
 }
 
 export interface VideoBlockDef extends BlockDef {
@@ -36,14 +38,9 @@ export class VideoBlock extends BlockBase {
 }
 
 function VideoEditor({ block }: { block: VideoBlock }) {
-    const [url, setUrl] = useState(block.def.data.url || "");
     return (
-        <Box>
-            {url && (
-                <Box mt={4}>
-                    <video src={url} controls style={{ width: "100%", borderRadius: "8px" }} />
-                </Box>
-            )}
+        <Box width={block.def.data.width} height={block.def.data.height}>
+            <video src={block.def.data.url} controls style={{width: block.def.data.width, height: block.def.data.height, borderRadius: "8px" }} />
         </Box>
     );
 }

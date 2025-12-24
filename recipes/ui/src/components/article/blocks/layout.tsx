@@ -46,7 +46,7 @@ export class LayoutBlock extends BlockBase {
             {range(n).map(i => {
                 const child = this.children[i];
                 return (
-                    <Box key={i} flex="1" minH="50px" alignSelf="stretch">
+                    <Box key={i} paddingLeft="20px" flex="1" minH="50px" alignSelf="stretch">
                         {child ? child.react() : this.placeholder()}
                     </Box>)
             })}

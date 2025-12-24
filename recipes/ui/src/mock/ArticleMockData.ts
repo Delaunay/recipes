@@ -157,7 +157,8 @@ function renderBlock(block: ArticleBlock) {
             data: {
                 url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Cumulus_Clouds_over_Yellow_Prairie2.jpg/1920px-Cumulus_Clouds_over_Yellow_Prairie2.jpg',
                 alt: 'Sample placeholder image',
-                caption: 'This is an image block with a caption'
+                caption: 'This is an image block with a caption',
+                height: "500px"
             }
         },
         // Video
@@ -167,7 +168,8 @@ function renderBlock(block: ArticleBlock) {
             kind: 'video',
             data: {
                 url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-                caption: 'Video blocks support standard video formats'
+                caption: 'Video blocks support standard video formats',
+                height: "500px"
             }
         },
         // Audio

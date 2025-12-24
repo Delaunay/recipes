@@ -61,10 +61,29 @@ import "./blocks/ast"
 import "./blocks/bnf"
 
 
+export interface BlockUpdate {
+    action: string;             // UPDATE, DELETE, INSERT
+    block_id: string | number;  // Block to update (for delete)
+    block: BlockDef;            // Block data for update and insert
+}
+
+function loadUncomittedChange(): Array<BlockUpdate> {
+    return new Array<BlockUpdate>()
+}
+
+
 class ArticleInstance {
+    // Change are appended to a changelist array
+    // The change are saved to the browser cache
+    // The changes are pushed to the server
+    // browser cache is cleared on success
+    //
+    // We can reapply changelist in case of error or disconnect
+
     def: ArticleDef;
     blocks: Array<BlockBase>;
     listeners = new Set<() => void>();
+    changeList: Array<BlockUpdate> = loadUncomittedChange()
 
     notify() {
         for (const l of this.listeners) l();
@@ -72,6 +91,27 @@ class ArticleInstance {
     constructor(article: ArticleDef) {
         this.def = article
         this.blocks = this.def.blocks.map(child => newBlock(this, child))
+    }
+
+    saveUncomittedChange() {
+        //  save change to the browser cache
+    }
+
+    persistServerChange() {
+        // push changeList to the server
+
+        // Clear ChangeList
+        this.changeList = new Array<BlockUpdate>()
+        this.saveUncomittedChange()
+    }
+
+    fetchReferenceByID(blockID: string|number): BlockBase {
+        for (const block of this.blocks) {
+            if (block.def.id === blockID) {
+                return block;
+            }
+        }
+        throw new Error(`Block with id ${blockID} not found`);
     }
 
     insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: Array<BlockDef>) {
