@@ -90,7 +90,11 @@ export class ArticleInstance {
     }
     constructor(article: ArticleDef) {
         this.def = article
-        this.blocks = this.def.blocks.map(child => newBlock(this, child))
+        this.blocks = this.def.blocks.map(child => newBlock(this, child, this))
+    }
+
+    getParent() {
+        return this;
     }
 
     saveUncomittedChange() {
@@ -131,20 +135,11 @@ export class ArticleInstance {
 
     public insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: Array<BlockDef>) {
         const index = this.blocks.indexOf(blockTarget);
-
         if (index === -1) {
             throw new Error("Target block not found in ArticleInstance");
         }
-    
-        const newBlocks = blocksToInsert.map(def =>
-            newBlock(this, def)
-        );
-    
-        console.log(this.blocks.length)
+        const newBlocks = blocksToInsert.map(def => newBlock(this, def, this));
         this.blocks.splice(index + 1, 0, ...newBlocks);
-        console.log(this.blocks.length)
-
-        console.log("New blocks inserted")
         this.notify()
     }
 

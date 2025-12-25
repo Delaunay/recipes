@@ -23,11 +23,13 @@ export class TextBlock extends BlockBase {
         if (this.children.length > 0) {
             return this.children.map(child => child.component(mode))
         }
+
+        // this also generate <p>
         switch (this.def.data.style) {
             case "strong":
-                return <Text className="STRONG" display="inline" as={this.def.data.style}>{this.def.data.text}</Text>
+                return <b key={`txt-${this.key}`}>{this.def.data.text}</b>
         }
-        return <Text display="inline">{this.def.data.text}</Text>
+        return <span key={`txt-${this.key}`}>{this.def.data.text}</span>
     }
 
     is_md_representable(): boolean {

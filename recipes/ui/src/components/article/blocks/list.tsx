@@ -22,11 +22,6 @@ export class ListBlock extends BlockBase {
         this.register();
     }
 
-    constructor(owner: any, block: BlockDef) {
-        super(owner, block);
-
-    }
-
     component(mode: string) {
         return <ListDisplay key={`view-${this.key}`} block={this} mode={mode}></ListDisplay>
     }

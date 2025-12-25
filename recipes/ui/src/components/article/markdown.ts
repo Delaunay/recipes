@@ -88,6 +88,7 @@ const renderer = {
         return {
             kind: "paragraph",
             data: {
+                text: ""
             },
             children: token.tokens.map(reconstructBlock)
         }
@@ -148,7 +149,7 @@ const renderer = {
                     "text": token.text
                 },
                 // we want to try to avoid this
-                children: token.tokens?.map(reconstructBlock)
+                children: token.tokens? token.tokens.map(reconstructBlock) : []
             }
         }
     },

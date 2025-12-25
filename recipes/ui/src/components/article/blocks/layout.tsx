@@ -32,7 +32,7 @@ export class LayoutBlock extends BlockBase {
 
     column(mode: string, n: number): React.ReactNode {
         while (this.children.length < n) {
-            this.children.push(new ItemBlock(this.article, {kind: "item"}));
+            this.children.push(new ItemBlock(this.article, {kind: "item"}, this));
         }
 
         return <HStack

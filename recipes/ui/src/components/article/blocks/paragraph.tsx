@@ -18,6 +18,7 @@ export class ParagraphBlock extends BlockBase {
     }
 
     component(mode: string): React.ReactNode {
+        // This output <p>
         return <Text key={this.def.id}>
             {this.def.data.text}
             {this.children.map(child => child.component(mode))}

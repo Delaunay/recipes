@@ -34,11 +34,6 @@ export class HeadingBlock extends BlockBase {
         this.register(); 
     }
 
-    constructor(owner: any, block: BlockDef) {
-        super(owner, block);
-        
-    }
-
     component(mode: string) {
         return <HeadingDisplay block={this} mode="view"></HeadingDisplay>
     }

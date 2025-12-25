@@ -17,6 +17,7 @@ import {
 } from "@chakra-ui/react"
 import type { ArticleInstance } from "./article"
 
+
 export interface BlockDef {
   id: number;
   page_id: number;
@@ -38,7 +39,7 @@ export interface ArticleDef {
   blocks: Array<BlockDef>;
 }
 
-type BlockCtor = new (owner: ArticleInstance, def: BlockDef) => BlockBase;
+type BlockCtor = new (owner: ArticleInstance, def: BlockDef, parent?: BlockBase) => BlockBase;
 
 class BlockRegistry {
   private static registry = new Map<string, BlockCtor>();
@@ -50,14 +51,14 @@ class BlockRegistry {
     this.registry.set(kind, ctor);
   }
 
-  static create(owner: ArticleInstance, def: BlockDef): BlockBase {
+  static create(owner: ArticleInstance, def: BlockDef, parent?: BlockBase): BlockBase {
     const ctor = this.registry.get(def.kind) ?? UnknownBlock;
-    return new ctor(owner, def);
+    return new ctor(owner, def, parent);
   }
 }
 
-export function newBlock(owner: ArticleInstance, def: BlockDef): BlockBase {
-  return BlockRegistry.create(owner, def);
+export function newBlock(owner: ArticleInstance, def: BlockDef, parent? : BlockBase): BlockBase {
+  return BlockRegistry.create(owner, def, parent);
 }
 
 
@@ -99,7 +100,8 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       ...block.def,
       ...parsedDef
     }
-    block.children = block.def.children ? block.def.children?.map(child => newBlock(block.article, child)) : [];
+    block.children = block.def.children ? block.def.children?.map(
+      child => newBlock(block.article, child, block)) : [];
     console.log("after", block.def)
   }
 
@@ -111,7 +113,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
     const parsed = parseMarkdown(e.target.value);
     
     console.log("parsed", parsed)
-    console.log("before", block.def, block)
+    console.log("before", block)
 
     console.log(block.def.kind, parsed.kind)
 
@@ -124,7 +126,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
     // We are inserting into an empty item
     if (block.def.kind === "item" && block.children.length === 0) {
       block.def.children = [parsed]
-      block.children = block.def.children.map(child => newBlock(block.article, child));
+      block.children = block.def.children.map(child => newBlock(block.article, child, block));
     }
 
     // The markdown parser is parsing a different type:
@@ -135,6 +137,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
     if (parsed.kind === "item") {
       parsed.children.forEach(child => {
+        // This matching is not working correctly
+        // the kind is not enough similarity
+        // we need better similarity
         if (child.kind === block.def.kind) {
           updateBlock(child)
 
@@ -151,7 +156,8 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
         }
       })
       console.log("Inserting blocks", blocksToInsert)
-      block.article.insertBlocksAfterBlock(block, blocksToInsert)
+      // HERE, we might have to insert elsewhere than into the article itself
+      block.insertBlocks(blocksToInsert)
       return
     }
   }
@@ -321,11 +327,34 @@ export abstract class BlockBase {
     );
   }
 
-  constructor(owner: ArticleInstance, block: BlockDef) {
+  constructor(owner: ArticleInstance, block: BlockDef, parent?: BlockBase) {
+    this.parent = parent
     this.article = owner;
     this.def = block;
-    this.children = this.def.children ? this.def.children?.map(child => newBlock(this.article, child)) : [];
+    this.children = this.def.children ? this.def.children?.map(child => newBlock(this.article, child, this)) : [];
     this.version = 0
+  }
+
+  public getParent(): BlockBase {
+    return this.parent
+  }
+
+  insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: BlockDef[]) {
+    const index = this.children.indexOf(blockTarget);
+    if (index === -1) {
+      throw new Error("Target block not found in ArticleInstance");
+    }
+    const newBlocks = blocksToInsert.map(def => newBlock(this.article, def, this));
+    this.children.splice(index + 1, 0, ...newBlocks);
+
+    // Maybe we can have a notify per parent to only rerender the parent and not everything
+    this.article.notify()
+  }
+
+  insertBlocks(blocksToInsert: BlockDef[]) {
+    // we insert into the parent,
+    const parent = this.getParent()
+    parent.insertBlocksAfterBlock(this, blocksToInsert)
   }
 
   set(props: Record<string, any>): this {
@@ -407,8 +436,8 @@ export class UnknownBlock extends BlockBase {
     this.register();
   }
 
-  constructor(owner: ArticleInstance, def: BlockDef) {
-    super(owner, def);
+  constructor(owner: ArticleInstance, def: BlockDef, parent?: BlockBase) {
+    super(owner, def, parent);
     console.warn("Unknown block kind:", def.kind);
   }
 }

@@ -23,10 +23,6 @@ export class ItemBlock extends BlockBase {
         this.register(); 
     }
 
-    constructor(owner: any, block: BlockDef) {
-        super(owner, block);
-    }
-
     component(mode: string) {
         if (this.children.length > 0) {
             // This makes the component editable
