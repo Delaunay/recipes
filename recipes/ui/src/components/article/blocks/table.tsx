@@ -81,15 +81,43 @@ export class TableBlock extends BlockBase {
             return "";
         }
 
+        const widths = computeColumnWidths(headers, parsedData);
         const showHeaders = this.def.data.showHeaders !== false;
+
+        const pad = (value: string, width: number) =>
+            value + " ".repeat(width - value.length);
+    
         let md = "";
         if (showHeaders && headers.length > 0) {
-            md += "| " + headers.join(" | ") + " |\n";
-            md += "| " + headers.map(() => "---").join(" | ") + " |\n";
+            md += "| " + headers.map(h => pad(h, widths[h])).join(" | ") + " |\n";
+            md += "| " + headers.map(h => "-".repeat(widths[h])).join(" | ") +" |\n";
         }
         parsedData.forEach(row => {
-            md += "| " + headers.map(h => row[h] || "").join(" | ") + " |\n";
+            md += "| " + headers.map(h => pad(row[h] != null ? String(row[h]) : "", widths[h])).join(" | ") + " |\n";
         });
         return md;
     }
+}
+
+
+function computeColumnWidths(
+    headers: string[],
+    rows: any[]
+): Record<string, number> {
+    const widths: Record<string, number> = {};
+
+    // Initialize with header widths
+    headers.forEach(h => {
+        widths[h] = h.length;
+    });
+
+    // Expand based on cell values
+    rows.forEach(row => {
+        headers.forEach(h => {
+            const value = row[h] != null ? String(row[h]) : "";
+            widths[h] = Math.max(widths[h], value.length);
+        });
+    });
+
+    return widths;
 }

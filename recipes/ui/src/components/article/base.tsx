@@ -5,6 +5,7 @@ import {
   Grid,
   Heading,
 } from '@chakra-ui/react';
+import { Button, CloseButton, Dialog, Portal } from "@chakra-ui/react";
 import { IconButton, Flex } from "@chakra-ui/react";
 import { Trash, GripVertical, Settings } from "lucide-react";
 import { Textarea, Input } from '@chakra-ui/react';
@@ -85,7 +86,11 @@ export function getId(obj: object): number {
 
 
 const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
-
+  //
+  // Markdown editor for node that are convertible to markdown
+  // Allow us to insert new markdown nodes straight into the article
+  // or update current nodes
+  //
   const [markdown, setMarkdown] = useState(block.as_markdown(new MarkdownGeneratorContext()));
   const lineCount = markdown.split("\n").length || 1;
 
@@ -106,12 +111,20 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
     const parsed = parseMarkdown(e.target.value);
     
     console.log("parsed", parsed)
-    console.log("before", block.def)
+    console.log("before", block.def, block)
+
+    console.log(block.def.kind, parsed.kind)
 
 
     // We are parsing the same type as before, carry on
     if (block.def.kind === parsed.kind) {
       updateBlock(parsed)
+    }
+
+    // We are inserting into an empty item
+    if (block.def.kind === "item" && block.children.length === 0) {
+      block.def.children = [parsed]
+      block.children = block.def.children.map(child => newBlock(block.article, child));
     }
 
     // The markdown parser is parsing a different type:
@@ -149,27 +162,41 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       onChange={updateMarkdown}
       onBlur={updateBlocks}
       rows={lineCount}
+      fontFamily="mono"
     />
   );
 };
 
-import { Button, CloseButton, Dialog, Portal } from "@chakra-ui/react";
+
 
 const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
+  //
+  // This is the core wrapper
+  // Every block gets wrapped with this component
+  //  This allows for unified logic for 
+  //    Settings
+  //    Drag and drop
+  //    Delete
+  //    Edit/View mode
+  //
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
 
   const is_md_ok = block.is_md_representable();
-  const mode = focused || hovered ? "edit" : "view";
+  const mode = hovered || focused ? "edit" : "view";
 
   return (
     <Box
+      key={`bx-${block.key}`} 
       padding="5px"
       className="TOP_LEVEL_BLOCK"
       display="flex" flexDirection="column" flex="1" minH={0}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => setFocused(true)} 
+      onClick={(e) => {
+        e.stopPropagation()
+        setFocused(true)
+      }} 
       onBlur={() => setFocused(false)}
       tabIndex={0} // makes div focusable
       position="relative"
@@ -251,7 +278,7 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
         </IconButton>
 
       {is_md_ok && mode === "edit" ? 
-        <MarkdownEditor block={block}></MarkdownEditor> : block.component(mode)}
+        <MarkdownEditor key={`md-${block.key}`} block={block}></MarkdownEditor> : block.component(mode)}
     </Box>
   );
 };
@@ -268,6 +295,15 @@ export class MarkdownGeneratorContext {
   }
 }
 
+function _uniqueKey() {
+  let counter = 0
+  return function () {
+    return counter++;
+  }
+}
+
+let keyCounter = _uniqueKey()
+
 export abstract class BlockBase {
   static kind: string;
   article: ArticleInstance;
@@ -275,6 +311,7 @@ export abstract class BlockBase {
   children: Array<BlockBase>;
   version: number = 0;
   edit: boolean = false;
+  key: number = keyCounter();
   [key: string]: any; // allow arbitrary properties
 
   protected static register() {
@@ -317,7 +354,7 @@ export abstract class BlockBase {
   }
 
   react(): React.ReactNode {
-    return <BlockWrapper key={`ev-${getId(this)}`} block={this}></BlockWrapper>
+    return <BlockWrapper key={`ev-${this.key}`} block={this}></BlockWrapper>
   }
 
   settingWithPreview(): React.ReactNode { 

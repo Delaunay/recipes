@@ -63,14 +63,43 @@ export class SpreadsheetBlock extends BlockBase {
         const data = this.def.data.data || [];
         const showHeaders = this.def.data.showHeaders !== false;
 
+        const widths = computeColumnWidthsFromRows(headers, data);
+
+        const pad = (value: string, width: number) =>
+            value + " ".repeat(width - value.length);
+
         let md = "";
         if (showHeaders && headers.length > 0) {
-            md += "| " + headers.join(" | ") + " |\n";
-            md += "| " + headers.map(() => "---").join(" | ") + " |\n";
+            md += "| " + headers.map((h, i) => pad(h, widths[i])).join(" | ") + " |\n";
+            md += "| " + widths.map(w => "-".repeat(w)).join(" | ") + " |\n";
         }
         data.forEach(row => {
-            md += "| " + row.join(" | ") + " |\n";
+            md +=
+                "| " +
+                widths
+                    .map((w, i) =>
+                        pad(row[i] != null ? String(row[i]) : "", w)
+                    )
+                    .join(" | ") +
+                " |\n";
         });
         return md;
     }
+}
+
+
+function computeColumnWidthsFromRows(
+    headers: string[],
+    rows: any[][]
+): number[] {
+    const widths = headers.map(h => h.length);
+
+    rows.forEach(row => {
+        row.forEach((cell, i) => {
+            const value = cell != null ? String(cell) : "";
+            widths[i] = Math.max(widths[i] ?? 0, value.length);
+        });
+    });
+
+    return widths;
 }

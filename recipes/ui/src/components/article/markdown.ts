@@ -2,6 +2,19 @@ import { marked } from 'marked';
 import { Tokens } from 'marked';
 
 
+// Extension to support
+//  - https://github.com/UziTech/marked-katex-extension
+//  - https://github.com/bent10/marked-extensions/tree/main/packages/footnote
+//  - https://github.com/calculuschild/marked-extended-tables
+//  - https://github.com/bent10/marked-extensions/tree/main/packages/alert
+//
+// Maybe
+//  - https://github.com/markedjs/marked-custom-heading-id
+//  - https://github.com/bent10/marked-extensions/tree/main/packages/directive
+//
+//  Server only rendering
+//  - https://github.com/bent10/marked-extensions/tree/main/packages/code-jsx-renderer
+
 
 const renderer = {
     // Block Level
@@ -157,8 +170,10 @@ const renderer = {
 
 function reconstructBlock(token: any) {
     const fun = renderer[token.type]
-    console.log(token.type, fun);
-    return fun(token);
+    console.log("reconstruct", token.type, fun);
+    const ret = fun(token)
+    console.log("ret", ret);
+    return ret;
 }
 
 
@@ -177,7 +192,6 @@ export function parseMarkdown(src: string): any {
             }
         }
 
-        console.log(arr.length)
         return arr[0]
     // } catch {
     //     return {}

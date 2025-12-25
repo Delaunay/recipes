@@ -28,7 +28,7 @@ export class ListBlock extends BlockBase {
     }
 
     component(mode: string) {
-        return <ListDisplay block={this} mode={mode}></ListDisplay>
+        return <ListDisplay key={`view-${this.key}`} block={this} mode={mode}></ListDisplay>
     }
 
     is_md_representable(): boolean {
@@ -69,13 +69,13 @@ function ListDisplay({ block, mode }: { block: ListBlock, mode: string }) {
     const listItemComponent = (child) => {
         if (child.def.kind == "list")
             return child.component("view")
-        return <List.Item key={child.def.id}>{child.component("view")}</List.Item>
+        return <List.Item key={`li-${block.key}-${child.key}`}>{child.component("view")}</List.Item>
     }
 
     return (
         <List.Root ps="5">
-            {block.def.data.items?.map((text: string) => (
-                <List.Item>{text}</List.Item>
+            {block.def.data.items?.map((text: string, i: number) => (
+                <List.Item key={`li-${block.key}-${i}`}>{text}</List.Item>
             ))}
             {block.children.map((child) => (
                 listItemComponent(child)

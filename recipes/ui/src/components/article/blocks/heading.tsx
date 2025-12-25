@@ -40,7 +40,7 @@ export class HeadingBlock extends BlockBase {
     }
 
     component(mode: string) {
-        return <HeadingDisplay block={this} mode={mode}></HeadingDisplay>
+        return <HeadingDisplay block={this} mode="view"></HeadingDisplay>
     }
 
     is_md_representable(): boolean {

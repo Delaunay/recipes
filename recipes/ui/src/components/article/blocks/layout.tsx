@@ -32,7 +32,7 @@ export class LayoutBlock extends BlockBase {
 
     column(mode: string, n: number): React.ReactNode {
         while (this.children.length < n) {
-            this.children.push(new ItemBlock(this.article, {}));
+            this.children.push(new ItemBlock(this.article, {kind: "item"}));
         }
 
         return <HStack
@@ -46,8 +46,8 @@ export class LayoutBlock extends BlockBase {
             {range(n).map(i => {
                 const child = this.children[i];
                 return (
-                    <Box key={i} paddingLeft="20px" flex="1" minH="50px" alignSelf="stretch">
-                        {child ? child.react() : this.placeholder()}
+                    <Box key={`{lyt-${child.key}}`} paddingLeft="20px" flex="1" minH="50px" alignSelf="stretch">
+                        {child.react()}
                     </Box>)
             })}
         </HStack>

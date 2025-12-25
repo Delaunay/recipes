@@ -25,18 +25,25 @@ export class ItemBlock extends BlockBase {
 
     constructor(owner: any, block: BlockDef) {
         super(owner, block);
-        
     }
 
     component(mode: string) {
         if (this.children.length > 0) {
+            // This makes the component editable
+            // but if the item block as its own BlockWrapper a lot of things overlap
+            return <>{this.children.map(child => child.react())}</>
+
+            // This is the component unwrapped by the BlockWrapper
+            // this makes the children not EDITABLE
             return <>{this.children.map(child => child.component(mode))}</>
         }
         return <Box flex="1" minH="50px" display="flex" border="1px solid"></Box>
     }
 
     is_md_representable(): boolean {
-        return true;
+        // if it is empty, we can use markdown to insert children to this
+        // if it is NOT empty, then we can use the existing blocks to insert things
+        return this.children.length === 0;
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {

@@ -114,6 +114,11 @@ export class ArticleInstance {
         throw new Error(`Block with id ${blockID} not found`);
     }
 
+    // HOw do I do the drag and drop?
+    public reorder(blockTarget: BlockBase) {
+
+    }
+
     public deleteBlock(blockTarget: BlockBase) {
         const index = this.blocks.indexOf(blockTarget);
         if (index === -1) {
