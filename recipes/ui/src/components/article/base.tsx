@@ -103,6 +103,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
     block.children = block.def.children ? block.def.children?.map(
       child => newBlock(block.article, child, block)) : [];
     console.log("after", block.def)
+    setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
   }
 
   const updateMarkdown = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -120,43 +121,32 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
     // We are parsing the same type as before, carry on
     if (block.def.kind === parsed.kind) {
+      console.log("Upate block inline")
+      parsed.children = parsed.children.filter(child => child.kind !== "separator")
       updateBlock(parsed)
     }
 
     // We are inserting into an empty item
     if (block.def.kind === "item" && block.children.length === 0) {
+      console.log("Add blocks to item")
       block.def.children = [parsed]
       block.children = block.def.children.map(child => newBlock(block.article, child, block));
     }
 
-    // The markdown parser is parsing a different type:
-    //  we might have to insert new blocks
-    let blocksToInsert: Array<BlockDef>  = []
-    let foundOriginal = false;
-    let hasSeparator = false;
-
+    // We received multiple blocks
     if (parsed.kind === "item") {
-      parsed.children.forEach(child => {
-        // This matching is not working correctly
-        // the kind is not enough similarity
-        // we need better similarity
-        if (child.kind === block.def.kind) {
-          updateBlock(child)
+      console.log("Insert new blocks to")
 
-          // We need to reset the markdown to be something that ONLY represents this blocks
-          setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
-          foundOriginal = true;
-        }
-        if (child.kind == "separator") {
-          hasSeparator = true;
-          return
-        }
-        if (foundOriginal && hasSeparator) {
-          blocksToInsert.push(child)
-        }
-      })
-      console.log("Inserting blocks", blocksToInsert)
-      // HERE, we might have to insert elsewhere than into the article itself
+      // Here we parsed some markdown
+      //  the markdown includes the current block that may or may not have been modified
+      //  and new blocks added afterwards
+      //
+      const firstBlock = parsed.children[0]
+      const blocksToInsert = parsed.children.slice(1).filter(child => child.kind !== "separator")
+
+      updateBlock(firstBlock)
+      setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
+  
       block.insertBlocks(blocksToInsert)
       return
     }
@@ -425,6 +415,16 @@ export abstract class BlockBase {
 
   as_markdown(ctx: MarkdownGeneratorContext): string {
     return ``
+  } 
+
+  is_definition_same(other: BlockDef): boolean {
+    console.log("CMP", this.def, other)
+
+    if (this.kind != other.kind) {
+      return false
+    }
+    
+    return this.def == other
   }
 }
 
