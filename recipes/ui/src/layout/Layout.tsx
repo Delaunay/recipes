@@ -27,31 +27,23 @@ interface LayoutProps {
 
 
 async function getArticles(): Promise<SidebarItem[]> {
+  const testArticle = {
+    name: "Test",
+    href: "/test/article"
+  }
+
   try {
     const articles = await recipeAPI.getLastAccessedArticles();
-
-    // Add TestArticle to the beginning
-    const testArticle: Article = {
-      id: 'test' as any,
-      title: 'TestArticle',
-      namespace: 'Mock',
-      tags: ['test', 'demo'],
-      extension: {},
-      blocks: []
-    };
-
-    const allArticles = [testArticle, ...articles];
-    return allArticles.map(article => ({
+    const articleSection: SidebarItem[] = articles.map(article => ({
       name: article.title || 'Untitled',
       href: `/article?id=${article.id}`
-    }));
+    }))
+    articleSection.push(testArticle);
+    return articleSection;
   } catch (error) {
     console.error('Failed to fetch articles for sidebar:', error);
     // Return only TestArticle if fetch fails
-    return [{
-      name: 'TestArticle',
-      href: `/article?id=test`
-    }];
+    return [testArticle];
   }
 }
 
