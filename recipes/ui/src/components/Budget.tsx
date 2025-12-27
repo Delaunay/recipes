@@ -287,7 +287,7 @@ const Budget: React.FC = () => {
                             const percentage = (category.spent / category.budgeted) * 100;
 
                             return (
-                                <Box key={index} p={4} bg="gray.50" borderRadius="md">
+                                <Box key={index} p={4} bg="bg" borderRadius="md">
                                     <Flex justify="space-between" align="center" mb={2}>
                                         <Text fontWeight="semibold">{category.name}</Text>
                                         <HStack>
@@ -376,7 +376,7 @@ const Budget: React.FC = () => {
                     <Heading size="md" mb={4}>Recent Transactions</Heading>
                     <VStack gap={2} align="stretch">
                         {recentSpending.map((entry) => (
-                            <Box key={entry.id} p={3} bg="gray.50" borderRadius="md">
+                            <Box key={entry.id} p={3} bg="bg" borderRadius="md">
                                 <Flex justify="space-between" align="center">
                                     <HStack gap={4}>
                                         <VStack align="start" gap={0}>

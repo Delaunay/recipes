@@ -517,7 +517,7 @@ const NutritionFacts: FC<NutritionFactsProps> = ({
                         return (
                             <Box
                                 key={isVirtual ? `virtual-${index}` : composition.id}
-                                bg={isEditing ? "gray.50" : "white"}
+                                bg={isEditing ? "gray.50" : "bg"}
                                 border={isEditing ? "1px solid" : "none"}
                                 borderColor={isEditing ? 'orange.300' : 'transparent'}
                                 borderRadius={isEditing ? "md" : "none"}

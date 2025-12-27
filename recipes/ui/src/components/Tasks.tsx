@@ -550,7 +550,7 @@ const Tasks: React.FC = () => {
                         {/* Render subtasks within the same box - compact style */}
                         {hasSubtasks && showSubtasks && (
                             <Box
-                                bg="gray.50"
+                                bg="bg"
                                 borderTop="1px solid"
                                 borderColor="gray.200"
                             >
@@ -696,7 +696,7 @@ const Tasks: React.FC = () => {
 
             {/* Task Form */}
             {showForm && (
-                <Box mb={6} p={4} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.200">
+                <Box mb={6} p={4} bg="bg" borderRadius="md" border="1px solid" borderColor="gray.200">
                     <Text fontSize="lg" fontWeight="bold" mb={4}>
                         {editingTask ? 'Edit Task' : 'Create New Task'}
                     </Text>
@@ -783,7 +783,7 @@ const Tasks: React.FC = () => {
             {/* Always available empty task for quick creation */}
             <Box
                 p={3}
-                bg="gray.50"
+                bg="bg"
                 borderRadius="md"
                 border="2px dashed"
                 borderColor="gray.300"
@@ -797,7 +797,7 @@ const Tasks: React.FC = () => {
                 }}
                 onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'var(--chakra-colors-border)';
-                    e.currentTarget.style.backgroundColor = 'var(--chakra-colors-gray-50)';
+                    e.currentTarget.style.backgroundColor = 'var(--chakra-colors-bg)';
                 }}
             >
                 <HStack gap={3} align="center">

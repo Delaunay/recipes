@@ -445,7 +445,7 @@ const Pantry: React.FC = () => {
                                         border="1px solid"
                                         borderColor="gray.200"
                                         borderRadius="md"
-                                        bg="gray.50"
+                                        bg="bg"
                                         _hover={{ bg: 'gray.100' }}
                                     >
                                         <VStack align="stretch" gap={3}>

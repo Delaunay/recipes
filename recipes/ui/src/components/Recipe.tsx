@@ -2217,7 +2217,7 @@ const InstructionStep: FC<InstructionStepProps> = ({
                 <Box
                   width="200px"
                   height="150px"
-                  bg="gray.100"
+                  bg="bg"
                   borderRadius="md"
                   border="2px dashed"
                   borderColor="gray.300"
@@ -3508,7 +3508,7 @@ const Recipe: FC<RecipeProps> = ({
                 <Box
                   width="300px"
                   height="250px"
-                  bg="gray.100"
+                  bg="bg"
                   borderRadius="lg"
                   border="2px dashed"
                   borderColor="gray.300"
@@ -3613,7 +3613,7 @@ const Recipe: FC<RecipeProps> = ({
                   border: '1px solid var(--chakra-colors-border)',
                   borderRadius: '4px',
                   fontSize: '14px',
-                  backgroundColor: 'var(--chakra-colors-gray-50)',
+                  backgroundColor: 'var(--chakra-colors-bg)',
                 }}
                 placeholder="1.0"
               />

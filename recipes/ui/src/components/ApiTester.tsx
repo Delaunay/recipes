@@ -106,6 +106,8 @@ const ApiTester = () => {
                             padding: '8px',
                             borderRadius: '6px',
                             border: '1px solid var(--chakra-colors-border)',
+                            backgroundColor: 'var(--chakra-colors-bg)',
+                            color: 'var(--chakra-colors-fg)',
                             fontSize: '14px',
                         }}
                     >
@@ -122,7 +124,7 @@ const ApiTester = () => {
                 </HStack>
 
                 {/* Query Parameters */}
-                <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4} bg="gray.50">
+                <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4} bg="bg">
                     <Flex justify="space-between" align="center" mb={3}>
                         <Text fontWeight="bold">Query Parameters</Text>
                         <Button size="sm" colorScheme="blue" onClick={addQueryParam}>
@@ -161,7 +163,7 @@ const ApiTester = () => {
 
                 {/* POST Body */}
                 {method === 'POST' && (
-                    <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4} bg="gray.50">
+                    <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4} bg="bg">
                         <Text fontWeight="bold" mb={2}>Request Body (JSON)</Text>
                         <Textarea
                             placeholder='{"key": "value"}'
@@ -185,7 +187,7 @@ const ApiTester = () => {
 
                 {/* Built URL Preview */}
                 {url && (
-                    <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={3} bg="gray.50">
+                    <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={3} bg="bg">
                         <Text fontSize="sm" fontWeight="bold" mb={1}>Full URL:</Text>
                         <Code colorScheme="gray" p={2} borderRadius="md" display="block">
                             {buildUrl()}
@@ -204,7 +206,7 @@ const ApiTester = () => {
 
                 {/* Response Display */}
                 {response && (
-                    <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4} bg="gray.50">
+                    <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={4} bg="bg">
                         <Text fontWeight="bold" mb={2}>Response:</Text>
                         <Box
                             bg="gray.800"
@@ -215,7 +217,7 @@ const ApiTester = () => {
                             overflowY="auto"
                         >
                             <Code
-                                color="green.300"
+                                color="green.400"
                                 display="block"
                                 whiteSpace="pre"
                                 fontFamily="monospace"

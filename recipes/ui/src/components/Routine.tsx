@@ -944,12 +944,12 @@ const Routine: React.FC<RoutineProps> = ({
                             <Box
                                 px={3}
                                 py={1}
-                                bg="blue.100"
+                                bg="bg"
                                 borderRadius="md"
                                 border="1px solid"
                                 borderColor="blue.300"
                             >
-                                <Text fontSize="sm" fontWeight="medium" color="blue.700">
+                                <Text fontSize="sm" fontWeight="medium" color="blue.400">
                                     📋 Copied: {copiedDayName} ({copiedDayEvents.length} event{copiedDayEvents.length !== 1 ? 's' : ''})
                                 </Text>
                             </Box>
@@ -1019,7 +1019,7 @@ const Routine: React.FC<RoutineProps> = ({
                                     <Box overflowX="auto">
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                             <thead>
-                                                <tr style={{ backgroundColor: 'var(--chakra-colors-gray-50)' }}>
+                                                <tr style={{ backgroundColor: 'var(--chakra-colors-bg)' }}>
                                                     <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid var(--chakra-colors-border)', fontSize: '0.875rem', fontWeight: 600 }}>
                                                         Event
                                                     </th>
@@ -1110,7 +1110,7 @@ const Routine: React.FC<RoutineProps> = ({
                                                 })}
                                             </tbody>
                                             <tfoot>
-                                                <tr style={{ backgroundColor: 'var(--chakra-colors-gray-50)', fontWeight: 'bold' }}>
+                                                <tr style={{ backgroundColor: 'var(--chakra-colors-bg)', fontWeight: 'bold' }}>
                                                     <td style={{ padding: '8px' }}>
                                                         <Text fontSize="sm" fontWeight="bold">Total Scheduled</Text>
                                                     </td>
@@ -1144,7 +1144,7 @@ const Routine: React.FC<RoutineProps> = ({
                                                     </td>
                                                 </tr>
                                                 {/* Unaccounted Time Row */}
-                                                <tr style={{ backgroundColor: 'var(--chakra-colors-gray-50)' }}>
+                                                <tr style={{ backgroundColor: 'var(--chakra-colors-bg)' }}>
                                                     <td style={{ padding: '8px' }}>
                                                         <HStack gap={2}>
                                                             <Box
@@ -1213,7 +1213,7 @@ const Routine: React.FC<RoutineProps> = ({
                     <GridItem
                         border="1px solid"
                         borderColor="gray.200"
-                        bg="gray.50"
+                        bg="bg"
                     />
 
                     {/* Day headers - just day names, no dates */}
@@ -1225,7 +1225,8 @@ const Routine: React.FC<RoutineProps> = ({
                                 key={day}
                                 border="1px solid"
                                 borderColor={isCopiedDay ? "blue.400" : "gray.200"}
-                                bg={isCopiedDay ? "blue.100" : "blue.50"}
+                                bg={isCopiedDay ? "bg" : "bg"}
+                                _dark={{ bg: isCopiedDay ? "blue.900" : "bg" }}
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -1270,7 +1271,7 @@ const Routine: React.FC<RoutineProps> = ({
                         borderLeft="1px solid"
                         borderRight="1px solid"
                         borderColor="gray.200"
-                        bg="gray.50"
+                        bg="bg"
                         display="flex"
                         flexDirection="column"
                         height={`${timeSlotHeight * hours.length}px`}
@@ -1296,7 +1297,10 @@ const Routine: React.FC<RoutineProps> = ({
                     <GridItem
                         colSpan={7}
                         bg="bg"
-                        _hover={{ bg: "gray.100" }}
+                        _hover={{
+                            bg: "gray.200",
+                            _dark: { bg: "gray.700" }
+                        }}
                         position="relative"
                         display="flex"
                         flexDirection="column"
@@ -1362,7 +1366,10 @@ const Routine: React.FC<RoutineProps> = ({
                                     borderRight="1px solid"
                                     borderColor="gray.200"
                                     bg="bg"
-                                    _hover={{ bg: "gray.100" }}
+                                    _hover={{
+                                        bg: "gray.200",
+                                        _dark: { bg: "gray.700" }
+                                    }}
                                     minH="200px"
                                     id={`routine-${day}`}
                                     position="relative"

@@ -483,7 +483,7 @@ const GroceryReceipts: React.FC = () => {
                         </Grid>
 
                         {items.map((item, index) => (
-                            <Grid key={index} templateColumns="2fr 80px 80px 100px 120px 40px" gap={3} alignItems="center" p={3} bg="gray.50" borderRadius="md">
+                            <Grid key={index} templateColumns="2fr 80px 80px 100px 120px 40px" gap={3} alignItems="center" p={3} bg="bg" borderRadius="md">
                                 <Box>
                                     <Input
                                         value={item.name}
@@ -575,7 +575,7 @@ const GroceryReceipts: React.FC = () => {
                         ))}
 
                         {/* Total Row */}
-                        <Box mt={4} p={4} bg="blue.50" borderRadius="md" border="1px solid" borderColor="blue.200">
+                        <Box mt={4} p={4} bg="bg" borderRadius="md" border="1px solid" borderColor="blue.200">
                             <HStack justify="space-between">
                                 <Text fontSize="lg" fontWeight="semibold">Total Receipt Amount:</Text>
                                 <Text fontSize="xl" fontWeight="bold" color="green.600">

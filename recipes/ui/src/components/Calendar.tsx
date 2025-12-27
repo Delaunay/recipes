@@ -994,7 +994,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     <GridItem
                         border="1px solid"
                         borderColor="gray.200"
-                        bg="gray.50"
+                        bg="bg"
                     />
 
                     {/* Day headers */}
@@ -1010,7 +1010,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                 key={day}
                                 border="1px solid"
                                 borderColor="gray.200"
-                                bg="blue.50"
+                                bg="bg"
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
@@ -1033,7 +1033,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                         borderLeft="1px solid"
                         borderRight="1px solid"
                         borderColor="gray.200"
-                        bg="gray.50"
+                        bg="bg"
                         display="flex"
                         flexDirection="column"
                         height={`${timeSlotHeight * hours.length}px`}
@@ -1059,7 +1059,10 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                     <GridItem
                         colSpan={7}
                         bg="bg"
-                        _hover={{ bg: "gray.100" }}
+                        _hover={{
+                            bg: "gray.200",
+                            _dark: { bg: "gray.700" }
+                        }}
                         position="relative"
                         display="flex"
                         flexDirection="column"
@@ -1125,8 +1128,12 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ initialDate }) => {
                                     borderRight="1px solid"
                                     borderColor={"gray.200"}
                                     // borderColor={isDayToday(dayIndex)  ?"gray.500" : "gray.200" }
-                                    bg={isDayToday(dayIndex) ? "yellow.50" : "bg"}
-                                    _hover={{ bg: "gray.100" }}
+                                    bg={isDayToday(dayIndex) ? "orange.200" : "bg"}
+                                    _dark={{ bg: isDayToday(dayIndex) ? "orange.900" : "bg" }}
+                                    _hover={{
+                                        bg: "gray.200",
+                                        _dark: { bg: "gray.700" }
+                                    }}
                                     minH="200px"
                                     id={`calendar-${day}`}
                                     // className={isToday(dayIndex) ? "current-day" : ""}

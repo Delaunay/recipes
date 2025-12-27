@@ -107,7 +107,7 @@ const ContentEditable: FC<ContentEditableProps> = ({ content, onContentChange, c
         border: isEditable ? '1px solid var(--chakra-colors-border)' : 'none',
         borderRadius: isEditable ? '4px' : '0',
         outline: 'none',
-        backgroundColor: isEditable ? 'var(--chakra-colors-gray-50)' : 'transparent',
+        backgroundColor: isEditable ? 'var(--chakra-colors-bg)' : 'transparent',
       }}
       data-placeholder={placeholder}
     >
