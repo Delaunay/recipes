@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Textarea, VStack, HStack, Text } from '@chakra-ui/react';
 import { BlockComponentProps } from './BlockTypes';
-import { ArticleBlock, ArticleBlockKind } from '../../services/type';
+import { ArticleBlock, ArticleBlockKind } from '../../ui/src/services/type';
 
 /**
  * Parse markdown text and convert it to article blocks

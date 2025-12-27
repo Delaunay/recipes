@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, VStack, Text } from '@chakra-ui/react';
 import { BlockComponentProps } from './BlockTypes';
-import { ArticleBlock } from '../../services/type';
+import { ArticleBlock } from '../../ui/src/services/type';
 
 interface GlossaryItem {
     id: number | undefined;

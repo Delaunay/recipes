@@ -1,4 +1,4 @@
-import { ArticleBlock, ArticleBlockKind } from '../../services/type';
+import { ArticleBlock, ArticleBlockKind } from '../../ui/src/services/type';
 
 /**
  * Check if a block type is text-based and can be edited as text
@@ -185,6 +185,7 @@ export function textToBlock(text: string, existingBlock?: ArticleBlock): Article
 export type ModificationAction =
     | { action: 'delete'; id: number }
     | { action: 'update'; id: number; data: Partial<ArticleBlock> };
+
 
 
 

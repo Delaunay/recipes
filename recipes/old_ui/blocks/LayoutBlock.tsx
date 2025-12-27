@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, HStack, Text } from '@chakra-ui/react';
 import { BlockComponentProps } from './BlockTypes';
-import { ArticleBlock } from '../../services/type';
+import { ArticleBlock } from '../../ui/src/services/type';
 
 // This will be resolved via the BlockFactory to avoid circular dependencies
 let BlockViewEditor: React.FC<BlockComponentProps>;

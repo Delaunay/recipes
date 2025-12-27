@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Button, Container, Heading, VStack, HStack, Textarea, Text } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
-import { GraphBlock } from './blocks/GraphBlock';
-import { BlocklyBlock } from './blocks/BlocklyBlock';
-import { CodeBlock } from './blocks/CodeBlock';
+import { GraphBlock } from '../../../old_ui/blocks/GraphBlock';
+import { BlocklyBlock } from '../../../old_ui/blocks/BlocklyBlock';
+import { CodeBlock } from '../../../old_ui/blocks/CodeBlock';
 
 const CodeVisualization: React.FC = () => {
     // State for each format

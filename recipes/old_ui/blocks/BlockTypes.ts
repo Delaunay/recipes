@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArticleBlock } from '../../services/type';
+import { ArticleBlock } from '../../ui/src/services/type';
 
 /**
  * Common props interface for all block components

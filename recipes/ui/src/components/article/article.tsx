@@ -6,7 +6,15 @@ import {
 
 
 import { BlockBase, newBlock, ArticleDef, BlockDef } from './base'
-
+import type { 
+    GraphNode, 
+    Action,
+    ActionDeleteBlock, 
+    ActionUpdateBlock, 
+    ActionReorderBlock, 
+    ActionInsertBlock, 
+    ActionBatch 
+} from './base'
 
 import "./blocks/heading"
 import "./blocks/paragraph"
@@ -61,18 +69,24 @@ import "./blocks/ast"
 import "./blocks/bnf"
 
 
-export interface BlockUpdate {
-    action: string;             // UPDATE, DELETE, INSERT
-    block_id: string | number;  // Block to update (for delete)
-    block: BlockDef;            // Block data for update and insert
+
+
+function loadUncomittedChange(): ActionBatch {
+    //return new Array<BlockUpdate>()
+    let actions = JSON.parse(localStorage.getItem('articleBlockActions') || '[]');
+    return {"actions": actions}
 }
 
-function loadUncomittedChange(): Array<BlockUpdate> {
-    return new Array<BlockUpdate>()
+function savePendingChange(batch: ActionBatch) {
+    //return new Array<BlockUpdate>()
+    localStorage.setItem('articleBlockActions', JSON.stringify(batch["actions"]));
 }
 
 
-export class ArticleInstance {
+
+
+
+export class ArticleInstance implements GraphNode {
     // Change are appended to a changelist array
     // The change are saved to the browser cache
     // The changes are pushed to the server
@@ -83,7 +97,12 @@ export class ArticleInstance {
     def: ArticleDef;
     blocks: Array<BlockBase>;
     listeners = new Set<() => void>();
-    changeList: Array<BlockUpdate> = loadUncomittedChange()
+
+    // For connection loss and change batching
+    pendingChange: ActionBatch = loadUncomittedChange()
+
+    // For undo support
+    changeHistory: ActionBatch = {"actions": []}
 
     notify() {
         for (const l of this.listeners) l();
@@ -91,22 +110,52 @@ export class ArticleInstance {
     constructor(article: ArticleDef) {
         this.def = article
         this.blocks = this.def.blocks.map(child => newBlock(this, child, this))
+
+        // if pendingChange exist reapply them
     }
 
-    getParent() {
+    // TO be done later
+    // undoLast()     {}
+    // undoDelete()   {}
+    // undoUpdate()   {}
+    // undoReorder()  {}
+    // undoInsert()   {}
+
+    deleteBlock()  {
+
+    }
+    updateBlock()  {
+
+    }
+    reorderBlock() {
+
+    }
+    insertBlock()  {
+
+    }
+
+
+    getParent(): GraphNode {
         return this;
     }
 
+    getChildren(): GraphNode[] {
+        return this.blocks
+    }
+    
     saveUncomittedChange() {
-        //  save change to the browser cache
+        savePendingChange(this.pendingChange)
     }
 
     persistServerChange() {
-        // push changeList to the server
+        // make a request to the server
+        // api.articleUpdate(this.pendingChange)
 
-        // Clear ChangeList
-        this.changeList = new Array<BlockUpdate>()
-        this.saveUncomittedChange()
+        // on success, clear the pending changes
+        const changes = this.pendingChange["actions"]
+        this.changeHistory["actions"].push(...changes)
+        this.pendingChange["actions"] = []
+        this.saveUncomittedChange() 
     }
 
     public fetchReferenceByID(blockID: string|number): BlockBase {
@@ -130,16 +179,6 @@ export class ArticleInstance {
             return;
         }
         this.blocks.splice(index, 1);
-        this.notify()
-    }
-
-    public insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: Array<BlockDef>) {
-        const index = this.blocks.indexOf(blockTarget);
-        if (index === -1) {
-            throw new Error("Target block not found in ArticleInstance");
-        }
-        const newBlocks = blocksToInsert.map(def => newBlock(this, def, this));
-        this.blocks.splice(index + 1, 0, ...newBlocks);
         this.notify()
     }
 

@@ -1,9 +1,10 @@
-import { FC, ReactNode, useState, useEffect } from 'react';
+import { FC, ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ColorModeButton } from "@/components/ui/color-mode"
 import { IconButton, Box } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
 import { Article } from '../services/type';
+import SidebarSection, { SidebarItem } from './SidebarSection';
 import './Layout.css';
 
 // Custom icon components
@@ -19,28 +20,42 @@ const CloseIcon = () => (
   </svg>
 );
 
-const ChevronIcon = ({ isExpanded }: { isExpanded: boolean }) => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    style={{
-      transition: 'transform 0.3s ease',
-      transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-      display: 'inline-block',
-      marginRight: '0.5rem'
-    }}
-  >
-    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-  </svg>
-);
 
 interface LayoutProps {
   children: ReactNode;
 }
 
-const getStaticSidebarSections = (contentItems: { name: string; href: string }[] = []) => [
+
+async function getArticles(): Promise<SidebarItem[]> {
+  try {
+    const articles = await recipeAPI.getLastAccessedArticles();
+
+    // Add TestArticle to the beginning
+    const testArticle: Article = {
+      id: 'test' as any,
+      title: 'TestArticle',
+      namespace: 'Mock',
+      tags: ['test', 'demo'],
+      extension: {},
+      blocks: []
+    };
+
+    const allArticles = [testArticle, ...articles];
+    return allArticles.map(article => ({
+      name: article.title || 'Untitled',
+      href: `/article?id=${article.id}`
+    }));
+  } catch (error) {
+    console.error('Failed to fetch articles for sidebar:', error);
+    // Return only TestArticle if fetch fails
+    return [{
+      name: 'TestArticle',
+      href: `/article?id=test`
+    }];
+  }
+}
+
+const getStaticSidebarSections = () => [
   {
     title: 'Cooking',
     href: '/cooking',
@@ -96,7 +111,8 @@ const getStaticSidebarSections = (contentItems: { name: string; href: string }[]
   {
     title: 'Content',
     href: '/content',
-    items: contentItems
+    items: [],
+    fetch: getArticles
   },
   {
     title: 'Units',
@@ -118,55 +134,15 @@ const getStaticSidebarSections = (contentItems: { name: string; href: string }[]
 ];
 
 // Export static version for use in App.tsx
-export const sidebarSections = getStaticSidebarSections([]);
+export const sidebarSections = getStaticSidebarSections();
 
 const Layout: FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
-  const [contentArticles, setContentArticles] = useState<Article[]>([]);
 
-  // Fetch last accessed articles for Content section
-  useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        const articles = await recipeAPI.getLastAccessedArticles();
-
-        // Add TestArticle to the beginning
-        const testArticle: Article = {
-          id: 'test' as any,
-          title: 'TestArticle',
-          namespace: 'Mock',
-          tags: ['test', 'demo'],
-          extension: {},
-          blocks: []
-        };
-
-        setContentArticles([testArticle, ...articles]);
-      } catch (error) {
-        console.error('Failed to fetch articles for sidebar:', error);
-        // Set only TestArticle if fetch fails
-        setContentArticles([{
-          id: 'test' as any,
-          title: 'TestArticle',
-          namespace: 'Mock',
-          tags: ['test', 'demo'],
-          extension: {},
-          blocks: []
-        }]);
-      }
-    };
-
-    fetchArticles();
-  }, []);
-
-  // Build dynamic sidebar sections with content articles
-  const dynamicSidebarSections = getStaticSidebarSections(
-    contentArticles.map(article => ({
-      name: article.title || 'Untitled',
-      href: `/article?id=${article.id}`
-    }))
-  );
+  // Use static sidebar sections (Content section will fetch its own items)
+  const sidebarSections = getStaticSidebarSections();
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -177,9 +153,15 @@ const Layout: FC<LayoutProps> = ({ children }) => {
   };
 
   // Check if a section contains the active route or if we're on the section page itself
-  const isSectionActive = (section: typeof sidebarSections[0]) => {
+  const isSectionActive = (section: typeof sidebarSections[number]) => {
     // Check if we're on the section's main page
     if (location.pathname === section.href) {
+      return true;
+    }
+
+    // For sections with dynamic items (like Content), check if we're on a matching path
+    // Content section items link to /article?id=..., so if we're on /article, Content is active
+    if (section.title === 'Content' && location.pathname === '/article') {
       return true;
     }
 
@@ -200,7 +182,7 @@ const Layout: FC<LayoutProps> = ({ children }) => {
   };
 
   // Determine if a section should be expanded
-  const isSectionExpanded = (section: typeof sidebarSections[0]) => {
+  const isSectionExpanded = (section: typeof sidebarSections[number]) => {
     return hoveredSection === section.title || isSectionActive(section);
   };
 
@@ -232,47 +214,22 @@ const Layout: FC<LayoutProps> = ({ children }) => {
             <ColorModeButton />
             <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }} onClick={closeMobileMenu}>
               (O)KaaSan
-              
+
               {/* <br></br>
               (お)母さん */}
             </Link>
           </h2>
         </div>
         <nav className="sidebar-nav">
-          {dynamicSidebarSections.map((section) => (
-            <div
+          {sidebarSections.map((section) => (
+            <SidebarSection
               key={section.title}
-              className={`nav-section ${isSectionExpanded(section) ? 'expanded' : 'collapsed'}`}
+              section={section}
+              isExpanded={isSectionExpanded(section)}
               onMouseEnter={() => setHoveredSection(section.title)}
               onMouseLeave={() => setHoveredSection(null)}
-            >
-              <Link
-                to={section.href}
-                className={`nav-section-title ${location.pathname === section.href ? 'active-section' : ''}`}
-                onClick={closeMobileMenu}
-              >
-                <ChevronIcon isExpanded={isSectionExpanded(section)} />
-                {section.title}
-              </Link>
-              <div className="nav-section-items">
-                {section.items.map((item) => {
-                  const itemPath = item.href.split('?')[0];
-                  const currentFullPath = location.pathname + location.search;
-                  const isActive = currentFullPath === item.href || location.pathname === itemPath;
-
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`nav-item ${isActive ? 'active' : ''}`}
-                      onClick={closeMobileMenu}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+              onItemClick={closeMobileMenu}
+            />
           ))}
         </nav>
       </div>

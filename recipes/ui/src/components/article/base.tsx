@@ -86,6 +86,17 @@ export function getId(obj: object): number {
 }
 
 
+export interface GraphNode {
+    getParent(): GraphNode
+
+    getChildren(): GraphNode[]
+
+    notify(): void
+
+    article: any
+}
+
+
 const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
   //
   // Markdown editor for node that are convertible to markdown
@@ -147,7 +158,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       updateBlock(firstBlock)
       setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
   
-      block.insertBlocks(blocksToInsert)
+      insertBlocks(block, blocksToInsert)
       return
     }
   }
@@ -300,7 +311,9 @@ function _uniqueKey() {
 
 let keyCounter = _uniqueKey()
 
-export abstract class BlockBase {
+
+
+export abstract class BlockBase implements GraphNode {
   static kind: string;
   article: ArticleInstance;
   def: BlockDef;
@@ -325,26 +338,16 @@ export abstract class BlockBase {
     this.version = 0
   }
 
-  public getParent(): BlockBase {
+  public getParent(): GraphNode {
     return this.parent
   }
 
-  insertBlocksAfterBlock(blockTarget: BlockBase, blocksToInsert: BlockDef[]) {
-    const index = this.children.indexOf(blockTarget);
-    if (index === -1) {
-      throw new Error("Target block not found in ArticleInstance");
-    }
-    const newBlocks = blocksToInsert.map(def => newBlock(this.article, def, this));
-    this.children.splice(index + 1, 0, ...newBlocks);
-
-    // Maybe we can have a notify per parent to only rerender the parent and not everything
-    this.article.notify()
+  public getChildren(): GraphNode[]  {
+    return this.children;
   }
 
-  insertBlocks(blocksToInsert: BlockDef[]) {
-    // we insert into the parent,
-    const parent = this.getParent()
-    parent.insertBlocksAfterBlock(this, blocksToInsert)
+  notify() {
+    this.article.notify();
   }
 
   set(props: Record<string, any>): this {
@@ -514,3 +517,97 @@ export function AutoBlockSettingsForm({
     </form>
   )
 }
+
+
+
+
+export interface Action {
+  op: string
+}
+
+export interface ActionDeleteBlock extends Action {
+  op: "delete"
+  block_id: number
+}
+
+export interface ActionUpdateBlock extends Action {
+  op: "update"
+  block_id: number
+  block_def: BlockDef
+}
+
+export interface ActionReorderBlock extends Action {
+  op: "reorder"
+  after_block_id: number
+  block_id: number
+}
+
+export interface ActionInsertBlock extends Action {
+  op: "insert"
+  page_id: number
+  parent: number    // This is where we are going to insert
+  kind: string
+  data: any
+  extension: any
+}
+
+
+export interface ActionBatch {
+  actions: Action[]
+}
+
+export function insertBlocks(self: BlockBase, blocksToInsert: BlockDef[]) {
+  const parent = self.getParent()
+
+  insertBlocksAfterBlock(parent, self, blocksToInsert)
+}
+
+
+export function deleteBlock(self: BlockBase, deleteChildren=true) {
+  const parent = self.getParent()
+  const children = parent.getChildren()
+  const index = children.indexOf(self);
+  children.splice(index, 1);
+}
+
+export function CutToClipboard() {}
+export function CopyToClipboard() {}
+export function PasteFromClipboard() {}
+
+
+export function reorderBlock(self: BlockBase, after: BlockBase) {
+  // TODO: what if the block goes from the main article to a layout
+  // or from a lyout to main article
+  const parent = self.getParent()
+
+  // const children = parent.getChildren()
+  // const selfIndex = children.indexOf(self);
+  // const afterIndex = children.indexOf(after);
+
+  // children.splice(index, 1);
+}
+
+
+export function updateBlock(self: BlockBase, newData: any) {
+  self.def = {
+    ...self.def,
+    ...newData,
+  }
+}
+
+
+
+function insertBlocksAfterBlock(self: GraphNode, blockTarget: BlockBase, blocksToInsert: BlockDef[]) {
+  const index = self.getChildren().indexOf(blockTarget);
+
+  if (index === -1) {
+    throw new Error(`Target block not found in ${self}`);
+  }
+  const newBlocks = blocksToInsert.map(def => newBlock(self.article, def, self));
+  self.getChildren().splice(index + 1, 0, ...newBlocks);
+
+  // Maybe we can have a notify per parent to only rerender the parent and not everything
+  self.notify()
+}
+
+

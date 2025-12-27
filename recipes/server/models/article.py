@@ -130,6 +130,12 @@ class ArticleBlock(Base):
     # and let the render fetch from the list of results
     page_id = Column(Integer, ForeignKey('articles._id'), nullable=True)
     parent = Column(Integer, ForeignKey('article_blocks._id'), nullable=True)
+    
+    # use 10000 for default nodes 
+    sequence = Column(Float, nullable=True)
+
+    # LexoRank a b c d e f g -> aa ab etc...
+    # sequence = Column(String(32), index=True)
 
     kind = Column(String(25))
     data = Column(JSON)

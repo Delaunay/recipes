@@ -14,11 +14,11 @@ import {
     Input,
     Textarea
 } from '@chakra-ui/react';
-import { Article, ArticleBlock, ArticleBlockKind } from '../services/type';
-import mockArticles from '../mock/ArticleMockData';
+import { Article, ArticleBlock, ArticleBlockKind } from '../ui/src/services/type';
+import mockArticles from '../ui/src/mock/ArticleMockData';
 import { BlockRenderer, BlockEditorRenderer, setBlockViewEditor } from './blocks';
-import { recipeAPI } from '../services/api';
-import QuickInputArea from './QuickInputArea';
+import { recipeAPI } from '../ui/src/services/api';
+import QuickInputArea from '../ui/src/components/QuickInputArea';
 import { ModificationAction, isTextBasedBlock, blockToText, textToBlock } from './blocks/TextBlockUtils';
 
 // Simple toast notification system (since Chakra UI v3 has different API)

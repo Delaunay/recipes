@@ -38,7 +38,7 @@ const ContentView: FC = () => {
         try {
             const newArticle = await recipeAPI.createArticle({
                 title: 'Untitled Page',
-                namespace: null,
+                namespace: undefined,
                 tags: [],
                 extension: {},
                 blocks: []
@@ -91,12 +91,12 @@ const ContentView: FC = () => {
                 )}
             </HStack>
 
-            <Text fontSize="lg" color="gray.600" mb={8}>
+            <Text fontSize="lg" color="fg.muted" mb={8}>
                 Browse and manage your articles and pages
             </Text>
 
             {loading && (
-                <Text fontSize="md" color="gray.500">
+                <Text fontSize="md" color="fg.muted">
                     Loading articles...
                 </Text>
             )}
@@ -104,12 +104,12 @@ const ContentView: FC = () => {
             {error && (
                 <Box
                     p={4}
-                    bg="red.50"
+                    bg="bg.error.subtle"
                     borderRadius="md"
                     border="1px solid"
-                    borderColor="red.200"
+                    borderColor="border.error"
                 >
-                    <Text color="red.600">{error}</Text>
+                    <Text color="fg.error">{error}</Text>
                 </Box>
             )}
 
@@ -117,18 +117,18 @@ const ContentView: FC = () => {
                 <Box
                     mb={6}
                     p={5}
-                    bg="gray.50"
+                    bg="bg.subtle"
                     borderRadius="md"
                     border="1px solid"
-                    borderColor="gray.200"
+                    borderColor="border.emphasized"
                 >
                     {articles.length === 0 ? (
                         <Box textAlign="center" py={8}>
-                            <Text fontSize="md" color="gray.500" mb={4}>
+                            <Text fontSize="md" color="fg.muted" mb={4}>
                                 No articles found
                             </Text>
                             {!isStatic && (
-                                <Text fontSize="sm" color="gray.400">
+                                <Text fontSize="sm" color="fg.subtle">
                                     Click "Create New Page" to get started
                                 </Text>
                             )}
@@ -161,40 +161,46 @@ const ContentView: FC = () => {
                                                     px={3}
                                                     borderRadius="md"
                                                     transition="all 0.2s"
+                                                    bg="transparent"
                                                     _hover={{
-                                                        bg: 'orange.50',
-                                                        transform: 'translateX(4px)'
+                                                        bg: 'orange.100',
+                                                        _dark: {
+                                                            bg: 'orange.900'
+                                                        },
+                                                        transform: 'translateX(4px)',
+                                                        borderLeft: '3px solid',
+                                                        borderColor: 'orange.500'
                                                     }}
                                                     cursor="pointer"
                                                 >
                                                     <HStack justify="space-between" align="center">
                                                         <Box>
-                                                            <Text fontSize="md" fontWeight="600" color="gray.800" mb={1}>
+                                                            <Text fontSize="md" fontWeight="600" color="fg.emphasized" mb={1}>
                                                                 {article.title || 'Untitled'}
                                                             </Text>
                                                             {article.namespace && (
-                                                                <Text fontSize="xs" color="gray.500">
+                                                                <Text fontSize="xs" color="fg.muted">
                                                                     {article.namespace}
                                                                 </Text>
                                                             )}
                                                             {article.tags && article.tags.length > 0 && (
                                                                 <HStack gap={2} mt={1}>
-                                                                    {article.tags.slice(0, 3).map((tag, idx) => (
+                                                                    {article.tags.slice(0, 3).map((tag: string, idx: number) => (
                                                                         <Text
                                                                             key={idx}
                                                                             fontSize="xs"
-                                                                            color="blue.700"
+                                                                            color="fg.accent"
                                                                             fontWeight="600"
                                                                             px={2}
                                                                             py={0.5}
-                                                                            bg="blue.100"
+                                                                            bg="bg.accent.subtle"
                                                                             borderRadius="sm"
                                                                         >
                                                                             {tag}
                                                                         </Text>
                                                                     ))}
                                                                     {article.tags.length > 3 && (
-                                                                        <Text fontSize="xs" color="gray.500">
+                                                                        <Text fontSize="xs" color="fg.muted">
                                                                             +{article.tags.length - 3} more
                                                                         </Text>
                                                                     )}
