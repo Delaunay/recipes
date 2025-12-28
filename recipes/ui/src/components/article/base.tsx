@@ -97,13 +97,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
   const lineCount = markdown.split("\n").length || 1;
 
   const updateBlock = (parsedDef) => {
-    block.def = {
-      ...block.def,
-      ...parsedDef
-    }
-    block.children = block.def.children ? block.def.children?.map(
-      child => newBlock(block.article, child, block)) : [];
-    console.log("after", block.def)
+    block.article.updateBlock(block, parsedDef)
     setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
   }
 
@@ -125,17 +119,19 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       console.log("Upate block inline")
       parsed.children = parsed.children.filter(child => child.kind !== "separator")
       updateBlock(parsed)
+      return
     }
 
     // We are inserting into an empty item
-    if (block.def.kind === "item" && block.children.length === 0) {
+    else if (block.def.kind === "item" && block.children.length === 0) {
       console.log("Add blocks to item")
       block.def.children = [parsed]
       block.children = block.def.children.map(child => newBlock(block.article, child, block));
+      return
     }
 
     // We received multiple blocks
-    if (parsed.kind === "item") {
+    else if (parsed.kind === "item") {
       console.log("Insert new blocks to")
 
       // Here we parsed some markdown
@@ -147,9 +143,14 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
       updateBlock(firstBlock)
       setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
-  
+      
+      // It needs to insert the children as well
       block.article.insertBlock(block.getParent(), block, blocksToInsert)
       return
+    } else {
+      // This should be before not after
+      block.article.insertBlock(block.getParent(), block, [parsed])
+      console.log("Update missed")
     }
   }
 

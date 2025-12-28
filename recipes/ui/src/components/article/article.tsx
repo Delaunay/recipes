@@ -125,6 +125,7 @@ export class ArticleInstance implements ArticleBlock {
 
     public pushAction(pendingAction: PendingAction) {
         // The action is executed right away in the view
+        console.log("DOING", pendingAction)
         pendingAction.doAction();
 
         // but batched for the server
@@ -175,7 +176,7 @@ export class ArticleInstance implements ArticleBlock {
             block_id: blockTarget.def.id
         }
 
-        this.pendingChange.push({
+        this.pushAction({
             action: remoteAction,
             doAction: doAction,
             undoAction: undoAction
@@ -192,11 +193,15 @@ export class ArticleInstance implements ArticleBlock {
         // How to execute the action on the current view
         const doAction = () => {
             blockTarget.def = newDef
+            blockTarget.children = blockTarget.def.children ? blockTarget.def.children?.map(
+                child => newBlock(blockTarget.article, child, blockTarget)) : [];
         }
 
         // How to revert the action on the current view
         const undoAction = () => {
             blockTarget.def = oldDef
+            blockTarget.children = blockTarget.def.children ? blockTarget.def.children?.map(
+                child => newBlock(blockTarget.article, child, blockTarget)) : [];
         }
 
         // How to make the server persist the action to the database

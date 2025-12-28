@@ -149,6 +149,7 @@ class ArticleBlock(Base):
             'parent_id': self.parent,
             'kind': self.kind,
             'data': self.data,
+            "sequence": self.sequence,
             'extension': self.extension,
         }
 

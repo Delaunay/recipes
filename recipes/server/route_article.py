@@ -1,4 +1,3 @@
-
 from typing import Dict, Any
 from datetime import datetime
 from traceback import print_exc
@@ -15,7 +14,7 @@ def article_routes(app, db):
     """
 
     # Get all articles (metadata only)
-    @app.route('/articles', methods=['GET'])
+    @app.route("/articles", methods=["GET"])
     def get_articles() -> Dict[str, Any]:
         try:
             articles = db.session.query(Article).filter(Article.parent.is_(None)).all()
@@ -24,13 +23,12 @@ def article_routes(app, db):
             print_exc()
             return jsonify({"error": str(e)}), 500
 
-
-    @app.route('/articles/last-accessed', methods=['GET'])
+    @app.route("/articles/last-accessed", methods=["GET"])
     def latest_accessed_articles() -> Dict[str, Any]:
         return get_articles()
 
     # Get a single article with all its blocks in tree structure
-    @app.route('/articles/<int:article_id>', methods=['GET'])
+    @app.route("/articles/<int:article_id>", methods=["GET"])
     def get_article(article_id: int) -> Dict[str, Any]:
         try:
             article = db.session.query(Article).get(article_id)
@@ -45,8 +43,12 @@ def article_routes(app, db):
             Article.get_article_forest(db.session, articles)
 
             # Get child articles (articles that have this article as parent)
-            child_articles = db.session.query(Article).filter(Article.parent == article_id).all()
-            article_json['child_articles'] = [child.to_json() for child in child_articles]
+            child_articles = (
+                db.session.query(Article).filter(Article.parent == article_id).all()
+            )
+            article_json["child_articles"] = [
+                child.to_json() for child in child_articles
+            ]
 
             return jsonify(article_json)
         except Exception as e:
@@ -54,28 +56,30 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     # Create a new article
-    @app.route('/articles', methods=['POST'])
+    @app.route("/articles", methods=["POST"])
     def create_article() -> Dict[str, Any]:
         try:
             data = request.get_json()
 
-            parent_id = data.get('parent_id')
-            root_id = data.get('root_id')
+            parent_id = data.get("parent_id")
+            root_id = data.get("root_id")
 
             # If parent is specified, automatically set root_id
             if parent_id and not root_id:
                 parent_article = db.session.query(Article).get(parent_id)
                 if parent_article:
                     # If parent has a root, use that; otherwise parent is the root
-                    root_id = parent_article.root_id if parent_article.root_id else parent_id
+                    root_id = (
+                        parent_article.root_id if parent_article.root_id else parent_id
+                    )
 
             article = Article(
-                title=data.get('title', 'Untitled'),
-                namespace=data.get('namespace'),
-                tags=data.get('tags', []),
-                extension=data.get('extension', {}),
+                title=data.get("title", "Untitled"),
+                namespace=data.get("namespace"),
+                tags=data.get("tags", []),
+                extension=data.get("extension", {}),
                 parent=parent_id,
-                root_id=root_id
+                root_id=root_id,
             )
 
             db.session.add(article)
@@ -88,7 +92,7 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     # Create a child article for a given parent article
-    @app.route('/articles/<int:parent_id>/children', methods=['POST'])
+    @app.route("/articles/<int:parent_id>/children", methods=["POST"])
     def create_child_article(parent_id: int) -> Dict[str, Any]:
         try:
             parent_article = db.session.query(Article).get(parent_id)
@@ -101,12 +105,12 @@ def article_routes(app, db):
             root_id = parent_article.root_id if parent_article.root_id else parent_id
 
             article = Article(
-                title=data.get('title', 'Untitled Child'),
-                namespace=data.get('namespace'),
-                tags=data.get('tags', []),
-                extension=data.get('extension', {}),
+                title=data.get("title", "Untitled Child"),
+                namespace=data.get("namespace"),
+                tags=data.get("tags", []),
+                extension=data.get("extension", {}),
                 parent=parent_id,
-                root_id=root_id
+                root_id=root_id,
             )
 
             db.session.add(article)
@@ -119,21 +123,23 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     # Get all child articles for a given parent
-    @app.route('/articles/<int:parent_id>/children', methods=['GET'])
+    @app.route("/articles/<int:parent_id>/children", methods=["GET"])
     def get_child_articles(parent_id: int) -> Dict[str, Any]:
         try:
             parent_article = db.session.query(Article).get(parent_id)
             if not parent_article:
                 return jsonify({"error": "Parent article not found"}), 404
 
-            child_articles = db.session.query(Article).filter(Article.parent == parent_id).all()
+            child_articles = (
+                db.session.query(Article).filter(Article.parent == parent_id).all()
+            )
             return jsonify([child.to_json() for child in child_articles])
         except Exception as e:
             print_exc()
             return jsonify({"error": str(e)}), 500
 
     # Update article metadata (title, namespace, tags, extension)
-    @app.route('/articles/<int:article_id>', methods=['PUT'])
+    @app.route("/articles/<int:article_id>", methods=["PUT"])
     def update_article(article_id: int) -> Dict[str, Any]:
         try:
             article = db.session.query(Article).get(article_id)
@@ -142,14 +148,14 @@ def article_routes(app, db):
 
             data = request.get_json()
 
-            if 'title' in data:
-                article.title = data['title']
-            if 'namespace' in data:
-                article.namespace = data['namespace']
-            if 'tags' in data:
-                article.tags = data['tags']
-            if 'extension' in data:
-                article.extension = data['extension']
+            if "title" in data:
+                article.title = data["title"]
+            if "namespace" in data:
+                article.namespace = data["namespace"]
+            if "tags" in data:
+                article.tags = data["tags"]
+            if "extension" in data:
+                article.extension = data["extension"]
 
             db.session.commit()
 
@@ -160,7 +166,7 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     # Delete an article and all its blocks
-    @app.route('/articles/<int:article_id>', methods=['DELETE'])
+    @app.route("/articles/<int:article_id>", methods=["DELETE"])
     def delete_article(article_id: int) -> Dict[str, Any]:
         try:
             article = db.session.query(Article).get(article_id)
@@ -168,7 +174,9 @@ def article_routes(app, db):
                 return jsonify({"error": "Article not found"}), 404
 
             # Delete all blocks associated with this article
-            db.session.query(ArticleBlock).filter(ArticleBlock.page_id == article_id).delete()
+            db.session.query(ArticleBlock).filter(
+                ArticleBlock.page_id == article_id
+            ).delete()
 
             # Delete the article
             db.session.delete(article)
@@ -181,7 +189,7 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     # Create a new block
-    @app.route('/articles/<int:article_id>/blocks', methods=['POST'])
+    @app.route("/articles/<int:article_id>/blocks", methods=["POST"])
     def create_block(article_id: int) -> Dict[str, Any]:
         try:
             article = db.session.query(Article).get(article_id)
@@ -192,10 +200,10 @@ def article_routes(app, db):
 
             block = ArticleBlock(
                 page_id=article_id,
-                parent=data.get('parent_id'),
-                kind=data.get('kind', 'text'),
-                data=data.get('data', {}),
-                extension=data.get('extension', {})
+                parent=data.get("parent_id"),
+                kind=data.get("kind", "text"),
+                data=data.get("data", {}),
+                extension=data.get("extension", {}),
             )
 
             db.session.add(block)
@@ -210,7 +218,7 @@ def article_routes(app, db):
     # Batch update blocks (minimizes requests from frontend)
     # This is the key route for efficient updates - frontend can group
     # all changes over a 5-second period and send them in one request
-    @app.route('/blocks/batch', methods=['PUT'])
+    @app.route("/blocks/batch", methods=["PUT"])
     def update_blocks_batch() -> Dict[str, Any]:
         """
         Batch update multiple blocks at once using action-based format.
@@ -234,10 +242,10 @@ def article_routes(app, db):
             deleted_count = 0
 
             for action in actions:
-                op = action.get('op')
+                op = action.get("op")
 
-                if op == 'delete':
-                    block_id = action.get('block_id')
+                if op == "delete":
+                    block_id = action.get("block_id")
                     if not block_id:
                         continue
 
@@ -246,8 +254,8 @@ def article_routes(app, db):
                         db.session.delete(block)
                         deleted_count += 1
 
-                elif op == 'update':
-                    block_id = action.get('block_id')
+                elif op == "update":
+                    block_id = action.get("block_id")
                     if not block_id:
                         continue
 
@@ -255,25 +263,25 @@ def article_routes(app, db):
                     if not block:
                         continue
 
-                    block_def = action.get('block_def', {})
+                    block_def = action.get("block_def", {})
 
                     # Update fields if provided
-                    if 'kind' in block_def:
-                        block.kind = block_def['kind']
-                    if 'data' in block_def:
-                        block.data = block_def['data']
-                    if 'extension' in block_def:
-                        block.extension = block_def['extension']
-                    if 'parent' in block_def:
-                        block.parent = block_def['parent']
-                    if 'sequence' in block_def:
-                        block.sequence = block_def['sequence']
+                    if "kind" in block_def:
+                        block.kind = block_def["kind"]
+                    if "data" in block_def:
+                        block.data = block_def["data"]
+                    if "extension" in block_def:
+                        block.extension = block_def["extension"]
+                    if "parent" in block_def:
+                        block.parent = block_def["parent"]
+                    if "sequence" in block_def:
+                        block.sequence = block_def["sequence"]
 
                     updated_blocks.append(block.to_json())
 
-                elif op == 'reorder':
-                    block_id = action.get('block_id')
-                    sequence = action.get('sequence')
+                elif op == "reorder":
+                    block_id = action.get("block_id")
+                    sequence = action.get("sequence")
                     if not block_id or sequence is None:
                         continue
 
@@ -282,9 +290,9 @@ def article_routes(app, db):
                         block.sequence = sequence
                         updated_blocks.append(block.to_json())
 
-                elif op == 'insert':
-                    parent_id = action.get('parent')
-                    children = action.get('children', [])
+                elif op == "insert":
+                    parent_id = action.get("parent")
+                    children = action.get("children", [])
                     if not parent_id or not children:
                         continue
 
@@ -301,33 +309,51 @@ def article_routes(app, db):
                             continue
                         page_id = parent_id
 
-                    # Create new blocks
-                    for child_def in children:
+                    # Recursive function to create blocks and their children
+                    def create_block_recursive(block_def, parent_block_id, page_id):
+                        """Create a block and recursively create its children"""
                         new_block = ArticleBlock(
                             page_id=page_id,
-                            parent=parent_id,
-                            kind=child_def.get('kind', 'text'),
-                            data=child_def.get('data', {}),
-                            extension=child_def.get('extension', {}),
-                            sequence=child_def.get('sequence')
+                            parent=parent_block_id,
+                            kind=block_def.get("kind", "text"),
+                            data=block_def.get("data", {}),
+                            extension=block_def.get("extension", {}),
+                            sequence=block_def.get("sequence"),
                         )
+                        print(new_block)
                         db.session.add(new_block)
                         db.session.flush()  # Flush to get the ID
                         created_blocks.append(new_block.to_json())
 
+                        # Recursively create children if they exist
+                        block_children = block_def.get("children", [])
+                        if block_children:
+                            for child_def in block_children:
+                                create_block_recursive(
+                                    child_def, new_block._id, page_id
+                                )
+
+                        return new_block
+
+                    # Create new blocks recursively
+                    for child_def in children:
+                        create_block_recursive(child_def, parent_id, page_id)
+
             db.session.commit()
 
-            return jsonify({
-                "message": f"Processed {len(actions)} actions: {len(updated_blocks)} updated, {len(created_blocks)} created, {deleted_count} deleted",
-                "blocks": updated_blocks + created_blocks
-            })
+            return jsonify(
+                {
+                    "message": f"Processed {len(actions)} actions: {len(updated_blocks)} updated, {len(created_blocks)} created, {deleted_count} deleted",
+                    "blocks": updated_blocks + created_blocks,
+                }
+            )
         except Exception as e:
             print_exc()
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
     # Update a single block
-    @app.route('/blocks/<int:block_id>', methods=['PUT'])
+    @app.route("/blocks/<int:block_id>", methods=["PUT"])
     def update_block(block_id: int) -> Dict[str, Any]:
         try:
             block = db.session.query(ArticleBlock).get(block_id)
@@ -336,14 +362,14 @@ def article_routes(app, db):
 
             data = request.get_json()
 
-            if 'kind' in data:
-                block.kind = data['kind']
-            if 'data' in data:
-                block.data = data['data']
-            if 'extension' in data:
-                block.extension = data['extension']
-            if 'parent' in data:
-                block.parent = data['parent']
+            if "kind" in data:
+                block.kind = data["kind"]
+            if "data" in data:
+                block.data = data["data"]
+            if "extension" in data:
+                block.extension = data["extension"]
+            if "parent" in data:
+                block.parent = data["parent"]
 
             db.session.commit()
 
@@ -354,7 +380,7 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     # Delete a block
-    @app.route('/blocks/<int:block_id>', methods=['DELETE'])
+    @app.route("/blocks/<int:block_id>", methods=["DELETE"])
     def delete_block(block_id: int) -> Dict[str, Any]:
         try:
             block = db.session.query(ArticleBlock).get(block_id)
@@ -371,7 +397,7 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     # Export article to JSON (for downloading)
-    @app.route('/articles/<int:article_id>/export', methods=['GET'])
+    @app.route("/articles/<int:article_id>/export", methods=["GET"])
     def export_article(article_id: int) -> Dict[str, Any]:
         try:
             article = db.session.query(Article).get(article_id)
