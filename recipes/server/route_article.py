@@ -213,48 +213,113 @@ def article_routes(app, db):
     @app.route('/blocks/batch', methods=['PUT'])
     def update_blocks_batch() -> Dict[str, Any]:
         """
-        Batch update multiple blocks at once.
-        Request body should be a list of block updates:
+        Batch update multiple blocks at once using action-based format.
+        Request body should be a list of actions:
         [
-            {"id": 1, "data": {...}, "kind": "text", ...},
-            {"id": 2, "data": {...}, ...},
+            {"op": "delete", "block_id": 1, "index": 0},
+            {"op": "update", "block_id": 2, "block_def": {"kind": "text", "data": {...}}},
+            {"op": "reorder", "block_id": 3, "sequence": 1.5},
+            {"op": "insert", "parent": 10, "children": [{"kind": "text", "data": {...}}]},
             ...
         ]
         """
         try:
-            updates = request.get_json()
+            actions = request.get_json()
 
-            if not isinstance(updates, list):
-                return jsonify({"error": "Request body must be a list of block updates"}), 400
+            if not isinstance(actions, list):
+                return jsonify({"error": "Request body must be a list of actions"}), 400
 
             updated_blocks = []
+            created_blocks = []
+            deleted_count = 0
 
-            for update_data in updates:
-                block_id = update_data.get('id')
-                if not block_id:
-                    continue
+            for action in actions:
+                op = action.get('op')
 
-                block = db.session.query(ArticleBlock).get(block_id)
-                if not block:
-                    continue
+                if op == 'delete':
+                    block_id = action.get('block_id')
+                    if not block_id:
+                        continue
 
-                # Update fields if provided
-                if 'kind' in update_data:
-                    block.kind = update_data['kind']
-                if 'data' in update_data:
-                    block.data = update_data['data']
-                if 'extension' in update_data:
-                    block.extension = update_data['extension']
-                if 'parent' in update_data:
-                    block.parent = update_data['parent']
+                    block = db.session.query(ArticleBlock).get(block_id)
+                    if block:
+                        db.session.delete(block)
+                        deleted_count += 1
 
-                updated_blocks.append(block.to_json())
+                elif op == 'update':
+                    block_id = action.get('block_id')
+                    if not block_id:
+                        continue
+
+                    block = db.session.query(ArticleBlock).get(block_id)
+                    if not block:
+                        continue
+
+                    block_def = action.get('block_def', {})
+
+                    # Update fields if provided
+                    if 'kind' in block_def:
+                        block.kind = block_def['kind']
+                    if 'data' in block_def:
+                        block.data = block_def['data']
+                    if 'extension' in block_def:
+                        block.extension = block_def['extension']
+                    if 'parent' in block_def:
+                        block.parent = block_def['parent']
+                    if 'sequence' in block_def:
+                        block.sequence = block_def['sequence']
+
+                    updated_blocks.append(block.to_json())
+
+                elif op == 'reorder':
+                    block_id = action.get('block_id')
+                    sequence = action.get('sequence')
+                    if not block_id or sequence is None:
+                        continue
+
+                    block = db.session.query(ArticleBlock).get(block_id)
+                    if block:
+                        block.sequence = sequence
+                        updated_blocks.append(block.to_json())
+
+                elif op == 'insert':
+                    parent_id = action.get('parent')
+                    children = action.get('children', [])
+                    if not parent_id or not children:
+                        continue
+
+                    # Get the parent article to determine page_id
+                    # If parent is an article ID, use it as page_id
+                    # If parent is a block ID, get its page_id
+                    parent_block = db.session.query(ArticleBlock).get(parent_id)
+                    if parent_block:
+                        page_id = parent_block.page_id
+                    else:
+                        # Parent might be an article ID
+                        parent_article = db.session.query(Article).get(parent_id)
+                        if not parent_article:
+                            continue
+                        page_id = parent_id
+
+                    # Create new blocks
+                    for child_def in children:
+                        new_block = ArticleBlock(
+                            page_id=page_id,
+                            parent=parent_id,
+                            kind=child_def.get('kind', 'text'),
+                            data=child_def.get('data', {}),
+                            extension=child_def.get('extension', {}),
+                            sequence=child_def.get('sequence')
+                        )
+                        db.session.add(new_block)
+                        db.session.flush()  # Flush to get the ID
+                        created_blocks.append(new_block.to_json())
 
             db.session.commit()
 
             return jsonify({
-                "message": f"Updated {len(updated_blocks)} blocks",
-                "blocks": updated_blocks
+                "message": f"Processed {len(actions)} actions: {len(updated_blocks)} updated, {len(created_blocks)} created, {deleted_count} deleted",
+                "blocks": updated_blocks + created_blocks
             })
         except Exception as e:
             print_exc()

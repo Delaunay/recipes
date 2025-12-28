@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { ColorModeButton } from "@/components/ui/color-mode"
 import { IconButton, Box } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
-import { Article } from '../services/type';
 import SidebarSection, { SidebarItem } from './SidebarSection';
 import './Layout.css';
 

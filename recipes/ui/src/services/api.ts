@@ -681,14 +681,15 @@ class RecipeAPI {
    * Batch update multiple blocks at once to minimize requests.
    * This is the preferred method for updating blocks - frontend can group
    * all changes over a 5-second period and send them in one request.
+   * Accepts an array of actions: {op: "delete"|"update"|"reorder"|"insert", ...}
    */
-  async updateBlocksBatch(blocks: Partial<ArticleBlock>[]): Promise<{ message: string; blocks: ArticleBlock[] }> {
+  async updateBlocksBatch(actions: any[]): Promise<{ message: string; blocks: ArticleBlock[] }> {
     if (isStaticMode()) {
       throw new Error('Updating blocks is not supported in static mode');
     }
     return this.request<{ message: string; blocks: ArticleBlock[] }>('/blocks/batch', {
       method: 'PUT',
-      body: JSON.stringify(blocks),
+      body: JSON.stringify(actions),
     });
   }
 

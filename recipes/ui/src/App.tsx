@@ -84,6 +84,7 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/api-tester" element={<ApiTester />} />
                 <Route path="/article" element={<ArticleView />} />
+  
                 {/* Test pages */}
                 <Route path="/test/article" element={<ArticleTestPage />} />
               </Routes>

@@ -25,6 +25,7 @@ export interface BlockDef {
   kind: string;
   data: any;
   extension: any;
+  sequence: number;
   children?: Array<BlockDef>;
 }
 
@@ -39,7 +40,7 @@ export interface ArticleDef {
   blocks: Array<BlockDef>;
 }
 
-type BlockCtor = new (owner: ArticleInstance, def: BlockDef, parent?: BlockBase) => BlockBase;
+type BlockCtor = new (owner: ArticleInstance, def: BlockDef, parent?: ArticleBlock) => BlockBase;
 
 class BlockRegistry {
   private static registry = new Map<string, BlockCtor>();
@@ -51,13 +52,13 @@ class BlockRegistry {
     this.registry.set(kind, ctor);
   }
 
-  static create(owner: ArticleInstance, def: BlockDef, parent?: BlockBase): BlockBase {
+  static create(owner: ArticleInstance, def: BlockDef, parent?: ArticleBlock): BlockBase {
     const ctor = this.registry.get(def.kind) ?? UnknownBlock;
     return new ctor(owner, def, parent);
   }
 }
 
-export function newBlock(owner: ArticleInstance, def: BlockDef, parent? : BlockBase): BlockBase {
+export function newBlock(owner: ArticleInstance, def: BlockDef, parent? : ArticleBlock): BlockBase {
   return BlockRegistry.create(owner, def, parent);
 }
 
@@ -83,17 +84,6 @@ export function getId(obj: object): number {
     _objectIds.set(obj, _nextId++);
   }
   return _objectIds.get(obj)!;
-}
-
-
-export interface GraphNode {
-    getParent(): GraphNode
-
-    getChildren(): GraphNode[]
-
-    notify(): void
-
-    article: any
 }
 
 
@@ -158,7 +148,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       updateBlock(firstBlock)
       setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
   
-      insertBlocks(block, blocksToInsert)
+      block.article.insertBlock(block.getParent(), block, blocksToInsert)
       return
     }
   }
@@ -312,9 +302,20 @@ function _uniqueKey() {
 let keyCounter = _uniqueKey()
 
 
-
-export abstract class BlockBase implements GraphNode {
+export abstract class ArticleBlock {
   static kind: string;
+
+  def: any = {}
+
+  children: Array<ArticleBlock> = []
+
+  article: any
+
+  abstract notify(): void
+}
+
+export abstract class BlockBase implements ArticleBlock {
+  static kind: string
   article: ArticleInstance;
   def: BlockDef;
   children: Array<BlockBase>;
@@ -338,11 +339,11 @@ export abstract class BlockBase implements GraphNode {
     this.version = 0
   }
 
-  public getParent(): GraphNode {
+  public getParent(): ArticleBlock {
     return this.parent
   }
 
-  public getChildren(): GraphNode[]  {
+  public getChildren(): ArticleBlock[]  {
     return this.children;
   }
 
@@ -447,8 +448,6 @@ export class UnknownBlock extends BlockBase {
 
 
 
-
-
 type SettingsFormProps = {
   schema: BlockSetting
   values: Record<string, any>
@@ -528,6 +527,7 @@ export interface Action {
 export interface ActionDeleteBlock extends Action {
   op: "delete"
   block_id: number
+  index: number
 }
 
 export interface ActionUpdateBlock extends Action {
@@ -538,17 +538,14 @@ export interface ActionUpdateBlock extends Action {
 
 export interface ActionReorderBlock extends Action {
   op: "reorder"
-  after_block_id: number
   block_id: number
+  sequence: number
 }
 
 export interface ActionInsertBlock extends Action {
   op: "insert"
-  page_id: number
   parent: number    // This is where we are going to insert
-  kind: string
-  data: any
-  extension: any
+  children: BlockDef[]
 }
 
 
@@ -556,58 +553,8 @@ export interface ActionBatch {
   actions: Action[]
 }
 
-export function insertBlocks(self: BlockBase, blocksToInsert: BlockDef[]) {
-  const parent = self.getParent()
-
-  insertBlocksAfterBlock(parent, self, blocksToInsert)
+export interface PendingAction {
+  action: Action;
+  doAction: () => void;
+  undoAction: () => void;
 }
-
-
-export function deleteBlock(self: BlockBase, deleteChildren=true) {
-  const parent = self.getParent()
-  const children = parent.getChildren()
-  const index = children.indexOf(self);
-  children.splice(index, 1);
-}
-
-export function CutToClipboard() {}
-export function CopyToClipboard() {}
-export function PasteFromClipboard() {}
-
-
-export function reorderBlock(self: BlockBase, after: BlockBase) {
-  // TODO: what if the block goes from the main article to a layout
-  // or from a lyout to main article
-  const parent = self.getParent()
-
-  // const children = parent.getChildren()
-  // const selfIndex = children.indexOf(self);
-  // const afterIndex = children.indexOf(after);
-
-  // children.splice(index, 1);
-}
-
-
-export function updateBlock(self: BlockBase, newData: any) {
-  self.def = {
-    ...self.def,
-    ...newData,
-  }
-}
-
-
-
-function insertBlocksAfterBlock(self: GraphNode, blockTarget: BlockBase, blocksToInsert: BlockDef[]) {
-  const index = self.getChildren().indexOf(blockTarget);
-
-  if (index === -1) {
-    throw new Error(`Target block not found in ${self}`);
-  }
-  const newBlocks = blocksToInsert.map(def => newBlock(self.article, def, self));
-  self.getChildren().splice(index + 1, 0, ...newBlocks);
-
-  // Maybe we can have a notify per parent to only rerender the parent and not everything
-  self.notify()
-}
-
-
