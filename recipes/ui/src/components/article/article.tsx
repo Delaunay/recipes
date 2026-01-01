@@ -121,11 +121,14 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
         }
     }
 
+    const oChildrenCount = original.children?.length  ?? 0;
+    const nChildrenCount = newer.children?.length  ?? 0;
+
     // Original has children
-    if (original.children && original.children.length > 0) {
+    if (oChildrenCount > 0) {
         // UPDATE: BOTH HAVE children
-        if (newer.children && newer.children.length > 0) {
-            const sharedCount = Math.min(original.children.length, newer.children.length)
+        if (nChildrenCount > 0) {
+            const sharedCount = Math.min(oChildrenCount, nChildrenCount)
 
             // Merged shared children
             for(let i = 0; i < sharedCount; i++) {
@@ -133,12 +136,12 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
             }
             
             // INSERT MISSING children
-            if (newer.children.length >= original.children.length) {
+            if (nChildrenCount >= oChildrenCount) {
                 article.insertBlock(original, sharedCount, newer.children.slice(sharedCount))
             }
 
             // DELETE extra children
-            if (original.children.length >= newer.children.length) {
+            if (oChildrenCount >= nChildrenCount) {
                 for(let i = sharedCount; i < original.children.length; i++) {
                     article.deleteBlock(original.children[i])
                 }
@@ -147,13 +150,13 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
         } 
         // DELETE all original children
         else {
-            for(let i = 0; i < original.children.length; i++) {
+            for(let i = 0; i < oChildrenCount; i++) {
                 article.deleteBlock(original.children[i])
             }
         }
     } 
     // INSERT: Original DOes NOT have children but the node has children
-    else if (newer.children && newer.children.length > 0) {
+    else if (nChildrenCount > 0) {
         article.insertBlock(original, 1, newer.children)
     }
 
@@ -356,9 +359,7 @@ export class ArticleInstance implements ArticleBlock {
                 throw new Error(`Target block not found in ${self}`);
             }
 
-            const newBlocks = newChildren.map(def => newBlock(this, def, parent));
-
-            parent.children.splice(insertIndex + 1, 0, ...newBlocks);
+            parent.def["children"].splice(insertIndex + 1, 0, ...newChildren)
 
             parent.notify()
         }
@@ -374,11 +375,18 @@ export class ArticleInstance implements ArticleBlock {
             );
         }
 
+        function getParendId() {
+            if (parent === this) {
+                return null
+            }
+            return parent.def.id
+        }
+
         // How to make the server persist the action to the database
         const remoteAction: ActionInsertBlock = {
             op: "insert",
             page_id: this.def.id,
-            parent: parent.getParentId(),
+            parent: getParendId(),
             children: newChildren
         }
 
