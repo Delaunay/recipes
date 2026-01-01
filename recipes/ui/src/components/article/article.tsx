@@ -358,8 +358,13 @@ export class ArticleInstance implements ArticleBlock {
             if (insertIndex === -1) {
                 throw new Error(`Target block not found in ${self}`);
             }
-
-            parent.def["children"].splice(insertIndex + 1, 0, ...newChildren)
+            
+            if (parent.def["children"]) {
+                parent.def["children"].splice(insertIndex + 1, 0, ...newChildren)
+            } else {
+                parent.def["children"] = newChildren
+                parent.children = parent.def["children"].map(child => newBlock(this, child, parent))
+            }
 
             parent.notify()
         }
@@ -375,18 +380,21 @@ export class ArticleInstance implements ArticleBlock {
             );
         }
 
-        function getParendId() {
-            if (parent === this) {
+        function getParentId() {
+            // If parent is an ArticleInstance, return null
+            if (parent instanceof ArticleInstance) {
                 return null
             }
-            return parent.def.id
+        
+            // Otherwise return its id
+            return parent?.def?.id ?? null
         }
 
         // How to make the server persist the action to the database
         const remoteAction: ActionInsertBlock = {
             op: "insert",
             page_id: this.def.id,
-            parent: getParendId(),
+            parent: getParentId(),
             children: newChildren
         }
 

@@ -70,6 +70,8 @@ class Article(Base):
                     missed.append(block)
 
             children = missed
+            for c in children:
+                print(c)
             assert len(children) == 0, "All the children should have been sorted correctly"
 
         return articles
