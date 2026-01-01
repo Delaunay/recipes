@@ -82,6 +82,86 @@ function savePendingChange(batch: ActionBatch) {
 
 
 
+function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, newer: BlockDef, depth: number = 0) {
+    const keys = new Set([
+        ...Object.keys(original.def),
+        ...Object.keys(newer)
+      ]);
+
+    const skipKeys = new Set([
+        "id", "page_id", "parent", "children", "parent_id"
+    ])
+
+    let wasModified = false;
+
+    for (const key of keys) {
+        if (skipKeys.has(key)) 
+            continue;
+
+        const oValue = original.def[key];
+        const nValue = newer[key];
+
+        // New field
+        if (oValue === undefined) {
+            original.def[key] = nValue;
+            wasModified = true;
+            console.log("Setting", key, "to", nValue)
+        } 
+        // Updated fields
+        else if (oValue !== nValue) {
+            original.def[key] = nValue;
+            wasModified = true;
+            console.log("Setting", key, "to", nValue)
+        }
+        // Deleted fields
+        else if (nValue === undefined) {
+            original.def[key] = undefined;
+            wasModified = true;
+            console.log("Setting", key, "to", nValue)
+        }
+    }
+
+    // Original has children
+    if (original.children && original.children.length > 0) {
+        // UPDATE: BOTH HAVE children
+        if (newer.children && newer.children.length > 0) {
+            const sharedCount = Math.min(original.children.length, newer.children.length)
+
+            // Merged shared children
+            for(let i = 0; i < sharedCount; i++) {
+                blockDefinitionMerger(article, original.children[i], newer.children[i], depth + 1)
+            }
+            
+            // INSERT MISSING children
+            if (newer.children.length >= original.children.length) {
+                article.insertBlock(original, sharedCount, newer.children.slice(sharedCount))
+            }
+
+            // DELETE extra children
+            if (original.children.length >= newer.children.length) {
+                for(let i = sharedCount; i < original.children.length; i++) {
+                    article.deleteBlock(original.children[i])
+                }
+            }
+            
+        } 
+        // DELETE all original children
+        else {
+            for(let i = 0; i < original.children.length; i++) {
+                article.deleteBlock(original.children[i])
+            }
+        }
+    } 
+    // INSERT: Original DOes NOT have children but the node has children
+    else if (newer.children && newer.children.length > 0) {
+        article.insertBlock(original, 1, newer.children)
+    }
+
+    if (wasModified) {
+        article._updateBlock(original, original.def)
+    }
+}
+
 
 
 export class ArticleInstance implements ArticleBlock {
@@ -183,16 +263,11 @@ export class ArticleInstance implements ArticleBlock {
         })
     }
 
-    updateBlock(blockTarget: BlockBase, newData: BlockDef) {
-        const oldDef = blockTarget.def
-        const newDef = {
-            ...blockTarget.def,
-            ...newData
-        }
+    _updateBlock(blockTarget: BlockBase, newData: BlockDef) {
+        let oldDef = blockTarget.def
 
         // How to execute the action on the current view
         const doAction = () => {
-            blockTarget.def = newDef
             blockTarget.children = blockTarget.def.children ? blockTarget.def.children?.map(
                 child => newBlock(blockTarget.article, child, blockTarget)) : [];
         }
@@ -207,7 +282,7 @@ export class ArticleInstance implements ArticleBlock {
         // How to make the server persist the action to the database
         const remoteAction: ActionUpdateBlock = {
             op: "update",
-            block_id: blockTarget.def.id,
+            id: blockTarget.def.id,
             block_def: newData,
         }
 
@@ -216,6 +291,13 @@ export class ArticleInstance implements ArticleBlock {
             doAction: doAction,
             undoAction: undoAction
         })
+    }
+
+
+    updateBlock(blockTarget: BlockBase, newData: BlockDef) {
+        // HERE we need to match current definition and the new definition
+        // to output either update block action or insert block
+        blockDefinitionMerger(this.article, blockTarget, newData)
     }
 
     reorderBlock(block: BlockBase, prev: BlockBase, next: BlockBase) {
@@ -295,7 +377,8 @@ export class ArticleInstance implements ArticleBlock {
         // How to make the server persist the action to the database
         const remoteAction: ActionInsertBlock = {
             op: "insert",
-            parent: parent.def.id,
+            page_id: this.def.id,
+            parent: parent.getParentId(),
             children: newChildren
         }
 
@@ -306,8 +389,11 @@ export class ArticleInstance implements ArticleBlock {
         })
     }
 
-    getParent(): ArticleBlock {
-        return this;
+    getParentId() {
+        return null;
+    }
+    getParent(): null | ArticleBlock {
+        return null;
     }
 
     getChildren(): ArticleBlock[] {
@@ -375,6 +461,24 @@ const Article: React.FC<ArticleProps> = ({ article }) => {
 export default Article;
 
 
+function renderSortedBySequence(items: BlockBase[]): any {
+    return items
+    //   .sort((a, b) => {
+    //     const seqA = a.getSequence();
+    //     const seqB = b.getSequence();
+  
+    //     // Compare numbers if both are numbers
+    //     if (typeof seqA === 'number' && typeof seqB === 'number') {
+    //       return seqA - seqB;
+    //     }
+  
+    //     // Otherwise, compare as strings
+    //     return String(seqA).localeCompare(String(seqB));
+    //   })
+      .map(item => item.react());
+  }
+  
+
 const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     const [, setTick] = useState(0);
 
@@ -396,8 +500,7 @@ const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     return (
         <Box flex="1">
             {article.def.title}
-            {article.children.map(child => child.react())}
-            { }
+            {renderSortedBySequence(article.children)}
         </Box>
     );
 };

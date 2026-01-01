@@ -28,8 +28,11 @@ class Article(Base):
             session.query(ArticleBlock)
             .filter(ArticleBlock.page_id.in_(article_ids))
             .order_by(ArticleBlock._id.asc())
+            .order_by(ArticleBlock.sequence.asc())
             .all()
         )
+
+        print(article_ids, nodes)
 
         if len(nodes) == 0:
             return articles
@@ -64,7 +67,7 @@ class Article(Base):
                     parent.setdefault("children", []).append(obj)
                     parents[block._id] = obj
                 else:
-                    missed.append(task)
+                    missed.append(block)
 
             children = missed
             assert len(children) == 0, "All the children should have been sorted correctly"

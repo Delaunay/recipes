@@ -1,3 +1,4 @@
+import traceback
 from typing import Dict, Any
 from datetime import datetime
 from traceback import print_exc
@@ -204,6 +205,7 @@ def article_routes(app, db):
                 kind=data.get("kind", "text"),
                 data=data.get("data", {}),
                 extension=data.get("extension", {}),
+                sequence=data.get("sequence", 0),
             )
 
             db.session.add(block)
@@ -215,11 +217,104 @@ def article_routes(app, db):
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
+
+    @app.route("/blocks/insert", methods=["PUT"])
+    def insert_blocks(insert, parent=None, page_id=None, depth=0):
+        if parent is None:
+            parent = insert["parent"]
+        
+        if page_id is None:
+            page_id = insert["page_id"]
+
+        # Insert Into a BLOCK
+        # Insert INTo an ARTICLE
+        blocks = []
+        for child in insert.get("children", []):
+            block = ArticleBlock(
+                page_id=page_id,
+                parent=parent,
+                kind=child["kind"],
+                data=child.get("data", {}),
+                extension=child.get("extension", {}),
+                sequence=child.get("sequence"),
+            )
+
+            db.session.add(block)
+            db.session.flush()      # Flush to get the ID
+        
+            ids = []
+            ids.append(insert_blocks(child, parent=block._id, page_id=page_id, depth=depth + 1))
+
+            blocks.append({"id": block._id, "children": ids, "page_id": page_id})
+
+        if depth == 0:
+            db.session.commit()
+        
+        return {"action": "insert", "children": blocks}
+        
+    @app.route("/blocks/update", methods=["PUT"])
+    def update_blocks(update, depth=0):
+        block = db.session.query(ArticleBlock).get(update["id"])
+        children = update["block_def"].pop("children", [])
+
+        for item, value in update["block_def"].items():
+            print(block, item, value)
+            setattr(block, item, value)
+
+        # for child in children:
+        #     update_blocks(child, depth=depth + 1)
+
+        if depth == 0:
+            db.session.commit()
+        
+        return {"action": "update", "id": block._id}
+
+    @app.route("/blocks/reorder", methods=["PUT"])
+    def reorder_blocks(reorder, depth=0):
+        block = db.session.query(ArticleBlock).get(reorder["id"])
+        
+        block.sequence = reorder["sequence"]
+
+        if depth == 0:
+            db.session.commit()
+        
+        return {"action": "update", "id": block._id}
+
+    @app.route("/blocks/delete", methods=["PUT"])
+    def delete_blocks(delete, depth=0):
+        block = db.session.query(ArticleBlock).get(delete["block_id"])
+
+        db.session.delete(block)
+
+        if depth == 0:
+            db.session.commit()
+        
+        return {"action": "update", "id": block._id}
+
+    @app.route("/blocks/batch", methods=["PUT"])
+    def update_blocks_batch() -> Dict[str, Any]:
+        try:
+            actions = request.get_json()
+            results = []
+
+            for action in actions:
+                match action["op"]:
+                    case "insert":  results.append(insert_blocks(action, depth=1))
+                    case "update":  results.append(update_blocks(action, depth=1))
+                    case "reorder": results.append(reorder_blocks(action, depth=1))
+                    case "delete":  results.append(delete_blocks(action, depth=1))
+            
+            db.session.commit()
+            return results
+        except:
+            traceback.print_exc()
+            return {}
+        
     # Batch update blocks (minimizes requests from frontend)
     # This is the key route for efficient updates - frontend can group
     # all changes over a 5-second period and send them in one request
-    @app.route("/blocks/batch", methods=["PUT"])
-    def update_blocks_batch() -> Dict[str, Any]:
+    # @app.route("/blocks/batch", methods=["PUT"])
+    def old_update_blocks_batch() -> Dict[str, Any]:
         """
         Batch update multiple blocks at once using action-based format.
         Request body should be a list of actions:
@@ -233,6 +328,7 @@ def article_routes(app, db):
         """
         try:
             actions = request.get_json()
+            print(actions)
 
             if not isinstance(actions, list):
                 return jsonify({"error": "Request body must be a list of actions"}), 400

@@ -21,7 +21,7 @@ import type { ArticleInstance } from "./article"
 export interface BlockDef {
   id: number;
   page_id: number;
-  parent: number;
+  parent_id?: number;
   kind: string;
   data: any;
   extension: any;
@@ -32,7 +32,7 @@ export interface BlockDef {
 export interface ArticleDef {
   id: number;
   root_id: number;
-  parent: number;
+  parent_id?: number;
   title: string;
   namespace: string;
   tags: any;
@@ -332,16 +332,28 @@ export abstract class BlockBase implements ArticleBlock {
     );
   }
 
+  public getSequence() {
+    return this.def.sequence ?? this.def.id;
+  }
+
   constructor(owner: ArticleInstance, block: BlockDef, parent?: BlockBase) {
     this.parent = parent
     this.article = owner;
     this.def = block;
+    console.log(this.def)
     this.children = this.def.children ? this.def.children?.map(child => newBlock(this.article, child, this)) : [];
     this.version = 0
   }
 
   public getParent(): ArticleBlock {
     return this.parent
+  }
+
+  getParentId(): null | number {
+      if (this.parent === this.article) {
+        return null;
+      }
+      return this.parent.def.id
   }
 
   public getChildren(): ArticleBlock[]  {
@@ -533,7 +545,7 @@ export interface ActionDeleteBlock extends Action {
 
 export interface ActionUpdateBlock extends Action {
   op: "update"
-  block_id: number
+  id: number
   block_def: BlockDef
 }
 
@@ -545,6 +557,7 @@ export interface ActionReorderBlock extends Action {
 
 export interface ActionInsertBlock extends Action {
   op: "insert"
+  page_id: number
   parent: number    // This is where we are going to insert
   children: BlockDef[]
 }

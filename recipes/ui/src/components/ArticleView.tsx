@@ -37,7 +37,7 @@ const ArticleView: React.FC = () => {
                 const articleDef: ArticleDef = {
                     id: fetchedArticle.id || 0,
                     root_id: fetchedArticle.root_id || fetchedArticle.id || 0,
-                    parent: fetchedArticle.parent_id || 0,
+                    parent_id: fetchedArticle.parent_id,
                     title: fetchedArticle.title || 'Untitled',
                     namespace: fetchedArticle.namespace || '',
                     tags: fetchedArticle.tags || {},
@@ -62,7 +62,7 @@ const ArticleView: React.FC = () => {
         return blocks.map(block => ({
             id: block.id || 0,
             page_id: block.page_id || 0,
-            parent: block.parent_id || 0,
+            parent_id: block.parent_id,
             kind: block.kind || 'text',
             data: block.data || {},
             extension: block.extension || {},
