@@ -30,7 +30,11 @@ export class ParagraphBlock extends BlockBase {
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
-        return `${this.def.data.text} ${this.children.map(child => child.as_markdown(ctx)).join(" ")}`
+        if (this.def.data.text) {
+            return `${this.def.data.text} ${this.children.map(child => child.as_markdown(ctx)).join(" ")}`
+        } else {
+            return `${this.children.map(child => child.as_markdown(ctx)).join(" ")}`
+        }
     }
 }
 

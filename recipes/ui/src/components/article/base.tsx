@@ -340,7 +340,6 @@ export abstract class BlockBase implements ArticleBlock {
     this.parent = parent
     this.article = owner;
     this.def = block;
-    console.log(this.def)
     this.children = this.def.children ? this.def.children?.map(child => newBlock(this.article, child, this)) : [];
     this.version = 0
   }
