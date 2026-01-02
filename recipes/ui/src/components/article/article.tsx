@@ -510,10 +510,22 @@ export class ArticleInstance implements ArticleBlock {
             }
         }
         
+        if (start === end) {
+            console.log("Logic Error")
+            if (direction === "after") {
+                end = start + 0.1
+            }
+            if (direction === "before") {
+                end = start - 0.1
+            }
+        }
+
+        
         const step = (end - start) / (newChildren.length + 1)
     
         for(let i = 0; i < newChildren.length; i++) {
             newChildren[i].sequence = start + (i + 1) * step
+            console.log(start + (i + 1) * step)
         }
 
         const insert = () => {

@@ -254,16 +254,21 @@ def article_routes(app, db):
 
     @app.route("/blocks/delete", methods=["PUT"])
     def delete_blocks(delete, depth=0):
-        child_blocks = db.session.query(ArticleBlock).filter(ArticleBlock.parent == delete["block_id"]).all()
+        
+        if hasattr(delete, "_id"):
+            block_id = delete._id
+        else:
+            block_id = delete["block_id"]
+
+        child_blocks = db.session.query(ArticleBlock).filter(ArticleBlock.parent == block_id).all()
         
         children_id = []
         for child in child_blocks:
-            children_id.append(child._id)
-            db.session.delete(child)
+            children_id.append(delete_blocks(child))
 
-        block = db.session.query(ArticleBlock).get(delete["block_id"])
-
+        block = db.session.query(ArticleBlock).get(block_id)
         db.session.delete(block)
+        
         if depth == 0:
             db.session.commit()
         
