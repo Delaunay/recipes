@@ -32,7 +32,7 @@ class Article(Base):
             .all()
         )
 
-        print(article_ids, nodes)
+        # print(article_ids, nodes)
 
         if len(nodes) == 0:
             return articles

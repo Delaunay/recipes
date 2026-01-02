@@ -562,6 +562,18 @@ export interface ActionInsertBlock extends Action {
 }
 
 
+export interface ActionInsertBlockReplyChild {
+  id: number;
+  page_id: number;
+  children: ActionInsertBlockReplyChild[]
+}
+
+export interface ActionInsertBlockReply {
+  action: "insert"
+  children: ActionInsertBlockReplyChild[]
+}
+
+
 export interface ActionBatch {
   actions: Action[]
 }
@@ -570,4 +582,5 @@ export interface PendingAction {
   action: Action;
   doAction: () => void;
   undoAction: () => void;
+  blocks?: ArticleBlock[];
 }

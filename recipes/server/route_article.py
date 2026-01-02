@@ -213,8 +213,10 @@ def article_routes(app, db):
             db.session.add(block)
             db.session.flush()      # Flush to get the ID
         
-            ids = []
-            ids.append(insert_blocks(child, parent=block._id, page_id=page_id, depth=depth + 1))
+            ids: list[dict] = []
+            if "children" in child:
+                result = insert_blocks(child, parent=block._id, page_id=page_id, depth=depth + 1)
+                ids.extend(result["children"])
 
             blocks.append({"id": block._id, "children": ids, "page_id": page_id})
 
@@ -248,21 +250,29 @@ def article_routes(app, db):
         if depth == 0:
             db.session.commit()
         
-        return {"action": "update", "id": block._id}
+        return {"action": "reorder", "id": block._id}
 
     @app.route("/blocks/delete", methods=["PUT"])
     def delete_blocks(delete, depth=0):
+        child_blocks = db.session.query(ArticleBlock).filter(ArticleBlock.parent == delete["block_id"]).all()
+        
+        children_id = []
+        for child in child_blocks:
+            children_id.append(child._id)
+            db.session.delete(child)
+
         block = db.session.query(ArticleBlock).get(delete["block_id"])
 
         db.session.delete(block)
-
         if depth == 0:
             db.session.commit()
         
-        return {"action": "update", "id": block._id}
+        return {"action": "delete", "id": block._id, "children": children_id}
 
     @app.route("/blocks/batch", methods=["PUT"])
     def update_blocks_batch() -> Dict[str, Any]:
+        # This returns message with the id of the modifed or created blocks
+        # we can reconcile the reply with the front end to update the id
         try:
             actions = request.get_json()
             results = []

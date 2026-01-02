@@ -12,7 +12,8 @@ import type {
     ActionReorderBlock,
     ActionInsertBlock,
     ActionBatch,
-    ArticleBlock
+    ArticleBlock,
+    ActionInsertBlockReply
 } from './base'
 import { recipeAPI } from '../../services/api'
 
@@ -67,6 +68,7 @@ import "./blocks/datastructure"
 import "./blocks/trace"
 import "./blocks/ast"
 import "./blocks/bnf"
+import { math } from 'blockly/blocks';
 
 
 function loadUncomittedChange(): ActionBatch {
@@ -80,13 +82,81 @@ function savePendingChange(batch: ActionBatch) {
     localStorage.setItem('articleBlockActions', JSON.stringify(batch["actions"]));
 }
 
+function _reconcileChildrenInsert(article: ArticleInstance, action: ActionInsertBlock, result: ActionInsertBlockReply, blocks: ArticleBlock[], depth: number = 0) {
+    const nChildrenAction = action["children"].length
+    const nChildrenResult = result["children"].length
+    const nChilrenBlock   = blocks.length
+
+    console.log(nChildrenAction, nChildrenResult, nChilrenBlock)
+
+    if (nChildrenAction !== nChildrenResult && nChildrenAction !== nChilrenBlock) {
+        console.log("ERROR MISSING CHILDREN", nChildrenAction, nChildrenResult, nChilrenBlock)
+    }
+
+    const count = Math.min(nChildrenAction, nChildrenResult, nChilrenBlock)
+
+    for(let j = 0; j < count; j++) {
+        let actionChild = action["children"][j]
+        let updateChild = result["children"][j]
+        let block      = blocks[j]
+
+        // Set the database id here
+        block.def.id = updateChild["id"]
+
+        if (actionChild.children?.length) {
+            _reconcileChildrenInsert(article, actionChild, updateChild, block.children, depth + 1)
+        }
+    }
+}
+
+function blockUpdateReconciliation(article: ArticleInstance, queuedActions: PendingAction[], updateResult: []) {
+    const nUpdate = queuedActions.length
+    const nResults = updateResult.length
+
+    if (nUpdate !== nResults) {
+        console.log("ERROR MISSING RESULTS", nUpdate, nResults)
+    }
+
+    const count = Math.min(nUpdate, nResults)
+    
+    for(let i = 0; i < count; i++) {
+        let action = queuedActions[i].action
+        let result = updateResult[i]
+
+        console.log("--- RECONCILE")
+        console.log(action)
+        console.log(result)
+        console.log(queuedActions[i].blocks)
+
+        if (action["op"] !== result["action"]) {
+            console.log("ERROR: Action mismatch")
+            continue
+        }
+
+        if (action["op"] === "insert") {
+            _reconcileChildrenInsert(article, action, result, queuedActions[i].blocks)
+        }
+
+        if (action["op"] === "reorder") {
+
+        }
+
+        if (action["op"] === "update") {
+
+        }
+
+        if (action["op"] === "delete") {
+
+        }
+    }
+}
 
 
 function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, newer: BlockDef, depth: number = 0) {
     const keys = new Set([
         ...Object.keys(original.def),
         ...Object.keys(newer)
-      ]);
+    ]);
 
     const skipKeys = new Set([
         "id", "page_id", "parent", "children", "parent_id"
@@ -95,7 +165,7 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
     let wasModified = false;
 
     for (const key of keys) {
-        if (skipKeys.has(key)) 
+        if (skipKeys.has(key))
             continue;
 
         const oValue = original.def[key];
@@ -106,7 +176,7 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
             original.def[key] = nValue;
             wasModified = true;
             console.log("Setting", key, "to", nValue)
-        } 
+        }
         // Updated fields
         else if (oValue !== nValue) {
             original.def[key] = nValue;
@@ -121,8 +191,8 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
         }
     }
 
-    const oChildrenCount = original.children?.length  ?? 0;
-    const nChildrenCount = newer.children?.length  ?? 0;
+    const oChildrenCount = original.children?.length ?? 0;
+    const nChildrenCount = newer.children?.length ?? 0;
 
     // Original has children
     if (oChildrenCount > 0) {
@@ -131,10 +201,10 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
             const sharedCount = Math.min(oChildrenCount, nChildrenCount)
 
             // Merged shared children
-            for(let i = 0; i < sharedCount; i++) {
+            for (let i = 0; i < sharedCount; i++) {
                 blockDefinitionMerger(article, original.children[i], newer.children[i], depth + 1)
             }
-            
+
             // INSERT MISSING children
             if (nChildrenCount >= oChildrenCount) {
                 article.insertBlock(original, sharedCount, newer.children.slice(sharedCount))
@@ -142,19 +212,19 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
 
             // DELETE extra children
             if (oChildrenCount >= nChildrenCount) {
-                for(let i = sharedCount; i < original.children.length; i++) {
+                for (let i = sharedCount; i < original.children.length; i++) {
                     article.deleteBlock(original.children[i])
                 }
             }
-            
-        } 
+
+        }
         // DELETE all original children
         else {
-            for(let i = 0; i < oChildrenCount; i++) {
+            for (let i = 0; i < oChildrenCount; i++) {
                 article.deleteBlock(original.children[i])
             }
         }
-    } 
+    }
     // INSERT: Original DOes NOT have children but the node has children
     else if (nChildrenCount > 0) {
         article.insertBlock(original, 1, newer.children)
@@ -353,19 +423,35 @@ export class ArticleInstance implements ArticleBlock {
         const insertIndex = typeof target === "number" ?
             target : parent.children.indexOf(target);
 
+        const oldDef = parent.def
+        let futureAction: PendingAction = {
+            action: undefined,
+            doAction: undefined,
+            undoAction: undefined,
+            blocks: []
+        }
+
         // How to execute the action on the current view
         const doAction = () => {
             if (insertIndex === -1) {
                 throw new Error(`Target block not found in ${self}`);
             }
-            
+
             if (parent.def["children"]) {
                 parent.def["children"].splice(insertIndex + 1, 0, ...newChildren)
             } else {
                 parent.def["children"] = newChildren
-                parent.children = parent.def["children"].map(child => newBlock(this, child, parent))
+                
             }
-
+            
+            parent.children = parent.def["children"].map(child => newBlock(this, child, parent))
+            
+            // Fetch the inserted blocks so we can populate the ID frm the database
+            // const startCount = insertIndex + 1
+            futureAction.blocks = parent.children.slice(-newChildren.length)
+            // console.log(futureAction.blocks)
+            // console.log(startCount, startCount + newChildren.length)
+            // console.log(parent.children.length)
             parent.notify()
         }
 
@@ -374,10 +460,12 @@ export class ArticleInstance implements ArticleBlock {
             if (insertIndex === -1) {
                 return;
             }
+            parent.def = oldDef
             parent.children.splice(
                 insertIndex + 1,
                 newChildren.length
             );
+            parent.notify()
         }
 
         function getParentId() {
@@ -385,7 +473,7 @@ export class ArticleInstance implements ArticleBlock {
             if (parent instanceof ArticleInstance) {
                 return null
             }
-        
+
             // Otherwise return its id
             return parent?.def?.id ?? null
         }
@@ -398,11 +486,11 @@ export class ArticleInstance implements ArticleBlock {
             children: newChildren
         }
 
-        this.pushAction({
-            action: remoteAction,
-            doAction: doAction,
-            undoAction: undoAction
-        })
+        futureAction.action = remoteAction
+        futureAction.doAction = doAction
+        futureAction.undoAction = undoAction
+
+        this.pushAction(futureAction)
     }
 
     getParentId() {
@@ -427,14 +515,17 @@ export class ArticleInstance implements ArticleBlock {
 
         try {
             // Extract actions from pending changes
-            const actions = this.pendingChange.map(pending => pending.action);
+            const queuedChange = this.pendingChange
+
+            const actions = queuedChange.map(pending => pending.action);
 
             // Make request to the server
-            await recipeAPI.updateBlocksBatch(actions);
-
+            const updateResult = await recipeAPI.updateBlocksBatch(actions);
+            
+            blockUpdateReconciliation(this, queuedChange, updateResult)
+        
             // On success, clear the pending changes
-            const changes = this.pendingChange.map(p => p.action);
-            this.changeHistory["actions"].push(...changes);
+            // this.changeHistory["actions"].push(...this.pendingChange);
             this.pendingChange = [];
             this.saveUncomittedChange();
         } catch (error) {
@@ -479,21 +570,21 @@ export default Article;
 
 function renderSortedBySequence(items: BlockBase[]): any {
     return items
-    //   .sort((a, b) => {
-    //     const seqA = a.getSequence();
-    //     const seqB = b.getSequence();
-  
-    //     // Compare numbers if both are numbers
-    //     if (typeof seqA === 'number' && typeof seqB === 'number') {
-    //       return seqA - seqB;
-    //     }
-  
-    //     // Otherwise, compare as strings
-    //     return String(seqA).localeCompare(String(seqB));
-    //   })
-      .map(item => item.react());
-  }
-  
+        //   .sort((a, b) => {
+        //     const seqA = a.getSequence();
+        //     const seqB = b.getSequence();
+
+        //     // Compare numbers if both are numbers
+        //     if (typeof seqA === 'number' && typeof seqB === 'number') {
+        //       return seqA - seqB;
+        //     }
+
+        //     // Otherwise, compare as strings
+        //     return String(seqA).localeCompare(String(seqB));
+        //   })
+        .map(item => item.react());
+}
+
 
 const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     const [, setTick] = useState(0);
