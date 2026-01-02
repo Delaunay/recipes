@@ -27,10 +27,14 @@ class Article(Base):
         nodes = (
             session.query(ArticleBlock)
             .filter(ArticleBlock.page_id.in_(article_ids))
-            .order_by(ArticleBlock._id.asc())
-            .order_by(ArticleBlock.sequence.asc())
+            .order_by(
+                ArticleBlock.sequence.asc(),
+                ArticleBlock._id.asc(),)
             .all()
         )
+
+        for n in nodes:
+            print(n.sequence)
 
         # print(article_ids, nodes)
 
@@ -73,6 +77,7 @@ class Article(Base):
             for c in children:
                 print(c)
             assert len(children) == 0, "All the children should have been sorted correctly"
+
 
         return articles
 

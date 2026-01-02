@@ -85,8 +85,6 @@ function _reconcileChildrenInsert(article: ArticleInstance, action: ActionInsert
     const nChildrenResult = result["children"].length
     const nChilrenBlock   = blocks.length
 
-    console.log(nChildrenAction, nChildrenResult, nChilrenBlock)
-
     if (nChildrenAction !== nChildrenResult && nChildrenAction !== nChilrenBlock) {
         console.log("ERROR MISSING CHILDREN", nChildrenAction, nChildrenResult, nChilrenBlock)
     }
@@ -150,9 +148,6 @@ function blockUpdateReconciliation(article: ArticleInstance, queuedActions: Pend
 }
 
 
-const NONE_VALUE = -1
-
-
 function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, newer: BlockDef, depth: number = 0) {
     const keys = new Set([
         ...Object.keys(original.def),
@@ -176,19 +171,16 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
         if (oValue === undefined) {
             original.def[key] = nValue;
             wasModified = true;
-            console.log("Setting", key, "to", nValue)
         }
         // Updated fields
         else if (oValue !== nValue) {
             original.def[key] = nValue;
             wasModified = true;
-            console.log("Setting", key, "to", nValue)
         }
         // Deleted fields
         else if (nValue === undefined) {
             original.def[key] = undefined;
             wasModified = true;
-            console.log("Setting", key, "to", nValue)
         }
     }
 
@@ -228,7 +220,7 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
     }
     // INSERT: Original DOes NOT have children but the node has children
     else if (nChildrenCount > 0) {
-        article.insertBlock(original, NONE_VALUE, 'after', newer.children)
+        article.insertBlock(original, null, 'after', newer.children)
     }
 
     if (wasModified) {
@@ -254,6 +246,7 @@ export class ArticleInstance implements ArticleBlock {
     pendingChange: PendingAction[] = []
     article: ArticleInstance
     saveTimeoutRef: NodeJS.Timeout | null = null
+    inputBlock: BlockBase
 
     // For connection loss and change batching
     // pendingChange: ActionBatch = loadUncomittedChange()
@@ -268,11 +261,12 @@ export class ArticleInstance implements ArticleBlock {
         this.def = article
         this.children = this.def.blocks.map(child => newBlock(this, child, this))
         this.article = this
+        this.inputBlock = newBlock(this, { kind: "input", data: { text: "" } }, this)
 
         // Extra block used for direct insertion
         //  This COULD be not correct because this block does not exist on the DB
         //  but as soon as something is written to it it should be inserted
-        this.children.push(newBlock(this, { kind: "text", data: { text: "" } }, this))
+        // this.children.push()
 
         // if pendingChange exist reapply them
     }
@@ -429,6 +423,18 @@ export class ArticleInstance implements ArticleBlock {
                 child.sequence = i + 1;
             }
         }
+
+        let previous = -10000000;
+
+        for (let i = 0; i < siblings.length; i++) {
+            const child = siblings[i];
+            console.log(child.sequence)
+
+            if (child.sequence < previous) {
+                console.log("BAD LOGIC")
+            }
+            previous = child.sequence
+        }
     }
 
 
@@ -446,15 +452,15 @@ export class ArticleInstance implements ArticleBlock {
     //  3. Update batch is sent to server
     //  4. Server replies with new id for the inserted blocks
     //
-    getBlockInserter(parent: ArticleBlock, target: BlockBase, direction: "after" | "before", newChildren: BlockDef[]) {
+    getBlockInserter(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
         if (!Array.isArray(parent.def["children"])) {
             parent.def["children"] = [];
         }
 
         const siblings = parent.getDefinitionChildren();
 
-        let start: number;
-        let end: number;
+        let start: number = 0;
+        let end: number = newChildren.length;
         let insertIndex: number;
 
         if (siblings.length !== parent.children.length) {
@@ -462,15 +468,19 @@ export class ArticleInstance implements ArticleBlock {
             console.log("ERROR children size mismatch", parent)
         }
 
-        if (target === NONE_VALUE) {
-            start = 0
+        if (target === null) {
+            start = -1
             end = newChildren.length
             insertIndex = 0
-
-        } else {
-            const targetIndex = parent.children.indexOf(target);
+        } 
+        else if (target.kind === "input") {
+            insertIndex = parent.def.children.length - 1
+            start = parent.def.children[insertIndex].sequence
+            end = start + newChildren.length
+        } 
+        else {
+            let targetIndex = parent.children.indexOf(target);
             if (targetIndex === -1) {
-                console.log(parent, target)
                 throw new Error("Target block not found in parent");
             }
 
@@ -479,10 +489,11 @@ export class ArticleInstance implements ArticleBlock {
             if (direction === "after") {
                 insertIndex = targetIndex + 1;
             
-                if (targetIndex === siblings.length - 1) {
+                if (targetIndex + 1 === siblings.length) {
                     start = target.def.sequence;
                     end = start + newChildren.length + 1;
-                } else {
+                } 
+                else {
                     start = target.def.sequence;
                     end = siblings[targetIndex + 1].sequence;
                 }
@@ -499,15 +510,14 @@ export class ArticleInstance implements ArticleBlock {
             }
         }
         
-        const step = (end - start) / (newChildren.length + 1);
+        const step = (end - start) / (newChildren.length + 1)
     
-        newChildren.forEach((child, i) => {
-            child.sequence = start + (i + 1) * step;
-        });
-        
-        
+        for(let i = 0; i < newChildren.length; i++) {
+            newChildren[i].sequence = start + (i + 1) * step
+        }
+
         const insert = () => {
-            siblings.splice(insertIndex, 0, ...newChildren);
+            parent.getDefinitionChildren().splice(insertIndex, 0, ...newChildren);
         }
 
         const fetch = (array: ArticleBlock[]) => {
@@ -523,11 +533,11 @@ export class ArticleInstance implements ArticleBlock {
         return [insert, fetch, remove]
     } 
 
-    insertBlock(parent: ArticleBlock, target: BlockBase, direction: "after" | "before", newChildren: BlockDef[]) {
+    insertBlock(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
         if (newChildren === undefined) {
             return
         }
-    
+
         const oldDef = parent.def
         let futureAction: PendingAction = {
             action: undefined,
@@ -542,9 +552,20 @@ export class ArticleInstance implements ArticleBlock {
         const doAction = () => {
             // Fix the sequence so the blocks are in the right order
             // and insert the new children to the definition
+            const oldCount = parent.children.length
+            const oldCountDef = parent.def["children"]
             insertFn()
+
+            const newCount = parent.children.length
+            const newCountDef = parent.def["children"]
+
+            console.log(newChildren)
+            console.log(oldCount, newCount)
+            console.log(oldCountDef, newCountDef)
         
-            parent.children = parent.def["children"].map(child => newBlock(this, child, parent))
+            parent.children = parent.getDefinitionChildren().map(child => newBlock(this, child, parent))
+            console.log(parent.children.length)
+            console.log(parent)
             
             // Fetch the inserted blocks so we can populate the ID frm the database
             // const startCount = insertIndex + 1
@@ -584,6 +605,7 @@ export class ArticleInstance implements ArticleBlock {
         futureAction.doAction = doAction
         futureAction.undoAction = undoAction
 
+        console.log("Action was generated")
         this.pushAction(futureAction)
     }
 
@@ -684,7 +706,10 @@ const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     const [, setTick] = useState(0);
 
     useEffect(() => {
-        const rerender = () => setTick(t => t + 1);
+        const rerender = () => {
+            console.log("Re render", article.children)
+            setTick(t => t + 1);
+        }
         article.listeners.add(rerender);
         return () => {
             article.listeners.delete(rerender);
@@ -696,12 +721,11 @@ const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
         };
     }, [article]);
 
-    console.log("RENDERING", article.children.length);
-
     return (
         <Box flex="1">
             {article.def.title}
             {renderSortedBySequence(article.children)}
+            {article.inputBlock.react()}
         </Box>
     );
 };

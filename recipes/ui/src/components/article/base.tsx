@@ -99,7 +99,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
   const updateBlock = (parsedDef) => {
     block.article.updateBlock(block, parsedDef)
-    
+
     setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
   }
 
@@ -139,19 +139,24 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       // Here we parsed some markdown
       //  the markdown includes the current block that may or may not have been modified
       //  and new blocks added afterwards
-      //
-      const firstBlock = parsed.children[0]
-      const blocksToInsert = parsed.children.slice(1).filter(child => child.kind !== "separator")
+      let blocksToInsert = parsed.children.filter(child => child.kind !== "separator")
+      let insertAfterBlock = null
 
-      updateBlock(firstBlock)
-      setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
-      
+      if (block.def.kind !== "input"){
+        blocksToInsert = parsed.children.slice(1).filter(child => child.kind !== "separator")
+        const firstBlock = parsed.children[0]
+        insertAfterBlock = block
+        updateBlock(firstBlock)
+        setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
+      }
+        
       // It needs to insert the children as well
-      block.article.insertBlock(block.getParent(), block, blocksToInsert)
+      console.log("INSERT", insertAfterBlock, blocksToInsert)
+      block.article.insertBlock(block.getParent(), insertAfterBlock, "after", blocksToInsert)
       return
     } else {
       // This should be before not after
-      block.article.insertBlock(block.getParent(), block, [parsed])
+      block.article.insertBlock(block.getParent(), block, "after", [parsed])
       console.log("Update missed")
     }
   }
@@ -316,7 +321,7 @@ export abstract class ArticleBlock {
 
   abstract notify(): void
 
-  abstract getDefinitionChildren(): void
+  abstract getDefinitionChildren(): ArticleDef[]
 }
 
 export abstract class BlockBase implements ArticleBlock {
@@ -336,7 +341,7 @@ export abstract class BlockBase implements ArticleBlock {
     );
   }
 
-  getDefinitionChildren() {
+  getDefinitionChildren(): ArticleDef[] {
       return this.def.children;
   }
 
