@@ -35,6 +35,7 @@ export interface ArticleDef {
   parent_id?: number;
   title: string;
   namespace: string;
+  sequence: number;
   tags: any;
   extension: any;
   blocks: Array<BlockDef>;
@@ -98,6 +99,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
   const updateBlock = (parsedDef) => {
     block.article.updateBlock(block, parsedDef)
+    
     setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
   }
 
@@ -313,6 +315,8 @@ export abstract class ArticleBlock {
   article: any
 
   abstract notify(): void
+
+  abstract getDefinitionChildren(): void
 }
 
 export abstract class BlockBase implements ArticleBlock {
@@ -330,6 +334,10 @@ export abstract class BlockBase implements ArticleBlock {
       (this as typeof BlockBase).kind,
       this as unknown as BlockCtor
     );
+  }
+
+  getDefinitionChildren() {
+      return this.def.children;
   }
 
   public getSequence() {

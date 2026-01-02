@@ -311,6 +311,7 @@ export interface ArticleBlock {
     kind?: string; // Type of block (text, image, code, layout, heading, paragraph, etc.)
     data?: any; // JSON content of the block
     extension?: any; // Additional metadata
+    sequence?: number
     children?: ArticleBlock[]; // Nested child blocks
 }
 

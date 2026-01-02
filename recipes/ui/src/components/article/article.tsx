@@ -68,8 +68,6 @@ import "./blocks/datastructure"
 import "./blocks/trace"
 import "./blocks/ast"
 import "./blocks/bnf"
-import { math } from 'blockly/blocks';
-
 
 function loadUncomittedChange(): ActionBatch {
     //return new Array<BlockUpdate>()
@@ -123,10 +121,10 @@ function blockUpdateReconciliation(article: ArticleInstance, queuedActions: Pend
         let action = queuedActions[i].action
         let result = updateResult[i]
 
-        console.log("--- RECONCILE")
-        console.log(action)
-        console.log(result)
-        console.log(queuedActions[i].blocks)
+        // console.log("--- RECONCILE")
+        // console.log(action)
+        // console.log(result)
+        // console.log(queuedActions[i].blocks)
 
         if (action["op"] !== result["action"]) {
             console.log("ERROR: Action mismatch")
@@ -150,6 +148,9 @@ function blockUpdateReconciliation(article: ArticleInstance, queuedActions: Pend
         }
     }
 }
+
+
+const NONE_VALUE = -1
 
 
 function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, newer: BlockDef, depth: number = 0) {
@@ -207,7 +208,7 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
 
             // INSERT MISSING children
             if (nChildrenCount >= oChildrenCount) {
-                article.insertBlock(original, sharedCount, newer.children.slice(sharedCount))
+                article.insertBlock(original, original.children[oChildrenCount - 1], 'after', newer.children.slice(sharedCount))
             }
 
             // DELETE extra children
@@ -227,7 +228,7 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
     }
     // INSERT: Original DOes NOT have children but the node has children
     else if (nChildrenCount > 0) {
-        article.insertBlock(original, 1, newer.children)
+        article.insertBlock(original, NONE_VALUE, 'after', newer.children)
     }
 
     if (wasModified) {
@@ -419,10 +420,114 @@ export class ArticleInstance implements ArticleBlock {
         })
     }
 
-    insertBlock(parent: ArticleBlock, target: BlockBase | number, newChildren: BlockDef[]) {
-        const insertIndex = typeof target === "number" ?
-            target : parent.children.indexOf(target);
 
+    _fillMissingSequence(siblings: ArticleDef[]) {
+        for (let i = 0; i < siblings.length; i++) {
+            const child = siblings[i];
+            if (typeof child.sequence !== "number") {
+                // If no sequence, use current index + 1
+                child.sequence = i + 1;
+            }
+        }
+    }
+
+
+    getDefinitionChildren() {
+        return this.def.blocks;
+    }
+
+    //
+    // Set sequence ID so the order is correct when the article is fetched back 
+    // It return an array operation (function) to be applied to the children array of the parent
+    // to insert the new chilren in the right place
+    //
+    //  1. Sequence is set so database has the right order
+    //  2. New block are inserted into the parent in the right order
+    //  3. Update batch is sent to server
+    //  4. Server replies with new id for the inserted blocks
+    //
+    getBlockInserter(parent: ArticleBlock, target: BlockBase, direction: "after" | "before", newChildren: BlockDef[]) {
+        if (!Array.isArray(parent.def["children"])) {
+            parent.def["children"] = [];
+        }
+
+        const siblings = parent.getDefinitionChildren();
+
+        let start: number;
+        let end: number;
+        let insertIndex: number;
+
+        if (siblings.length !== parent.children.length) {
+            console.log("ERROR children size mismatch", siblings.length, parent.children.length)
+            console.log("ERROR children size mismatch", parent)
+        }
+
+        if (target === NONE_VALUE) {
+            start = 0
+            end = newChildren.length
+            insertIndex = 0
+
+        } else {
+            const targetIndex = parent.children.indexOf(target);
+            if (targetIndex === -1) {
+                console.log(parent, target)
+                throw new Error("Target block not found in parent");
+            }
+
+            this._fillMissingSequence(siblings)
+        
+            if (direction === "after") {
+                insertIndex = targetIndex + 1;
+            
+                if (targetIndex === siblings.length - 1) {
+                    start = target.def.sequence;
+                    end = start + newChildren.length + 1;
+                } else {
+                    start = target.def.sequence;
+                    end = siblings[targetIndex + 1].sequence;
+                }
+            } else {
+                insertIndex = targetIndex;
+            
+                if (targetIndex === 0) {
+                    end = target.def.sequence;
+                    start = end - (newChildren.length + 1);
+                } else {
+                    start = siblings[targetIndex - 1].sequence;
+                    end = target.def.sequence;
+                }
+            }
+        }
+        
+        const step = (end - start) / (newChildren.length + 1);
+    
+        newChildren.forEach((child, i) => {
+            child.sequence = start + (i + 1) * step;
+        });
+        
+        
+        const insert = () => {
+            siblings.splice(insertIndex, 0, ...newChildren);
+        }
+
+        const fetch = (array: ArticleBlock[]) => {
+            const blocksSlice = array.slice(insertIndex, insertIndex + newChildren.length);
+            return blocksSlice;
+        };
+
+        const remove = (array: ArticleBlock[]) => {
+            const blocksSlice = array.splice(insertIndex, newChildren.length);
+            return blocksSlice;
+        };
+
+        return [insert, fetch, remove]
+    } 
+
+    insertBlock(parent: ArticleBlock, target: BlockBase, direction: "after" | "before", newChildren: BlockDef[]) {
+        if (newChildren === undefined) {
+            return
+        }
+    
         const oldDef = parent.def
         let futureAction: PendingAction = {
             action: undefined,
@@ -431,24 +536,19 @@ export class ArticleInstance implements ArticleBlock {
             blocks: []
         }
 
+        let [insertFn, fetchFn, removeFn] = this.getBlockInserter(parent, target, direction, newChildren)
+
         // How to execute the action on the current view
         const doAction = () => {
-            if (insertIndex === -1) {
-                throw new Error(`Target block not found in ${self}`);
-            }
-
-            if (parent.def["children"]) {
-                parent.def["children"].splice(insertIndex + 1, 0, ...newChildren)
-            } else {
-                parent.def["children"] = newChildren
-                
-            }
-            
+            // Fix the sequence so the blocks are in the right order
+            // and insert the new children to the definition
+            insertFn()
+        
             parent.children = parent.def["children"].map(child => newBlock(this, child, parent))
             
             // Fetch the inserted blocks so we can populate the ID frm the database
             // const startCount = insertIndex + 1
-            futureAction.blocks = parent.children.slice(-newChildren.length)
+            futureAction.blocks = fetchFn(parent.children) 
             // console.log(futureAction.blocks)
             // console.log(startCount, startCount + newChildren.length)
             // console.log(parent.children.length)
@@ -457,14 +557,8 @@ export class ArticleInstance implements ArticleBlock {
 
         // How to revert the action on the current view
         const undoAction = () => {
-            if (insertIndex === -1) {
-                return;
-            }
             parent.def = oldDef
-            parent.children.splice(
-                insertIndex + 1,
-                newChildren.length
-            );
+            removeFn(parent.children);
             parent.notify()
         }
 

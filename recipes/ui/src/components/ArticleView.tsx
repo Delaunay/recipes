@@ -59,10 +59,11 @@ const ArticleView: React.FC = () => {
 
     // Convert ArticleBlock[] to BlockDef[]
     const convertBlocks = (blocks: ArticleBlock[]): BlockDef[] => {
-        return blocks.map(block => ({
+        return blocks.map((block, i) => ({
             id: block.id || 0,
             page_id: block.page_id || 0,
             parent_id: block.parent_id,
+            sequence: block.sequence || i,
             kind: block.kind || 'text',
             data: block.data || {},
             extension: block.extension || {},
