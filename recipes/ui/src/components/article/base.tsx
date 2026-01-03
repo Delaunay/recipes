@@ -59,7 +59,7 @@ class BlockRegistry {
   }
 }
 
-export function newBlock(owner: ArticleInstance, def: BlockDef, parent? : ArticleBlock): BlockBase {
+export function newBlock(owner: ArticleInstance, def: BlockDef, parent?: ArticleBlock): BlockBase {
   return BlockRegistry.create(owner, def, parent);
 }
 
@@ -109,7 +109,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
   const updateBlocks = (e: React.FocusEvent<HTMLTextAreaElement>) => {
     const parsed = parseMarkdown(e.target.value);
-    
+
     console.log("parsed", parsed)
     console.log("before", block)
 
@@ -142,14 +142,14 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       let blocksToInsert = parsed.children.filter(child => child.kind !== "separator")
       let insertAfterBlock = null
 
-      if (block.def.kind !== "input"){
+      if (block.def.kind !== "input") {
         blocksToInsert = parsed.children.slice(1).filter(child => child.kind !== "separator")
         const firstBlock = parsed.children[0]
         insertAfterBlock = block
         updateBlock(firstBlock)
         setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
       }
-        
+
       // It needs to insert the children as well
       console.log("INSERT", insertAfterBlock, blocksToInsert)
       block.article.insertBlock(block.getParent(), insertAfterBlock, "after", blocksToInsert)
@@ -178,7 +178,7 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   //
   // This is the core wrapper
   // Every block gets wrapped with this component
-  //  This allows for unified logic for 
+  //  This allows for unified logic for
   //    Settings
   //    Drag and drop
   //    Delete
@@ -192,7 +192,8 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
 
   return (
     <Box
-      key={`bx-${block.key}`} 
+      key={`bx-${block.key}`}
+      data-block-id={block.def.id}
       padding="5px"
       className="TOP_LEVEL_BLOCK"
       display="flex" flexDirection="column" flex="1" minH={0}
@@ -201,7 +202,7 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
       onClick={(e) => {
         e.stopPropagation()
         setFocused(true)
-      }} 
+      }}
       onBlur={() => setFocused(false)}
       tabIndex={0} // makes div focusable
       position="relative"
@@ -225,64 +226,64 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
       {block.has_settings() && (
         <Dialog.Root size="cover" placement="center" motionPreset="slide-in-bottom">
           <Dialog.Trigger asChild>
-              <IconButton
-                position="absolute"
-                insetBlockStart="4px"
-                insetInlineEnd="4px"
-                size="xs"
-                variant="ghost"
-                aria-label="Configure block"
-                opacity={hovered ? 1 : 0}
-                transition="opacity 0.15s ease"
-                zIndex="1000"
-              >
-                <Settings size={14} />
-              </IconButton>
-            </Dialog.Trigger>
-            <Portal>
-              <Dialog.Backdrop />
-              <Dialog.Positioner>
-                <Dialog.Content>
-                  <Dialog.Header>
-                    <Dialog.Title>Dialog Title</Dialog.Title>
-                  </Dialog.Header>
-                  <Dialog.Body margin="10px">
-                    {block.settingWithPreview()}
-                  </Dialog.Body>
-                  {/* <Dialog.Footer>
+            <IconButton
+              position="absolute"
+              insetBlockStart="4px"
+              insetInlineEnd="4px"
+              size="xs"
+              variant="ghost"
+              aria-label="Configure block"
+              opacity={hovered ? 1 : 0}
+              transition="opacity 0.15s ease"
+              zIndex="1000"
+            >
+              <Settings size={14} />
+            </IconButton>
+          </Dialog.Trigger>
+          <Portal>
+            <Dialog.Backdrop />
+            <Dialog.Positioner>
+              <Dialog.Content>
+                <Dialog.Header>
+                  <Dialog.Title>Dialog Title</Dialog.Title>
+                </Dialog.Header>
+                <Dialog.Body margin="10px">
+                  {block.settingWithPreview()}
+                </Dialog.Body>
+                {/* <Dialog.Footer>
                     <Dialog.ActionTrigger asChild>
                       <Button variant="outline">Cancel</Button>
                     </Dialog.ActionTrigger>
                     <Button>Save</Button>
                   </Dialog.Footer> */}
-                  <Dialog.CloseTrigger asChild>
-                    <CloseButton size="sm" />
-                  </Dialog.CloseTrigger>
-                </Dialog.Content>
-              </Dialog.Positioner>
-            </Portal>
-          </Dialog.Root>
+                <Dialog.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
+              </Dialog.Content>
+            </Dialog.Positioner>
+          </Portal>
+        </Dialog.Root>
       )}
 
-        {/* Delete button (bottom-right) */}
-        <IconButton
-          position="absolute"
-          bottom="4px"
-          right="4px"
-          size="xs"
-          variant="ghost"
-          aria-label="Delete block"
-          opacity={hovered ? 1 : 0}
-          transition="opacity 0.15s ease"
-          zIndex="1000"
-          onClick={() => {
-            block.article.deleteBlock(block)
-          }}
-        >
-          <Trash size={14} />
-        </IconButton>
+      {/* Delete button (bottom-right) */}
+      <IconButton
+        position="absolute"
+        bottom="4px"
+        right="4px"
+        size="xs"
+        variant="ghost"
+        aria-label="Delete block"
+        opacity={hovered ? 1 : 0}
+        transition="opacity 0.15s ease"
+        zIndex="1000"
+        onClick={() => {
+          block.article.deleteBlock(block)
+        }}
+      >
+        <Trash size={14} />
+      </IconButton>
 
-      {is_md_ok && mode === "edit" ? 
+      {is_md_ok && mode === "edit" ?
         <MarkdownEditor key={`md-${block.key}`} block={block}></MarkdownEditor> : block.component(mode)}
     </Box>
   );
@@ -342,7 +343,7 @@ export abstract class BlockBase implements ArticleBlock {
   }
 
   getDefinitionChildren(): ArticleDef[] {
-      return this.def.children;
+    return this.def.children;
   }
 
   public getSequence() {
@@ -366,13 +367,13 @@ export abstract class BlockBase implements ArticleBlock {
   }
 
   getParentId(): null | number {
-      if (this.parent === this.article) {
-        return null;
-      }
-      return this.parent.def.id
+    if (this.parent === this.article) {
+      return null;
+    }
+    return this.parent.def.id
   }
 
-  public getChildren(): ArticleBlock[]  {
+  public getChildren(): ArticleBlock[] {
     return this.children;
   }
 
@@ -409,7 +410,7 @@ export abstract class BlockBase implements ArticleBlock {
     return <BlockWrapper key={`ev-${this.key}`} block={this}></BlockWrapper>
   }
 
-  settingWithPreview(): React.ReactNode { 
+  settingWithPreview(): React.ReactNode {
     return <Grid templateColumns="1fr 1fr" gap="6" w="100%" h="100%">
       <Box minW="0">
         <Heading>Preview</Heading>
@@ -426,10 +427,10 @@ export abstract class BlockBase implements ArticleBlock {
   }
 
   settingForm(): React.ReactNode {
-    return <AutoBlockSettingsForm 
-      schema={this.settings()} 
-      values={this.def.data} 
-      onSubmit={(data) => this.def.data=data}/>
+    return <AutoBlockSettingsForm
+      schema={this.settings()}
+      values={this.def.data}
+      onSubmit={(data) => this.def.data = data} />
   }
 
   settings(): BlockSetting {
@@ -437,7 +438,7 @@ export abstract class BlockBase implements ArticleBlock {
   }
 
   has_settings(): boolean {
-    // If the block is not md representable then for sure it will have a way to 
+    // If the block is not md representable then for sure it will have a way to
     // configure it
     return !this.is_md_representable();
   }
@@ -448,7 +449,7 @@ export abstract class BlockBase implements ArticleBlock {
 
   as_markdown(ctx: MarkdownGeneratorContext): string {
     return ``
-  } 
+  }
 
   is_definition_same(other: BlockDef): boolean {
     console.log("CMP", this.def, other)
@@ -456,7 +457,7 @@ export abstract class BlockBase implements ArticleBlock {
     if (this.kind != other.kind) {
       return false
     }
-    
+
     return this.def == other
   }
 }
