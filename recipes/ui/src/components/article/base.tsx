@@ -358,7 +358,7 @@ export abstract class BlockBase implements ArticleBlock {
     this.version = 0
 
     if (this.def.sequence === undefined) {
-      console.log("UNDEFINED SEQUENCE", this)
+      // console.log("UNDEFINED SEQUENCE", this)
     }
   }
 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
-import { Box, Text, Textarea } from '@chakra-ui/react';
+import { Box, Textarea, Text } from '@chakra-ui/react';
+import 'katex/dist/katex.min.css';
 
 export interface LatexData {
     formula: string;
@@ -19,17 +20,7 @@ export class LatexBlock extends BlockBase {
     }
 
     component(mode: string): React.ReactNode {
-        if (mode === "edit") {
-            return <LatexEditor block={this} />;
-        }
-        // For now, just display the formula as text. In production, you'd use KaTeX or MathJax
-        return (
-            <Box p={4} bg="gray.50" borderRadius="md" textAlign="center">
-                <Text fontFamily="mono" fontSize="lg">
-                    {this.def.data.formula}
-                </Text>
-            </Box>
-        );
+        return <LatexViewer formula={this.def.data.formula} />;
     }
 
     is_md_representable(): boolean {
@@ -41,22 +32,55 @@ export class LatexBlock extends BlockBase {
     }
 }
 
-function LatexEditor({ block }: { block: LatexBlock }) {
-    const [formula, setFormula] = useState(block.def.data.formula || "");
 
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setFormula(e.target.value);
-        block.def.data.formula = e.target.value;
-        block.version += 1;
-    };
+function LatexViewer({ formula }: { formula: string }) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const renderFormula = async () => {
+            if (!containerRef.current || !formula) return;
+
+            // Clear previous content
+            containerRef.current.innerHTML = '';
+            setError(null);
+
+            try {
+                // Dynamically import KaTeX JS
+                const katex = await import('katex');
+
+                if (mounted && containerRef.current) {
+                    katex.default.render(formula, containerRef.current, {
+                        displayMode: true,
+                        throwOnError: false,
+                        errorColor: '#cc0000',
+                        strict: false
+                    });
+                }
+            } catch (err: any) {
+                if (mounted) {
+                    setError(err.message || "Failed to render formula");
+                }
+            }
+        };
+
+        renderFormula();
+
+        return () => {
+            mounted = false;
+        };
+    }, [formula]);
 
     return (
-        <Textarea
-            value={formula}
-            onChange={handleChange}
-            placeholder="Enter LaTeX formula (e.g., E = mc^2)"
-            fontFamily="mono"
-            rows={3}
-        />
+        <Box p={4} borderRadius="md" textAlign="center" overflowX="auto">
+            <div ref={containerRef} />
+            {error && (
+                <Text fontSize="sm" color="red.500" mt={2}>
+                    {error}
+                </Text>
+            )}
+        </Box>
     );
 }

@@ -84,7 +84,7 @@ function savePendingChange(batch: ActionBatch) {
 function _reconcileChildrenInsert(article: ArticleInstance, action: ActionInsertBlock, result: ActionInsertBlockReply, blocks: ArticleBlock[], depth: number = 0) {
     const nChildrenAction = action["children"].length
     const nChildrenResult = result["children"].length
-    const nChilrenBlock   = blocks.length
+    const nChilrenBlock = blocks.length
 
     if (nChildrenAction !== nChildrenResult && nChildrenAction !== nChilrenBlock) {
         console.log("ERROR MISSING CHILDREN", nChildrenAction, nChildrenResult, nChilrenBlock)
@@ -92,10 +92,10 @@ function _reconcileChildrenInsert(article: ArticleInstance, action: ActionInsert
 
     const count = Math.min(nChildrenAction, nChildrenResult, nChilrenBlock)
 
-    for(let j = 0; j < count; j++) {
+    for (let j = 0; j < count; j++) {
         let actionChild = action["children"][j]
         let updateChild = result["children"][j]
-        let block      = blocks[j]
+        let block = blocks[j]
 
         // Set the database id here
         block.def.id = updateChild["id"]
@@ -115,8 +115,8 @@ function blockUpdateReconciliation(article: ArticleInstance, queuedActions: Pend
     }
 
     const count = Math.min(nUpdate, nResults)
-    
-    for(let i = 0; i < count; i++) {
+
+    for (let i = 0; i < count; i++) {
         let action = queuedActions[i].action
         let result = updateResult[i]
 
@@ -156,7 +156,7 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
     ]);
 
     const skipKeys = new Set([
-        "id", "page_id", "parent", "children", "parent_id", 
+        "id", "page_id", "parent", "children", "parent_id",
         "sequence"
     ])
 
@@ -263,7 +263,7 @@ export class ArticleInstance implements ArticleBlock {
         this.def = article
         this.children = this.def.blocks.map(child => newBlock(this, child, this))
         this.article = this
-        this.inputBlock = newBlock(this, { kind: "input", data: { text: "" }, sequence: this.children.length}, this)
+        this.inputBlock = newBlock(this, { kind: "input", data: { text: "" }, sequence: this.children.length }, this)
 
         // Extra block used for direct insertion
         //  This COULD be not correct because this block does not exist on the DB
@@ -465,12 +465,12 @@ export class ArticleInstance implements ArticleBlock {
             start = -1
             end = newChildren.length
             insertIndex = 0
-        } 
+        }
         else if (target.kind === "input") {
             insertIndex = parent.def.children.length - 1
             start = parent.def.children[insertIndex].sequence
             end = start + newChildren.length + 1
-        } 
+        }
         else {
             let targetIndex = parent.children.indexOf(target);
             if (targetIndex === -1) {
@@ -479,18 +479,18 @@ export class ArticleInstance implements ArticleBlock {
 
             if (direction === "after") {
                 insertIndex = targetIndex + 1;
-            
+
                 if (targetIndex + 1 === siblings.length) {
                     start = target.def.sequence;
                     end = start + newChildren.length + 1;
-                } 
+                }
                 else {
                     start = target.def.sequence;
                     end = siblings[targetIndex + 1].sequence;
                 }
             } else {
                 insertIndex = targetIndex;
-            
+
                 if (targetIndex === 0) {
                     end = target.def.sequence;
                     start = end - (newChildren.length + 1);
@@ -500,7 +500,7 @@ export class ArticleInstance implements ArticleBlock {
                 }
             }
         }
-        
+
         if (start === end) {
             console.log("Logic Error")
             if (direction === "after") {
@@ -517,7 +517,7 @@ export class ArticleInstance implements ArticleBlock {
 
     static fixSequenceRecursively(obj: BlockDef) {
         if (obj.children) {
-            for(let i = 0; i < obj.children.length; i++) {
+            for (let i = 0; i < obj.children.length; i++) {
                 obj.children[i].sequence = i
                 ArticleInstance.fixSequenceRecursively(obj.children[i]);
             }
@@ -525,7 +525,7 @@ export class ArticleInstance implements ArticleBlock {
     }
 
     //
-    // Set sequence ID so the order is correct when the article is fetched back 
+    // Set sequence ID so the order is correct when the article is fetched back
     // It return an array operation (function) to be applied to the children array of the parent
     // to insert the new chilren in the right place
     //
@@ -541,8 +541,8 @@ export class ArticleInstance implements ArticleBlock {
         console.log("Sequence STEP", insertIndex, start, end)
 
         const step = (end - start) / (newChildren.length + 1)
-    
-        for(let i = 0; i < newChildren.length; i++) {
+
+        for (let i = 0; i < newChildren.length; i++) {
             newChildren[i].sequence = start + (i + 1) * step
             ArticleInstance.fixSequenceRecursively(newChildren[i])
         }
@@ -562,7 +562,7 @@ export class ArticleInstance implements ArticleBlock {
         };
 
         return [insert, fetch, remove]
-    } 
+    }
 
     insertBlock(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
         if (newChildren === undefined || newChildren.length <= 0) {
@@ -595,14 +595,14 @@ export class ArticleInstance implements ArticleBlock {
             console.log(newChildren)
             console.log(oldCount, newCount)
             console.log(oldCountDef, newCountDef)
-        
+
             parent.children = parent.getDefinitionChildren().map(child => newBlock(this, child, parent))
             console.log(parent.children.length)
             console.log(parent)
-            
+
             // Fetch the inserted blocks so we can populate the ID frm the database
             // const startCount = insertIndex + 1
-            futureAction.blocks = fetchFn(parent.children) 
+            futureAction.blocks = fetchFn(parent.children)
             // console.log(futureAction.blocks)
             // console.log(startCount, startCount + newChildren.length)
             // console.log(parent.children.length)
@@ -671,9 +671,9 @@ export class ArticleInstance implements ArticleBlock {
 
             // Make request to the server
             const updateResult = await recipeAPI.updateBlocksBatch(actions);
-            
+
             blockUpdateReconciliation(this, queuedChange, updateResult)
-        
+
             // On success, clear the pending changes
             // this.changeHistory["actions"].push(...this.pendingChange);
             this.saveUncomittedChange();
@@ -704,6 +704,8 @@ interface ArticleProps {
 }
 
 
+import { VegaProvider } from '../../contexts/VegaContext';
+
 const Article: React.FC<ArticleProps> = ({ article }) => {
     const instanceRef = useRef<ArticleInstance | null>(null);
 
@@ -711,7 +713,11 @@ const Article: React.FC<ArticleProps> = ({ article }) => {
         instanceRef.current = new ArticleInstance(article);
     }
 
-    return <ArticleView article={instanceRef.current} />;
+    return (
+        <VegaProvider>
+            <ArticleView article={instanceRef.current} />
+        </VegaProvider>
+    );
 }
 
 export default Article;
