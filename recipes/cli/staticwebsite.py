@@ -1,15 +1,19 @@
 import logging
 import sys
 import inspect
+import json
+import itertools
 from pathlib import Path
 from dataclasses import dataclass
 from typing import get_type_hints, Dict, Any, Optional
 from flask import url_for
+from urllib.parse import urljoin
+
+from sqlalchemy.sql import Select
+from sqlalchemy.orm import Session
 
 from argklass.arguments import add_arguments
 from argklass.command import Command, newparser
-
-from recipes.server.server import annotation_registry
 
 
 @dataclass
@@ -18,26 +22,6 @@ class Arguments:
     file: str = None
     fail_on_error: bool = False
     col: int = 24
-
-
-
-def resolve_annotation(handler):
-    registry = annotation_registry()
-
-    def maybe_eval(name):
-        try:
-            return get_type_hints(name, globalns=registry)
-        except Exception as err:
-            print(err)
-            return None
-
-    annotations = {}
-
-    for k, name in handler.__annotations__.items():
-        if name in registry:
-            annotations[k] = registry[name]
-
-    return annotations
 
 
 def default_output_dir():
@@ -55,8 +39,8 @@ class StaticWebsite(Command):
         parser = newparser(subparsers, StaticWebsite)
         add_arguments(parser, Arguments)
 
-    def __init__(self, output_dir):
-        self.output_dir = output_dir
+    def __init__(self, output_dir=None):
+        self.output_dir = output_dir or default_output_dir()
         self.server_process = None
         self.server_url = "http://127.0.0.1:5001"
         self.api_base = f"{self.server_url}"
@@ -67,51 +51,95 @@ class StaticWebsite(Command):
         return self.run(args)
 
     def run(self, args):
-        from recipes.server.server import RecipeApp, annotation_registry
-        from typing import get_type_hints
-        app = RecipeApp().app
+        from recipes.server.server import RecipeApp
 
-        for rule in app.url_map.iter_rules():
-            if "GET" in rule.methods:
-                handler = app.view_functions[rule.endpoint]
-                annotations = resolve_annotation(handler)
-                self.save_route_data(rule, annotations)
-    
+        # Initialize app
+        recipe_app = RecipeApp()
+        self.app = recipe_app.app
+        self.db = recipe_app.db
+        self.client = self.app.test_client()
+
+        # Need app context for url_for and database access
+        with self.app.app_context():
+            for rule in self.app.url_map.iter_rules():
+                if "GET" not in rule.methods:
+                    continue
+
+                endpoint = rule.endpoint
+                if endpoint == 'static':
+                    continue
+
+                view_func = self.app.view_functions.get(endpoint)
+                if not view_func:
+                    continue
+
+                # Check for @expose decorator params
+                if hasattr(view_func, '_static_kwargs') or hasattr(view_func, '_static_args'):
+                    static_args = getattr(view_func, '_static_args', ())
+                    static_kwargs = getattr(view_func, '_static_kwargs', {})
+                    self.save_route_data(rule, static_args, static_kwargs)
+
         return 0
 
-    def start_server(self):
-        pass
+    def save_route_data(self, rule, static_args, static_kwargs):
+        """
+        Generate all route combinations and save the data.
+        """
+        logging.info(f"Processing rule: {rule}")
 
-    def stop_server(self):
-        pass
+        combinations = []
 
-    def save_route_data(self, rule, annotations):
-        # Using annotations generate all the possible routes
-        # 
-        return
+        # 1. Process kwargs (Cartesian product)
+        if static_kwargs:
+            resolved_params = {}
+            for param_name, generator in static_kwargs.items():
+                if isinstance(generator, Select):
+                     # Execute SQLAlchemy Select query
+                     # Use scalars() to get a list of values from the single column
+                     resolved_params[param_name] = self.db.session.scalars(generator).all()
+                elif callable(generator):
+                    resolved_params[param_name] = generator()
+                else:
+                    resolved_params[param_name] = generator
 
-        # From all the possible input fetch the data
-        url_rule = rule.rule
+            # Generate Cartesian product
+            param_names = resolved_params.keys()
+            param_values = resolved_params.values()
+            for combination in itertools.product(*param_values):
+                combinations.append(dict(zip(param_names, combination)))
 
-        for args in inputs:
-            url = url_for(rule.endpoint, **args)
+        # 2. Process args (Direct rows)
+        if static_args:
+            for query in static_args:
+                if isinstance(query, Select):
+                    # Execute SQLAlchemy Select query
+                    # Use execute() to get rows map to dicts
+                    rows = self.db.session.execute(query).all()
+                    for row in rows:
+                        # row._mapping converts the row to a dictionary-like object (key-value)
+                        # We convert it to a true dict
+                        combinations.append(dict(row._mapping))
 
-            data = self.fetch_json(url)
-            if data:
-                self.save_json_file(url, data)
-        
-        print()
+        # 3. Fetch and save
+        for kwargs in combinations:
+            try:
+                # Build URL for this combination
+                relative_url = url_for(rule.endpoint, **kwargs)
 
-    def fetch_json(self, endpoint: str) -> Optional[Dict[str, Any]]:
-        """Fetch JSON data from an API endpoint"""
-        url = urljoin(self.api_base, endpoint)
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to fetch {url}: {e}")
-            return None
+                # Fetch data using test_client
+                response = self.client.get(relative_url)
+
+                if response.status_code == 200:
+                    try:
+                        data = response.get_json()
+                        self.save_json_file(relative_url, data)
+                    except Exception as e:
+                        logging.error(f"Failed to parse JSON for {relative_url}: {e}")
+                else:
+                    logging.warning(f"Failed request to {relative_url}: Status {response.status_code}")
+
+            except Exception as e:
+                logging.error(f"Error processing combination {kwargs} for {rule.endpoint}: {e}")
 
     def save_json_file(self, endpoint: str, data: Any):
         """Save JSON data to a file structure mimicking the API"""
@@ -130,14 +158,4 @@ class StaticWebsite(Command):
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2, default=str)
 
-        logger.info(f"Saved {file_path} for endpoint {endpoint} ({len(str(data))} chars)")
-
-        # Log data type and sample for debugging
-        if isinstance(data, list):
-            logger.info(f"  -> List with {len(data)} items")
-        elif isinstance(data, dict):
-            logger.info(f"  -> Dict with keys: {list(data.keys())}")
-        else:
-            logger.info(f"  -> Data type: {type(data)}")
-
-COMMANDS = StaticWebsite
+        logging.info(f"Saved {file_path} for endpoint {endpoint}")

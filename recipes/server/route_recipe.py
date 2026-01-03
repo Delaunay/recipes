@@ -11,12 +11,14 @@ import traceback
 from PIL import Image
 from flask import Flask, jsonify, request, send_from_directory
 from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy import select
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from ..tools.images import centercrop_resize_image
 from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task, IngredientComposition
+from .decorators import expose
 
 
 def recipes_routes(app, db):
@@ -130,7 +132,8 @@ def recipes_routes(app, db):
             return jsonify({"error": str(e)}), 400
 
     @app.route('/recipes/<int:recipe_id>', methods=['GET'])
-    def get_recipe(recipe_id: recipe_ids) -> Dict[str, Any]:
+    @expose(recipe_id=select(Recipe._id))
+    def get_recipe(recipe_id: int) -> Dict[str, Any]:
         recipe = db.session.get(Recipe, recipe_id)
         if not recipe:
             return jsonify({"error": "Recipe not found"}), 404
