@@ -68,7 +68,7 @@ import "./blocks/datastructure"
 import "./blocks/trace"
 import "./blocks/ast"
 import "./blocks/bnf"
-import { StepBack } from 'lucide-react';
+
 
 function loadUncomittedChange(): ActionBatch {
     //return new Array<BlockUpdate>()
@@ -156,7 +156,8 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
     ]);
 
     const skipKeys = new Set([
-        "id", "page_id", "parent", "children", "parent_id"
+        "id", "page_id", "parent", "children", "parent_id", 
+        "sequence"
     ])
 
     let wasModified = false;
@@ -262,7 +263,7 @@ export class ArticleInstance implements ArticleBlock {
         this.def = article
         this.children = this.def.blocks.map(child => newBlock(this, child, this))
         this.article = this
-        this.inputBlock = newBlock(this, { kind: "input", data: { text: "" } }, this)
+        this.inputBlock = newBlock(this, { kind: "input", data: { text: "" }, sequence: this.children.length}, this)
 
         // Extra block used for direct insertion
         //  This COULD be not correct because this block does not exist on the DB
@@ -439,7 +440,7 @@ export class ArticleInstance implements ArticleBlock {
     }
 
 
-    getDefinitionChildren() {
+    getDefinitionChildren(): BlockDef[] {
         return this.def.blocks;
     }
 
@@ -449,6 +450,7 @@ export class ArticleInstance implements ArticleBlock {
         }
 
         const siblings = parent.getDefinitionChildren();
+        console.log("siblings", siblings)
 
         let start: number = 0;
         let end: number = newChildren.length;
@@ -512,6 +514,16 @@ export class ArticleInstance implements ArticleBlock {
         return [insertIndex, start, end]
     }
 
+
+    static fixSequenceRecursively(obj: BlockDef) {
+        if (obj.children) {
+            for(let i = 0; i < obj.children.length; i++) {
+                obj.children[i].sequence = i
+                ArticleInstance.fixSequenceRecursively(obj.children[i]);
+            }
+        }
+    }
+
     //
     // Set sequence ID so the order is correct when the article is fetched back 
     // It return an array operation (function) to be applied to the children array of the parent
@@ -526,11 +538,13 @@ export class ArticleInstance implements ArticleBlock {
 
         const [insertIndex, start, end] = ArticleInstance._getSequenceStep(parent, target, direction, newChildren)
 
+        console.log("Sequence STEP", insertIndex, start, end)
+
         const step = (end - start) / (newChildren.length + 1)
     
         for(let i = 0; i < newChildren.length; i++) {
             newChildren[i].sequence = start + (i + 1) * step
-            console.log(start + (i + 1) * step)
+            ArticleInstance.fixSequenceRecursively(newChildren[i])
         }
 
         const insert = () => {
@@ -551,7 +565,7 @@ export class ArticleInstance implements ArticleBlock {
     } 
 
     insertBlock(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
-        if (newChildren === undefined) {
+        if (newChildren === undefined || newChildren.length <= 0) {
             return
         }
 
@@ -563,7 +577,9 @@ export class ArticleInstance implements ArticleBlock {
             blocks: []
         }
 
+        console.log("BEFORE", newChildren)
         let [insertFn, fetchFn, removeFn] = this.getBlockInserter(parent, target, direction, newChildren)
+        console.log("AFTER", newChildren)
 
         // How to execute the action on the current view
         const doAction = () => {
@@ -648,7 +664,8 @@ export class ArticleInstance implements ArticleBlock {
 
         try {
             // Extract actions from pending changes
-            const queuedChange = this.pendingChange
+            const queuedChange = [...this.pendingChange];
+            this.pendingChange = [];
 
             const actions = queuedChange.map(pending => pending.action);
 
@@ -659,7 +676,6 @@ export class ArticleInstance implements ArticleBlock {
         
             // On success, clear the pending changes
             // this.changeHistory["actions"].push(...this.pendingChange);
-            this.pendingChange = [];
             this.saveUncomittedChange();
         } catch (error) {
             console.error('Failed to persist changes:', error);

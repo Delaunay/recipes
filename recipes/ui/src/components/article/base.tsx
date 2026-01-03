@@ -355,6 +355,10 @@ export abstract class BlockBase implements ArticleBlock {
     this.def = block;
     this.children = this.def.children ? this.def.children?.map(child => newBlock(this.article, child, this)) : [];
     this.version = 0
+
+    if (this.def.sequence === undefined) {
+      console.log("UNDEFINED SEQUENCE", this)
+    }
   }
 
   public getParent(): ArticleBlock {
