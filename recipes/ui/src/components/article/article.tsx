@@ -68,6 +68,7 @@ import "./blocks/datastructure"
 import "./blocks/trace"
 import "./blocks/ast"
 import "./blocks/bnf"
+import { StepBack } from 'lucide-react';
 
 function loadUncomittedChange(): ActionBatch {
     //return new Array<BlockUpdate>()
@@ -442,17 +443,7 @@ export class ArticleInstance implements ArticleBlock {
         return this.def.blocks;
     }
 
-    //
-    // Set sequence ID so the order is correct when the article is fetched back 
-    // It return an array operation (function) to be applied to the children array of the parent
-    // to insert the new chilren in the right place
-    //
-    //  1. Sequence is set so database has the right order
-    //  2. New block are inserted into the parent in the right order
-    //  3. Update batch is sent to server
-    //  4. Server replies with new id for the inserted blocks
-    //
-    getBlockInserter(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
+    static _getSequenceStep(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
         if (!Array.isArray(parent.def["children"])) {
             parent.def["children"] = [];
         }
@@ -476,7 +467,7 @@ export class ArticleInstance implements ArticleBlock {
         else if (target.kind === "input") {
             insertIndex = parent.def.children.length - 1
             start = parent.def.children[insertIndex].sequence
-            end = start + newChildren.length
+            end = start + newChildren.length + 1
         } 
         else {
             let targetIndex = parent.children.indexOf(target);
@@ -484,8 +475,6 @@ export class ArticleInstance implements ArticleBlock {
                 throw new Error("Target block not found in parent");
             }
 
-            this._fillMissingSequence(siblings)
-        
             if (direction === "after") {
                 insertIndex = targetIndex + 1;
             
@@ -519,6 +508,23 @@ export class ArticleInstance implements ArticleBlock {
                 end = start - 0.1
             }
         }
+
+        return [insertIndex, start, end]
+    }
+
+    //
+    // Set sequence ID so the order is correct when the article is fetched back 
+    // It return an array operation (function) to be applied to the children array of the parent
+    // to insert the new chilren in the right place
+    //
+    //  1. Sequence is set so database has the right order
+    //  2. New block are inserted into the parent in the right order
+    //  3. Update batch is sent to server
+    //  4. Server replies with new id for the inserted blocks
+    //
+    getBlockInserter(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
+
+        const [insertIndex, start, end] = ArticleInstance._getSequenceStep(parent, target, direction, newChildren)
 
         const step = (end - start) / (newChildren.length + 1)
     
