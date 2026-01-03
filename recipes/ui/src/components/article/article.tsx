@@ -520,7 +520,6 @@ export class ArticleInstance implements ArticleBlock {
             }
         }
 
-        
         const step = (end - start) / (newChildren.length + 1)
     
         for(let i = 0; i < newChildren.length; i++) {
