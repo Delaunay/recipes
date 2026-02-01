@@ -1,5 +1,20 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table, Text, UniqueConstraint, JSON, create_engine, select, Boolean, Index
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    DateTime,
+    ForeignKey,
+    Table,
+    Text,
+    UniqueConstraint,
+    JSON,
+    create_engine,
+    select,
+    Boolean,
+    Index,
+)
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 
 from .common import Base
@@ -7,12 +22,16 @@ from .common import Base
 
 class Article(Base):
     """Full blog post to display"""
-    __tablename__ = 'articles'
+
+    __tablename__ = "articles"
 
     _id = Column(Integer, primary_key=True)
-    root_id = Column(Integer, ForeignKey('articles._id'), nullable=True)
-    parent = Column(Integer, ForeignKey('articles._id'), nullable=True)
+    root_id = Column(Integer, ForeignKey("articles._id"), nullable=True)
+    parent = Column(Integer, ForeignKey("articles._id"), nullable=True)
 
+    # use 10000 for default nodes
+    sequence = Column(Float, nullable=True)
+    
     title = Column(String(50))
     namespace = Column(String(255))
     tags = Column(JSON)
@@ -21,7 +40,35 @@ class Article(Base):
     # Add a view counter for optimizing UX display view
 
     @staticmethod
-    def get_article_forest(session, articles):
+    def get_article_forest(session, article):
+        if article.root_id is not None:
+            query_id = article.root_id
+        else:
+            query_id = article._id
+
+        nodes = session.query(Article).filter(Article.root_id == query_id).all()
+
+        root = []
+        parents = {article._id: {"children": root}}
+        children = nodes
+
+        while len(children) > 0:
+            missed = []
+            for node in children:
+                parent = parents.get(node.parent)
+
+                if parent is not None:
+                    obj = node.to_json()
+                    parent.setdefault("children", []).append(obj)
+                    parents[node._id] = obj
+
+            children = missed
+
+        print(root)
+        return root
+
+    @staticmethod
+    def get_block_forest(session, articles):
         article_ids = [a["id"] for a in articles]
 
         nodes = (
@@ -29,12 +76,10 @@ class Article(Base):
             .filter(ArticleBlock.page_id.in_(article_ids))
             .order_by(
                 ArticleBlock.sequence.asc(),
-                ArticleBlock._id.asc(),)
+                ArticleBlock._id.asc(),
+            )
             .all()
         )
-
-        for n in nodes:
-            print(n.sequence)
 
         # print(article_ids, nodes)
 
@@ -63,6 +108,7 @@ class Article(Base):
         # than the children
         while len(children) > 0:
             missed = []
+            missed_hierachy = {}
             for block in children:
                 parent = parents.get(block.parent)
 
@@ -73,28 +119,44 @@ class Article(Base):
                 else:
                     missed.append(block)
 
-            children = missed
-            for c in children:
-                print(c)
-            assert len(children) == 0, "All the children should have been sorted correctly"
+                    obj = block.to_json()
+                    parent = missed_hierachy.setdefault(block.parent, {})
+                    parent.setdefault("children", []).append(obj)
+                    # parents[block._id] = obj
 
+            children = missed
+
+            # The sequence number resets on nested subblocks
+            # So they appear before their parents
+            # causing this to run twice instead of once if it was correctly ordered
+            if len(missed_hierachy):
+                print(children)
+                for k, v in missed_hierachy.items():
+                    if k in parents:
+                        print("Block is defined now")
+
+                    missed_children = v["children"]
+                    ids = ", ".join([str(child["id"]) for child in missed_children])
+                    print(
+                        f"Block {k} not found, requested by {len(missed_children)} ids={ids}"
+                    )
 
         return articles
 
     @staticmethod
-    def get_article_tree(session, article_id):
-        return Article.get_article_forest(session, article_ids=[article_id])[0]
+    def get_block_tree(session, article_id):
+        return Article.get_block_forest(session, article_ids=[article_id])[0]
 
     def to_json(self, session=None, children=False):
         this = {
-            'id': self._id,
-            "title":self.title,
+            "id": self._id,
+            "title": self.title,
             "namespace": self.namespace,
             "tags": self.tags,
             "extension": self.extension,
             "parent_id": self.parent,
             "root_id": self.root_id,
-            "blocks": []
+            "blocks": [],
         }
 
         if session and children:
@@ -106,6 +168,7 @@ class Article(Base):
             )
 
         return this
+
 
 #
 # Data block could be reused on multiple articles ?
@@ -131,17 +194,18 @@ class Article(Base):
 # heading + paragraph
 class ArticleBlock(Base):
     """Renderable block of a blog post"""
-    __tablename__ = 'article_blocks'
+
+    __tablename__ = "article_blocks"
 
     _id = Column(Integer, primary_key=True)
     # So Article block can bet infinitely nested
     # but because they all have the page id, we do not need
     # to do recursive query we can query everything one shot
     # and let the render fetch from the list of results
-    page_id = Column(Integer, ForeignKey('articles._id'), nullable=True)
-    parent = Column(Integer, ForeignKey('article_blocks._id'), nullable=True)
-    
-    # use 10000 for default nodes 
+    page_id = Column(Integer, ForeignKey("articles._id"), nullable=True)
+    parent = Column(Integer, ForeignKey("article_blocks._id"), nullable=True)
+
+    # use 10000 for default nodes
     sequence = Column(Float, nullable=True)
 
     # LexoRank a b c d e f g -> aa ab etc...
@@ -154,14 +218,16 @@ class ArticleBlock(Base):
     # Some nodes can be just data blocks ?
     def to_json(self):
         return {
-            'id': self._id,
-            'page_id': self.page_id,
-            'parent_id': self.parent,
-            'kind': self.kind,
-            'data': self.data,
+            "id": self._id,
+            "page_id": self.page_id,
+            "parent_id": self.parent,
+            "kind": self.kind,
+            "data": self.data,
             "sequence": self.sequence,
-            'extension': self.extension,
+            "extension": self.extension,
         }
 
     def __repr__(self):
-        return f"ArticleBlock<page_id={self.page_id}, parent={self.parent}>"
+        return (
+            f"ArticleBlock<page_id={self.page_id}, parent={self.parent}, id={self._id}>"
+        )

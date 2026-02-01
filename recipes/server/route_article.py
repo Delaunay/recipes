@@ -41,15 +41,9 @@ def article_routes(app, db):
 
             # Fetch all blocks for this article
             articles = [article_json]
-            Article.get_article_forest(db.session, articles)
+            Article.get_block_forest(db.session, articles)
 
-            # Get child articles (articles that have this article as parent)
-            child_articles = (
-                db.session.query(Article).filter(Article.parent == article_id).all()
-            )
-            article_json["child_articles"] = [
-                child.to_json() for child in child_articles
-            ]
+            article_json["children"] = Article.get_article_forest(db.session, article)
 
             return jsonify(article_json)
         except Exception as e:
@@ -193,7 +187,7 @@ def article_routes(app, db):
     def insert_blocks(insert, parent=None, page_id=None, depth=0):
         if parent is None:
             parent = insert["parent"]
-        
+
         if page_id is None:
             page_id = insert["page_id"]
 
@@ -211,20 +205,22 @@ def article_routes(app, db):
             )
 
             db.session.add(block)
-            db.session.flush()      # Flush to get the ID
-        
+            db.session.flush()  # Flush to get the ID
+
             ids: list[dict] = []
             if "children" in child:
-                result = insert_blocks(child, parent=block._id, page_id=page_id, depth=depth + 1)
+                result = insert_blocks(
+                    child, parent=block._id, page_id=page_id, depth=depth + 1
+                )
                 ids.extend(result["children"])
 
             blocks.append({"id": block._id, "children": ids, "page_id": page_id})
 
         if depth == 0:
             db.session.commit()
-        
+
         return {"action": "insert", "children": blocks}
-        
+
     @app.route("/blocks/update", methods=["PUT"])
     def update_blocks(update, depth=0):
         block = db.session.query(ArticleBlock).get(update["id"])
@@ -238,40 +234,42 @@ def article_routes(app, db):
 
         if depth == 0:
             db.session.commit()
-        
+
         return {"action": "update", "id": block._id}
 
     @app.route("/blocks/reorder", methods=["PUT"])
     def reorder_blocks(reorder, depth=0):
         block = db.session.query(ArticleBlock).get(reorder["id"])
-        
+
         block.sequence = reorder["sequence"]
 
         if depth == 0:
             db.session.commit()
-        
+
         return {"action": "reorder", "id": block._id}
 
     @app.route("/blocks/delete", methods=["PUT"])
     def delete_blocks(delete, depth=0):
-        
+
         if hasattr(delete, "_id"):
             block_id = delete._id
         else:
             block_id = delete["block_id"]
 
-        child_blocks = db.session.query(ArticleBlock).filter(ArticleBlock.parent == block_id).all()
-        
+        child_blocks = (
+            db.session.query(ArticleBlock).filter(ArticleBlock.parent == block_id).all()
+        )
+
         children_id = []
         for child in child_blocks:
             children_id.append(delete_blocks(child))
 
         block = db.session.query(ArticleBlock).get(block_id)
         db.session.delete(block)
-        
+
         if depth == 0:
             db.session.commit()
-        
+
         return {"action": "delete", "id": block._id, "children": children_id}
 
     @app.route("/blocks/batch", methods=["PUT"])
@@ -284,11 +282,15 @@ def article_routes(app, db):
 
             for action in actions:
                 match action["op"]:
-                    case "insert":  results.append(insert_blocks(action, depth=1))
-                    case "update":  results.append(update_blocks(action, depth=1))
-                    case "reorder": results.append(reorder_blocks(action, depth=1))
-                    case "delete":  results.append(delete_blocks(action, depth=1))
-            
+                    case "insert":
+                        results.append(insert_blocks(action, depth=1))
+                    case "update":
+                        results.append(update_blocks(action, depth=1))
+                    case "reorder":
+                        results.append(reorder_blocks(action, depth=1))
+                    case "delete":
+                        results.append(delete_blocks(action, depth=1))
+
             db.session.commit()
             return results
         except:
@@ -306,7 +308,7 @@ def article_routes(app, db):
             # Get article with full block tree
             article_json = article.to_json(session=db.session, children=True)
             articles = [article_json]
-            Article.get_article_forest(db.session, articles)
+            Article.get_block_forest(db.session, articles)
 
             return jsonify(article_json)
         except Exception as e:

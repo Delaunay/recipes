@@ -1576,7 +1576,7 @@ const ArticleViewEditor: React.FC = () => {
                 blocks: []
             });
 
-            // Refresh the article to get updated child_articles list
+            // Refresh the article to get updated children list
             if (displayArticle.id) {
                 loadArticle(displayArticle.id as number);
             }
@@ -1933,9 +1933,9 @@ const ArticleViewEditor: React.FC = () => {
                         )}
                     </HStack>
 
-                    {displayArticle.child_articles && displayArticle.child_articles.length > 0 ? (
+                    {displayArticle.children && displayArticle.children.length > 0 ? (
                         <VStack align="stretch" gap={2}>
-                            {displayArticle.child_articles.map((child: Article) => (
+                            {displayArticle.children.map((child: Article) => (
                                 <Link
                                     key={child.id}
                                     to={`/article?id=${child.id}`}

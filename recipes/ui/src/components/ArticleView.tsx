@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Box, Text, Spinner, VStack } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
-import { Article as ArticleType, ArticleBlock } from '../services/type';
+import { ArticleBlock } from '../services/type';
 import Article from './article/article';
 import { ArticleDef, BlockDef } from './article/base';
 
@@ -32,6 +32,19 @@ const ArticleView: React.FC = () => {
                 }
 
                 const fetchedArticle = await recipeAPI.getArticle(articleIdNum);
+                let childrenSource = fetchedArticle;
+                let topLevelSource = fetchedArticle;
+                const rootId = fetchedArticle.root_id ?? fetchedArticle.id;
+
+                if (rootId && rootId !== fetchedArticle.id) {
+                    try {
+                        const rootArticle = await recipeAPI.getArticle(rootId);
+                        childrenSource = rootArticle;
+                        topLevelSource = rootArticle;
+                    } catch (rootErr) {
+                        console.warn('Failed to fetch root article, falling back to current article:', rootErr);
+                    }
+                }
 
                 // Convert Article to ArticleDef format
                 const articleDef: ArticleDef = {
@@ -42,7 +55,24 @@ const ArticleView: React.FC = () => {
                     namespace: fetchedArticle.namespace || '',
                     tags: fetchedArticle.tags || {},
                     extension: fetchedArticle.extension || {},
-                    blocks: convertBlocks(fetchedArticle.blocks || [])
+                    sequence: 0,
+                    blocks: convertBlocks(fetchedArticle.blocks || []),
+                    children: childrenSource.children?.map(child => ({
+                        id: child.id || 0,
+                        root_id: child.root_id || 0,
+                        parent_id: child.parent_id,
+                        title: child.title || 'Untitled',
+                        namespace: child.namespace || '',
+                        tags: child.tags || {},
+                        extension: child.extension || {},
+                        sequence: 0,
+                        blocks: [],
+                        children: child.children
+                    })),
+                    top_level_article: {
+                        id: topLevelSource.id || fetchedArticle.id || 0,
+                        title: topLevelSource.title || fetchedArticle.title || 'Untitled'
+                    }
                 };
 
                 setArticle(articleDef);
@@ -73,7 +103,7 @@ const ArticleView: React.FC = () => {
 
     if (loading) {
         return (
-            <VStack spacing={4} align="center" justify="center" minH="400px">
+            <VStack gap={4} align="center" justify="center" minH="400px">
                 <Spinner size="xl" color="orange.500" />
                 <Text color="fg.muted">Loading article...</Text>
             </VStack>

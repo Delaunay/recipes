@@ -23,7 +23,7 @@ export class CliBlock extends BlockBase {
         const prompt = this.def.data.prompt || "$";
 
         return (
-            <Box bg="black" color="green.400" p={4} borderRadius="md" fontFamily="mono">
+            <Box bg="gray.950" color="green.400" p={4} borderRadius="md" fontFamily="mono">
                 <Text>
                     <Text as="span" color="gray.400">{prompt} </Text>
                     {this.def.data.command}

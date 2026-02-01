@@ -33,7 +33,7 @@ export class DrawingBlock extends BlockBase {
                     </Text>
                 )}
                 <Box
-                    bg={this.def.data.backgroundColor || "#f9fafb"}
+                    bg={this.def.data.backgroundColor || "gray.50"}
                     w={this.def.data.width || 600}
                     h={this.def.data.height || 400}
                     borderRadius="md"

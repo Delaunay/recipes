@@ -2,6 +2,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     Box,
+    Heading,
+    Input,
+    Flex,
 } from '@chakra-ui/react';
 
 
@@ -13,12 +16,15 @@ import type {
     ActionInsertBlock,
     ActionBatch,
     ArticleBlock,
-    ActionInsertBlockReply
+    ActionInsertBlockReply,
+    ActionUpdateArticle
 } from './base'
 import { recipeAPI } from '../../services/api'
+import { SubPageList } from './subpages'
 
 import "./blocks/heading"
 import "./blocks/paragraph"
+import "./blocks/link"
 import "./blocks/text"
 import "./blocks/list"
 import "./blocks/item"
@@ -107,6 +113,10 @@ function _reconcileChildrenInsert(article: ArticleInstance, action: ActionInsert
 }
 
 function blockUpdateReconciliation(article: ArticleInstance, queuedActions: PendingAction[], updateResult: []) {
+    //
+    // Reconcile server action with displayed info
+    // This is mostly here to set the block id after blocks were inserted
+    //
     const nUpdate = queuedActions.length
     const nResults = updateResult.length
 
@@ -135,21 +145,27 @@ function blockUpdateReconciliation(article: ArticleInstance, queuedActions: Pend
         }
 
         if (action["op"] === "reorder") {
-
+            // Already reordered
         }
 
         if (action["op"] === "update") {
+            // Already updated
 
         }
 
         if (action["op"] === "delete") {
-
+            // Already deleted
         }
     }
 }
 
 
 function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, newer: BlockDef, depth: number = 0) {
+    //
+    // Merge a parsed block definition with the currently displayed block definition
+    //
+    //  This will create insert, update, delete action to be executed by the backend
+    //
     const keys = new Set([
         ...Object.keys(original.def),
         ...Object.keys(newer)
@@ -445,6 +461,16 @@ export class ArticleInstance implements ArticleBlock {
     }
 
     static _getSequenceStep(parent: ArticleBlock, target: BlockBase | null, direction: "after" | "before", newChildren: BlockDef[]) {
+        //
+        // returns a sequence of integer that will make the children rightly ordered
+        //
+        //  FIXME: The sequence number resets on nested sub-blocks so sub-blocks appear before their parents
+        //  causing the tree rebuilding to run for more loops than necessary
+        //  we need for force sub-blocks to always appear AFTER their parents, so their start sequence should be
+        //  parent.sequence + 1. The end sequence does not matter as much
+        //
+        //
+        //
         if (!Array.isArray(parent.def["children"])) {
             parent.def["children"] = [];
         }
@@ -518,8 +544,10 @@ export class ArticleInstance implements ArticleBlock {
     static fixSequenceRecursively(obj: BlockDef) {
         if (obj.children) {
             for (let i = 0; i < obj.children.length; i++) {
-                obj.children[i].sequence = i
-                ArticleInstance.fixSequenceRecursively(obj.children[i]);
+                if (obj.children[i] !== undefined) {
+                    obj.children[i].sequence = i
+                    ArticleInstance.fixSequenceRecursively(obj.children[i]);
+                }
             }
         }
     }
@@ -657,6 +685,40 @@ export class ArticleInstance implements ArticleBlock {
         // savePendingChange(this.pendingChange)
     }
 
+    public fetchReferenceByID(blockID: string | number): BlockBase {
+        for (const block of this.children) {
+            if (block.def.id === blockID) {
+                return block;
+            }
+        }
+        throw new Error(`Block with id ${blockID} not found`);
+    }
+
+    updateTitle(newTitle: string) {
+        let oldTitle = this.def.title;
+
+        const doAction = () => {
+            this.def.title = newTitle;
+            this.notify();
+        }
+
+        const undoAction = () => {
+            this.def.title = oldTitle;
+            this.notify();
+        }
+
+        const remoteAction: ActionUpdateArticle = {
+            op: "update_article",
+            title: newTitle
+        }
+
+        this.pushAction({
+            action: remoteAction,
+            doAction: doAction,
+            undoAction: undoAction
+        })
+    }
+
     async persistServerChange() {
         if (this.pendingChange.length === 0) {
             return;
@@ -667,12 +729,29 @@ export class ArticleInstance implements ArticleBlock {
             const queuedChange = [...this.pendingChange];
             this.pendingChange = [];
 
-            const actions = queuedChange.map(pending => pending.action);
+            // Filter out article updates from block updates
+            const blockActions = queuedChange.filter(p => p.action.op !== "update_article").map(pending => pending.action);
+            const articleActions = queuedChange.filter(p => p.action.op === "update_article").map(pending => pending.action as ActionUpdateArticle);
 
-            // Make request to the server
-            const updateResult = await recipeAPI.updateBlocksBatch(actions);
+            const promises = [];
 
-            blockUpdateReconciliation(this, queuedChange, updateResult)
+            if (blockActions.length > 0) {
+                // Make request to the server for blocks
+                promises.push(recipeAPI.updateBlocksBatch(blockActions)
+                    .then(updateResult => {
+                        // Filter queuedChange to only include block actions for reconciliation
+                        const blockQueuedChange = queuedChange.filter(p => p.action.op !== "update_article");
+                        blockUpdateReconciliation(this, blockQueuedChange, updateResult);
+                    }));
+            }
+
+            if (articleActions.length > 0) {
+                // We only need to send the last title update if there are multiple
+                const lastAction = articleActions[articleActions.length - 1];
+                promises.push(recipeAPI.updateArticle(this.def.id, { title: lastAction.title }));
+            }
+
+            await Promise.all(promises);
 
             // On success, clear the pending changes
             // this.changeHistory["actions"].push(...this.pendingChange);
@@ -680,17 +759,9 @@ export class ArticleInstance implements ArticleBlock {
         } catch (error) {
             console.error('Failed to persist changes:', error);
             // On error, keep pending changes for retry
+            // FIXME: This logic is slightly flawed if partial success, but good enough for now
             throw error;
         }
-    }
-
-    public fetchReferenceByID(blockID: string | number): BlockBase {
-        for (const block of this.children) {
-            if (block.def.id === blockID) {
-                return block;
-            }
-        }
-        throw new Error(`Block with id ${blockID} not found`);
     }
 
     react() {
@@ -705,6 +776,56 @@ interface ArticleProps {
 
 
 import { VegaProvider } from '../../contexts/VegaContext';
+
+const TitleDisplay: React.FC<{ article: ArticleInstance }> = ({ article }) => {
+    const [hovered, setHovered] = useState(false);
+    const [focused, setFocused] = useState(false);
+    const [text, setText] = useState(article.def.title);
+
+    // Update local state when model changes (e.g. undo/redo)
+    useEffect(() => {
+        setText(article.def.title);
+    }, [article.def.title]);
+
+    const mode = hovered || focused ? "edit" : "view";
+
+    const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setText(e.target.value);
+        // We update the model immediately so it feels responsive and auto-saves
+        article.updateTitle(e.target.value);
+    }
+
+    if (mode === "view") {
+        return (
+            <Heading
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                onClick={() => setFocused(true)}
+                mb={4}
+            >
+                {article.def.title}
+            </Heading>
+        )
+    }
+
+    return (
+        <Box
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            mb={4}
+        >
+            <Input
+                value={text}
+                onChange={onChange}
+                onBlur={() => setFocused(false)}
+                autoFocus
+                size="lg"
+                fontWeight="bold"
+                fontSize="3xl" // Matches default Heading size roughly but can adjust if needed
+            />
+        </Box>
+    )
+}
 
 const Article: React.FC<ArticleProps> = ({ article }) => {
     const instanceRef = useRef<ArticleInstance | null>(null);
@@ -761,11 +882,18 @@ const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     }, [article]);
 
     return (
-        <Box flex="1">
-            {article.def.title}
-            {renderSortedBySequence(article.children)}
-            {article.inputBlock.react()}
-        </Box>
+        <Flex gap={6} align="start" overflowX="auto" width="100%">
+            {/* Main Article Content */}
+            <Box flex="1" minW="0">
+                <TitleDisplay article={article} />
+                {renderSortedBySequence(article.children)}
+                {article.inputBlock.react()}
+            </Box>
+
+            {/* Right Sidebar */}
+            <Box width="300px" flexShrink={0} pl={4} borderLeft="1px solid" borderColor="gray.100">
+                <SubPageList articleDef={article.def} />
+            </Box>
+        </Flex>
     );
 };
-

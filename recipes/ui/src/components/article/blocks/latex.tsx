@@ -55,7 +55,7 @@ function LatexViewer({ formula }: { formula: string }) {
                     katex.default.render(formula, containerRef.current, {
                         displayMode: true,
                         throwOnError: false,
-                        errorColor: '#cc0000',
+                        errorColor: 'var(--chakra-colors-red-600)',
                         strict: false
                     });
                 }

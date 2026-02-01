@@ -67,7 +67,7 @@ const renderer = {
     list_item(token: Tokens.ListItem): any {
         // THis is generating non leaf text nodes
         console.log(token.tokens)
-        
+
         let toks = token.tokens
         if (token.tokens.length == 1 && token.tokens[0].type === "text" && token.tokens[0].tokens.length > 0) {
             toks = token.tokens[0].tokens
@@ -135,7 +135,15 @@ const renderer = {
         console.log(token.type, token);
     },
     link(token: Tokens.Link): any {
-        console.log(token.type, token);
+        return {
+            kind: "link",
+            data: {
+                text: token.text,
+                url: token.href,
+                title: token.title
+            },
+            children: []
+        }
     },
     image(token: Tokens.Image): any {
         console.log(token.type, token);
@@ -149,7 +157,7 @@ const renderer = {
                     "text": token.text
                 },
                 // we want to try to avoid this
-                children: token.tokens? token.tokens.map(reconstructBlock) : []
+                children: token.tokens ? token.tokens.map(reconstructBlock) : []
             }
         }
     },
@@ -181,19 +189,19 @@ function reconstructBlock(token: any) {
 
 export function parseMarkdown(src: string): any {
     // try {
-        const tokens = marked.lexer(src);
-        
-        const arr = tokens.map(reconstructBlock)
-    
-        if (arr.length > 1) {
-            return {
-                kind: "item",
-                data: {},
-                children: arr
-            }
-        }
+    const tokens = marked.lexer(src);
 
-        return arr[0]
+    const arr = tokens.map(reconstructBlock)
+
+    if (arr.length > 1) {
+        return {
+            kind: "item",
+            data: {},
+            children: arr
+        }
+    }
+
+    return arr[0]
     // } catch {
     //     return {}
     // }

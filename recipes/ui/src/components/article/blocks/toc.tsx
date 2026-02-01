@@ -99,7 +99,7 @@ const TableOfContentsBlock: React.FC<{ block: TocBlock; mode: string }> = ({ blo
     const itemHoverBg = useColorModeValue('gray.100', 'gray.700');
     const itemColorPrimary = useColorModeValue('gray.800', 'gray.200');
     const itemColorSecondary = useColorModeValue('gray.700', 'gray.300');
-    const itemHoverColor = useColorModeValue('#2d3748', 'white');
+    const itemHoverColor = useColorModeValue('gray.800', 'white');
     const bulletColor = useColorModeValue('gray.400', 'gray.500');
 
     return (

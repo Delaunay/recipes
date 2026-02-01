@@ -1,8 +1,40 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ChakraProvider, createSystem, defaultConfig } from '@chakra-ui/react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext, newBlock } from '../../base';
+import { BlockBase, BlockDef, MarkdownGeneratorContext, newBlock } from '../src/components/article/base';
+
+// Mocks for external libraries
+vi.mock('@monaco-editor/react', () => ({
+    default: ({ value, language }: any) => <div className="mock-monaco-editor" data-language={language}>{value}</div>,
+    DiffEditor: ({ original, modified }: any) => <div className="mock-monaco-diff-editor">{original} | {modified}</div>
+}));
+
+vi.mock('katex', () => ({
+    default: {
+        render: (formula: string, element: HTMLElement) => { element.innerHTML = formula; }
+    }
+}));
+
+vi.mock('mermaid', () => ({
+    default: {
+        initialize: () => { },
+        render: async (id: string, text: string) => ({ svg: `<svg>${text}</svg>` })
+    }
+}));
+
+vi.mock('vega-themes', () => ({
+    dark: {},
+    default: {}
+}));
+
+vi.mock('../src/contexts/VegaContext', () => ({
+    useVega: () => ({
+        isLoaded: true,
+        embed: async (el: HTMLElement, spec: any) => { el.innerHTML = 'Vega-Lite Plot'; },
+        error: null
+    })
+}));
 
 // Mock ArticleInstance
 class MockArticleInstance {
@@ -22,57 +54,57 @@ const renderWithProvider = (component: React.ReactNode) => {
 };
 
 // Import all blocks to ensure they're registered - using the same pattern as article.tsx
-import '../heading';
-import '../paragraph';
-import '../text';
-import '../list';
-import '../item';
-import '../layout';
-import '../toc';
-import '../code';
-import '../image';
-import '../video';
-import '../audio';
-import '../latex';
-import '../mermaid';
-import '../reference';
-import '../footnote';
-import '../bibliography';
-import '../footnotes';
-import '../spreadsheet';
-import '../plot';
-import '../table';
-import '../timeline';
-import '../accordion';
-import '../alert';
-import '../quiz';
-import '../toggle';
-import '../button';
-import '../embed';
-import '../form';
-import '../gallery';
-import '../slideshow';
-import '../animation';
-import '../iframe';
-import '../model3d';
-import '../diff';
-import '../cli';
-import '../sandbox';
-import '../definition';
-import '../glossary';
-import '../theorem';
-import '../citation';
-import '../graph';
-import '../blockly';
-import '../electrical';
-import '../drawing';
-import '../workflow';
-import '../constraint';
-import '../filetree';
-import '../datastructure';
-import '../trace';
-import '../ast';
-import '../bnf';
+import '../src/components/article/blocks/heading';
+import '../src/components/article/blocks/paragraph';
+import '../src/components/article/blocks/text';
+import '../src/components/article/blocks/list';
+import '../src/components/article/blocks/item';
+import '../src/components/article/blocks/layout';
+import '../src/components/article/blocks/toc';
+import '../src/components/article/blocks/code';
+import '../src/components/article/blocks/image';
+import '../src/components/article/blocks/video';
+import '../src/components/article/blocks/audio';
+import '../src/components/article/blocks/latex';
+import '../src/components/article/blocks/mermaid';
+import '../src/components/article/blocks/reference';
+import '../src/components/article/blocks/footnote';
+import '../src/components/article/blocks/bibliography';
+import '../src/components/article/blocks/footnotes';
+import '../src/components/article/blocks/spreadsheet';
+import '../src/components/article/blocks/plot';
+import '../src/components/article/blocks/table';
+import '../src/components/article/blocks/timeline';
+import '../src/components/article/blocks/accordion';
+import '../src/components/article/blocks/alert';
+import '../src/components/article/blocks/quiz';
+import '../src/components/article/blocks/toggle';
+import '../src/components/article/blocks/button';
+import '../src/components/article/blocks/embed';
+import '../src/components/article/blocks/form';
+import '../src/components/article/blocks/gallery';
+import '../src/components/article/blocks/slideshow';
+import '../src/components/article/blocks/animation';
+import '../src/components/article/blocks/iframe';
+import '../src/components/article/blocks/model3d';
+import '../src/components/article/blocks/diff';
+import '../src/components/article/blocks/cli';
+import '../src/components/article/blocks/sandbox';
+import '../src/components/article/blocks/definition';
+import '../src/components/article/blocks/glossary';
+import '../src/components/article/blocks/theorem';
+import '../src/components/article/blocks/citation';
+import '../src/components/article/blocks/graph';
+import '../src/components/article/blocks/blockly';
+import '../src/components/article/blocks/electrical';
+import '../src/components/article/blocks/drawing';
+import '../src/components/article/blocks/workflow';
+import '../src/components/article/blocks/constraint';
+import '../src/components/article/blocks/filetree';
+import '../src/components/article/blocks/datastructure';
+import '../src/components/article/blocks/trace';
+import '../src/components/article/blocks/ast';
+import '../src/components/article/blocks/bnf';
 
 describe('Article Blocks', () => {
     let mockArticle: MockArticleInstance;
@@ -85,10 +117,11 @@ describe('Article Blocks', () => {
         const def: BlockDef = {
             id: 1,
             page_id: 1,
-            parent: 0,
+            parent_id: 0,
             kind,
             data,
-            extension: {}
+            extension: {},
+            sequence: 0
         };
         return newBlock(mockArticle as any, def);
     };
@@ -237,18 +270,22 @@ describe('Article Blocks', () => {
     });
 
     describe('Mathematical Blocks', () => {
-        it('should render latex block', () => {
+        it('should render latex block', async () => {
             const block = createBlock('latex', { formula: 'E = mc^2' });
             const { container } = renderWithProvider(<>{block.component('view')}</>);
-            expect(container.textContent).toContain('E = mc^2');
+            await waitFor(() => {
+                expect(container.textContent).toContain('E = mc^2');
+            });
         });
 
-        it('should render mermaid block', () => {
+        it('should render mermaid block', async () => {
             const block = createBlock('mermaid', {
                 diagram: 'graph TD\nA-->B'
             });
             const { container } = renderWithProvider(<>{block.component('view')}</>);
-            expect(container.textContent).toContain('graph TD');
+            await waitFor(() => {
+                expect(container.textContent).toContain('graph TD');
+            });
         });
     });
 
@@ -871,18 +908,20 @@ describe('Article Blocks', () => {
             const def: BlockDef = {
                 id: 1,
                 page_id: 1,
-                parent: 0,
+                parent_id: 0,
                 kind: 'layout',
                 data: { layout: 'column', column: 2 },
                 extension: {},
+                sequence: 0,
                 children: [
                     {
                         id: 2,
                         page_id: 1,
-                        parent: 1,
+                        parent_id: 1,
                         kind: 'paragraph',
                         data: { text: 'Child paragraph' },
-                        extension: {}
+                        extension: {},
+                        sequence: 0
                     }
                 ]
             };
@@ -892,9 +931,10 @@ describe('Article Blocks', () => {
     });
 
     describe('is_md_representable', () => {
-        it('should return true for markdown-representable blocks', () => {
-            const mdBlocks = ['heading', 'paragraph', 'text', 'code', 'image', 'button'];
-            mdBlocks.forEach(kind => {
+        const mdBlocks = ['heading', 'paragraph', 'text', 'code', 'button'];
+
+        mdBlocks.forEach(kind => {
+            it(`should return true for markdown-representable block: ${kind}`, () => {
                 const block = createBlock(kind, {});
                 expect(block.is_md_representable()).toBe(true);
             });

@@ -39,6 +39,8 @@ export interface ArticleDef {
   tags: any;
   extension: any;
   blocks: Array<BlockDef>;
+  children?: Array<ArticleDef>;
+  top_level_article?: { id: number; title: string };
 }
 
 type BlockCtor = new (owner: ArticleInstance, def: BlockDef, parent?: ArticleBlock) => BlockBase;
@@ -154,9 +156,14 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       console.log("INSERT", insertAfterBlock, blocksToInsert)
       block.article.insertBlock(block.getParent(), insertAfterBlock, "after", blocksToInsert)
       return
+    } else if (block.def.kind === "input") {
+
+      const parent = block.getParent()
+      const target = parent.children.at(-1)
+      block.article.insertBlock(parent, target, "after", [parsed])
+
     } else {
-      // This should be before not after
-      block.article.insertBlock(block.getParent(), block, "after", [parsed])
+      console.log(block)
       console.log("Update missed")
     }
   }
@@ -206,7 +213,8 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
       onBlur={() => setFocused(false)}
       tabIndex={0} // makes div focusable
       position="relative"
-      style={{ outline: focused ? "2px solid blue" : "none" }}
+      outline={focused ? "2px solid" : "none"}
+      outlineColor="blue.500"
       minHeight="2rem"
     >
       {/* Drag handle (left) */}
@@ -394,7 +402,7 @@ export abstract class BlockBase implements ArticleBlock {
         padding="1px"
         margin="1px"
         border="1px solid"
-        borderColor="grey.400"
+        borderColor="gray.400"
       >
         {this.def.kind}
         {this.children.map(child => child.react())}
@@ -577,6 +585,11 @@ export interface ActionInsertBlock extends Action {
   page_id: number
   parent: number    // This is where we are going to insert
   children: BlockDef[]
+}
+
+export interface ActionUpdateArticle extends Action {
+  op: "update_article"
+  title: string
 }
 
 
