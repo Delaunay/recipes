@@ -33,7 +33,7 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
         return makeBlock("heading", {
             level: token.depth,
             text: hasInline ? "" : token.text
-        }, token.tokens?.map(reconstructBlock) ?? []);
+        }, reconstructBlocks(token.tokens));
     },
     space(token: Tokens.Space): any {
         return makeBlock("separator", {
@@ -50,7 +50,7 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
         });
     },
     blockquote(token: Tokens.Blockquote): any {
-        return makeBlock("blockquote", {}, token.tokens?.map(reconstructBlock) ?? []);
+        return makeBlock("blockquote", {}, reconstructBlocks(token.tokens));
     },
     html(token: Tokens.HTML | Tokens.Tag): any {
         return makeBlock("html", {
@@ -77,7 +77,7 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
             toks = toks[0].tokens;
         }
 
-        const children = toks.map(reconstructBlock);
+        const children = reconstructBlocks(toks);
         if (token.task && (toks.length === 0 || toks[0].type !== "checkbox")) {
             children.unshift(makeBlock("checkbox", { checked: !!token.checked }));
         }
@@ -97,7 +97,7 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
         const hasInline = token.tokens?.length > 0;
         return makeBlock("paragraph", {
             text: hasInline ? "" : token.text
-        }, token.tokens?.map(reconstructBlock) ?? []);
+        }, reconstructBlocks(token.tokens));
     },
     table(token: Tokens.Table): any {
         const headerLabels = token.header.map((cell, i) =>
@@ -141,7 +141,7 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
             text: token.text,
             header: token.header,
             align: token.align
-        }, token.tokens?.map(reconstructBlock) ?? []);
+        }, reconstructBlocks(token.tokens));
     },
 
     // Inline level
@@ -191,7 +191,7 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
             return makeBlock("text", {
                 style: null,
                 text: token.text
-            }, token.tokens ? token.tokens.map(reconstructBlock) : []);
+            }, reconstructBlocks(token.tokens));
         }
         return makeBlock("text", {
             style: null,
@@ -226,13 +226,17 @@ function reconstructBlock(token: any) {
     return tokenToBlock(token);
 }
 
-
+function reconstructBlocks(tokens) {
+    return (tokens ?? [])
+        .map(reconstructBlock)
+        .filter(child => child.kind !== "separator");
+}
 
 export function parseMarkdown(src: string): any {
     // try {
     const tokens = marked.lexer(src);
 
-    const arr = tokens.map(reconstructBlock)
+    const arr = tokens.map(reconstructBlock).filter(child => child.kind !== "separator")
 
     if (arr.length > 1) {
         return {
