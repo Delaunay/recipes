@@ -100,8 +100,11 @@ const getStaticSidebarSections = () => [
     ]
   },
   {
-    title: 'Content',
+    title: 'Notes',
     href: '/content',
+    isSelected: function (location) {
+      return location.pathname.startsWith("/content") || location.pathname.startsWith("/article") 
+    },
     items: [],
     fetch: getArticles
   },
@@ -145,8 +148,21 @@ const Layout: FC<LayoutProps> = ({ children }) => {
 
   // Check if a section contains the active route or if we're on the section page itself
   const isSectionActive = (section: typeof sidebarSections[number]) => {
+    console.log(location.pathname, section)
+    const itemPath = section.href.split('?')[0];
+
+    // check if section has "isSelected", if so call that, if true return else continue
+    if (typeof section.isSelected === 'function') {
+      try {
+        if (section.isSelected(location)) return true;
+      } catch (err) {
+        // Defensive: do not crash sidebar on error in isSelected
+        console.error("Error in isSelected for section", section.title, err);
+      }
+    }
+
     // Check if we're on the section's main page
-    if (location.pathname === section.href) {
+    if (location.pathname === itemPath) {
       return true;
     }
 

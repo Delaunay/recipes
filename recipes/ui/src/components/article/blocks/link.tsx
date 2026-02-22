@@ -20,10 +20,10 @@ export class LinkBlock extends BlockBase {
         this.register();
     }
 
-    component(_mode: string): React.ReactNode {
+    component(mode: string): React.ReactNode {
         return (
             <Link key={`lnk-${this.key}`} href={this.def.data.url} title={this.def.data.title} color="blue.500" target="_blank" rel="noopener noreferrer">
-                {this.def.data.text}
+                {this.children.length > 0 ? this.children.map(child => child.component(mode)) : this.def.data.text}
             </Link>
         );
     }
@@ -33,9 +33,12 @@ export class LinkBlock extends BlockBase {
     }
 
     as_markdown(_ctx: MarkdownGeneratorContext): string {
+        const text = this.children.length > 0
+            ? this.children.map(child => child.as_markdown(_ctx)).join("")
+            : this.def.data.text;
         if (this.def.data.title) {
-            return `[${this.def.data.text}](${this.def.data.url} "${this.def.data.title}")`
+            return `[${text}](${this.def.data.url} "${this.def.data.title}")`
         }
-        return `[${this.def.data.text}](${this.def.data.url})`
+        return `[${text}](${this.def.data.url})`
     }
 }

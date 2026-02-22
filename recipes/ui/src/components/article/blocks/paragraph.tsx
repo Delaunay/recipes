@@ -30,11 +30,10 @@ export class ParagraphBlock extends BlockBase {
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
-        if (this.def.data.text) {
-            return `${this.def.data.text} ${this.children.map(child => child.as_markdown(ctx)).join(" ")}`
-        } else {
-            return `${this.children.map(child => child.as_markdown(ctx)).join(" ")}`
-        }
+        const text = this.def.data.text ?? "";
+        const inline = this.children.map(child => child.as_markdown(ctx)).join("");
+        const spacer = text && inline ? " " : "";
+        return `${text}${spacer}${inline}`;
     }
 }
 

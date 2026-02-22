@@ -8,6 +8,9 @@ import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
 export interface ListData {
     items: string[];
     level: number;
+    ordered?: boolean;
+    start?: number;
+    loose?: boolean;
 }
 
 export interface ListBlockDef extends BlockDef {
@@ -32,21 +35,23 @@ export class ListBlock extends BlockBase {
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const indent = "  ".repeat(ctx.level);
+        const ordered = !!this.def.data.ordered;
+        const start = this.def.data.start ?? 1;
 
-
-        const items = this.def.data.items ? 
-            this.def.data.items.map(item => {
-                return `${indent}* ${item}`
-            })
-            .join("\n"):
+        const items = this.def.data.items ?
+            this.def.data.items.map((item, idx) => {
+                const marker = ordered ? `${start + idx}.` : "*";
+                return `${indent}${marker} ${item}`
+            }).join("\n") :
             "";
 
         const childrenMd = this.children
-            .map(child => {
+            .map((child, idx) => {
                 if (child.def.kind === "list") {
                     return `${child.as_markdown(ctx.inc())}`
                 }
-                return `${indent}* ${child.as_markdown(ctx.inc())}`
+                const marker = ordered ? `${start + idx}.` : "*";
+                return `${indent}${marker} ${child.as_markdown(ctx.inc())}`
             })
             .join("\n");
 

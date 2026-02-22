@@ -101,7 +101,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
   const updateBlock = (parsedDef) => {
     block.article.updateBlock(block, parsedDef)
-
     setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
   }
 
@@ -112,60 +111,25 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
   const updateBlocks = (e: React.FocusEvent<HTMLTextAreaElement>) => {
     const parsed = parseMarkdown(e.target.value);
 
+    if (block.def.kind === "input") {
+      // Simple case of inserting the user's input
+      const parent = block.getParent()
+      const target = parent.children.at(-1) ?? null;
+      console.log("Inserting", parent, target, parsed)
+      
+      block.article.insertBlock(parent, target, "after", [parsed])
+      return
+    }
+
+    parsed.children = parsed.children.filter(child => child.kind !== "separator")
     console.log("parsed", parsed)
     console.log("before", block)
-
     console.log(block.def.kind, parsed.kind)
 
-
-    // We are parsing the same type as before, carry on
-    if (block.def.kind === parsed.kind) {
-      console.log("Upate block inline")
-      parsed.children = parsed.children.filter(child => child.kind !== "separator")
-      updateBlock(parsed)
-      return
-    }
-
-    // We are inserting into an empty item
-    else if (block.def.kind === "item" && block.children.length === 0) {
-      console.log("Add blocks to item")
-      block.def.children = [parsed]
-      block.children = block.def.children.map(child => newBlock(block.article, child, block));
-      return
-    }
-
-    // We received multiple blocks
-    else if (parsed.kind === "item") {
-      console.log("Insert new blocks to")
-
-      // Here we parsed some markdown
-      //  the markdown includes the current block that may or may not have been modified
-      //  and new blocks added afterwards
-      let blocksToInsert = parsed.children.filter(child => child.kind !== "separator")
-      let insertAfterBlock = null
-
-      if (block.def.kind !== "input") {
-        blocksToInsert = parsed.children.slice(1).filter(child => child.kind !== "separator")
-        const firstBlock = parsed.children[0]
-        insertAfterBlock = block
-        updateBlock(firstBlock)
-        setMarkdown(block.as_markdown(new MarkdownGeneratorContext()))
-      }
-
-      // It needs to insert the children as well
-      console.log("INSERT", insertAfterBlock, blocksToInsert)
-      block.article.insertBlock(block.getParent(), insertAfterBlock, "after", blocksToInsert)
-      return
-    } else if (block.def.kind === "input") {
-
-      const parent = block.getParent()
-      const target = parent.children.at(-1)
-      block.article.insertBlock(parent, target, "after", [parsed])
-
-    } else {
-      console.log(block)
-      console.log("Update missed")
-    }
+    // block definition existed before
+    // we need to reconcile the newblock with the new block
+    // trying to reduce the amount of updates we make
+    updateBlock(parsed)
   }
 
   return (

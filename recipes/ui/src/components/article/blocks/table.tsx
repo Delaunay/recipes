@@ -6,6 +6,8 @@ export interface TableData {
     showHeaders?: boolean;
     caption?: string;
     data: string; // JSON string
+    align?: Array<"center" | "left" | "right" | null>;
+    columns?: string[];
 }
 
 export interface TableBlockDef extends BlockDef {
@@ -69,6 +71,31 @@ export class TableBlock extends BlockBase {
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
+        if (this.children.length > 0) {
+            const rows = this.children;
+            const headerRow = rows[0];
+            const bodyRows = rows.slice(1);
+            const headerCells = headerRow.children;
+            const headerTexts = headerCells.map(cell => cell.as_markdown(ctx));
+            const align = headerCells.map(cell => cell.def?.data?.align ?? null);
+
+            const alignCell = (value: string | null) => {
+                if (value === "center") return ":---:";
+                if (value === "right") return "---:";
+                if (value === "left") return ":---";
+                return "---";
+            };
+
+            const headerMd = `| ${headerTexts.join(" | ")} |`;
+            const separatorMd = `| ${align.map(alignCell).join(" | ")} |`;
+            const bodyMd = bodyRows.map(row => {
+                const cells = row.children.map(cell => cell.as_markdown(ctx));
+                return `| ${cells.join(" | ")} |`;
+            }).join("\n");
+
+            return [headerMd, separatorMd, bodyMd].filter(Boolean).join("\n");
+        }
+
         let parsedData: any[] = [];
         let headers: string[] = [];
 
@@ -90,7 +117,14 @@ export class TableBlock extends BlockBase {
         let md = "";
         if (showHeaders && headers.length > 0) {
             md += "| " + headers.map(h => pad(h, widths[h])).join(" | ") + " |\n";
-            md += "| " + headers.map(h => "-".repeat(widths[h])).join(" | ") +" |\n";
+            const align = this.def.data.align ?? [];
+            const alignCell = (value: string | null, width: number) => {
+                if (value === "center") return ":" + "-".repeat(Math.max(width - 2, 1)) + ":";
+                if (value === "right") return "-".repeat(Math.max(width - 1, 1)) + ":";
+                if (value === "left") return ":" + "-".repeat(Math.max(width - 1, 1));
+                return "-".repeat(width);
+            };
+            md += "| " + headers.map((h, i) => alignCell(align[i] ?? null, widths[h])).join(" | ") + " |\n";
         }
         parsedData.forEach(row => {
             md += "| " + headers.map(h => pad(row[h] != null ? String(row[h]) : "", widths[h])).join(" | ") + " |\n";

@@ -643,6 +643,19 @@ class RecipeAPI {
     });
   }
 
+  async searchArticles(name: string): Promise<Article[]> {
+    return this.request<Article[]>(`/article/search/${encodeURIComponent(name)}`);
+  }
+
+  async moveArticle(articleId: number, newParentId: number): Promise<Article> {
+    if (isStaticMode()) {
+      throw new Error('Moving articles is not supported in static mode');
+    }
+    return this.request<Article>(`/article/move/${articleId}/${newParentId}`, {
+      method: 'POST',
+    });
+  }
+
   async createChildArticle(parentId: number, article: Omit<Article, 'id'>): Promise<Article> {
     if (isStaticMode()) {
       throw new Error('Creating child articles is not supported in static mode');

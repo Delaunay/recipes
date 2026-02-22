@@ -31,7 +31,7 @@ class Article(Base):
 
     # use 10000 for default nodes
     sequence = Column(Float, nullable=True)
-    
+
     title = Column(String(50))
     namespace = Column(String(255))
     tags = Column(JSON)
@@ -64,7 +64,6 @@ class Article(Base):
 
             children = missed
 
-        print(root)
         return root
 
     @staticmethod

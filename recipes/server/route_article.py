@@ -50,6 +50,46 @@ def article_routes(app, db):
             print_exc()
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/article/search/<string:name>", methods=["GET"])
+    def search_article(name: str):
+        try:
+            articles = (
+                db.session.query(Article).filter(Article.title.ilike(f"%{name}%")).all()
+            )
+            return jsonify([article.to_json() for article in articles])
+        except Exception as e:
+            print_exc()
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/article/move/<int:article_id>/<int:new_parent>", methods=["POST"])
+    def move_page(article_id, new_parent):
+        article = db.session.query(Article).get(article_id)
+        parent = db.session.query(Article).get(new_parent)
+
+        if not article or not parent:
+            return jsonify({"error": "Article or parent not found"}), 404
+
+        root_id = parent.root_id if parent.root_id is not None else parent._id
+
+        # Update the parent ID
+        article.parent = parent._id
+        article.root_id = root_id
+
+        # Update the ROOT ID of all the children
+        #   This is expensive because we need to do recursive calls
+        queue = list(
+            db.session.query(Article).filter(Article.parent == article._id).all()
+        )
+        while len(queue) > 0:
+            child = queue.pop()
+            child.root_id = root_id
+            queue.extend(
+                db.session.query(Article).filter(Article.parent == child._id).all()
+            )
+
+        db.session.commit()
+        return jsonify(article.to_json())
+
     # Create a new article
     @app.route("/articles", methods=["POST"])
     def create_article() -> Dict[str, Any]:

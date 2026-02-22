@@ -39,6 +39,9 @@ tests-all: tests-doc tests-unit tests-integration tests-end-to-end
 
 tests: tests-all tests-codecov
 
+tests-ui:
+	cd recipes/ui && npm test
+
 
 CONDA_ACTIVATE=. $$(conda info --base)/etc/profile.d/conda.sh ; conda activate
 

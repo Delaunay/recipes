@@ -28,6 +28,12 @@ export class TextBlock extends BlockBase {
         switch (this.def.data.style) {
             case "strong":
                 return <b key={`txt-${this.key}`}>{this.def.data.text}</b>
+            case "em":
+                return <em key={`txt-${this.key}`}>{this.def.data.text}</em>
+            case "del":
+                return <del key={`txt-${this.key}`}>{this.def.data.text}</del>
+            case "codespan":
+                return <code key={`txt-${this.key}`}>{this.def.data.text}</code>
         }
         return <span key={`txt-${this.key}`}>{this.def.data.text}</span>
     }
@@ -37,11 +43,20 @@ export class TextBlock extends BlockBase {
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
+        const text = this.children.length > 0
+            ? this.children.map(child => child.as_markdown(ctx)).join("")
+            : this.def.data.text;
         switch (this.def.data.style) {
             case "strong":
-                return `__${this.def.data.text}__`
+                return `__${text}__`
+            case "em":
+                return `*${text}*`
+            case "del":
+                return `~~${text}~~`
+            case "codespan":
+                return `\`${text}\``
         }
-        return `${this.def.data.text}`
+        return `${text}`
     }
 }
 
@@ -73,11 +88,20 @@ export class InputBlock extends BlockBase {
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
+        const text = this.children.length > 0
+            ? this.children.map(child => child.as_markdown(ctx)).join("")
+            : this.def.data.text;
         switch (this.def.data.style) {
             case "strong":
-                return `__${this.def.data.text}__`
+                return `__${text}__`
+            case "em":
+                return `*${text}*`
+            case "del":
+                return `~~${text}~~`
+            case "codespan":
+                return `\`${text}\``
         }
-        return `${this.def.data.text}`
+        return `${text}`
     }
 }
 

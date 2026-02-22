@@ -16,150 +16,187 @@ import { Tokens } from 'marked';
 //  - https://github.com/bent10/marked-extensions/tree/main/packages/code-jsx-renderer
 
 
-const renderer = {
+type ArticleBlockDef = {
+    kind: string;
+    data: any;
+    children: ArticleBlockDef[];
+};
+
+function makeBlock(kind: string, data: any = {}, children: ArticleBlockDef[] = []): ArticleBlockDef {
+    return { kind, data, children };
+}
+
+const renderer: Record<string, (token: any) => ArticleBlockDef> = {
     // Block Level
     heading(token: Tokens.Heading): any {
-        let text = token.text
-        if (token.tokens.length > 0) {
-            text = ""
-        }
-        return {
-            kind: "heading",
-            data: {
-                "level": token.depth,
-                "text": text
-            },
-            children: token.tokens.map(reconstructBlock)
-        }
+        const hasInline = token.tokens?.length > 0;
+        return makeBlock("heading", {
+            level: token.depth,
+            text: hasInline ? "" : token.text
+        }, token.tokens?.map(reconstructBlock) ?? []);
     },
     space(token: Tokens.Space): any {
-        return {
-            kind: "separator",
-            data: {
-                "style": null,
-                "text": ""
-            },
-            // we want to try to avoid this
-            children: []
-        }
+        return makeBlock("separator", {
+            style: null,
+            text: ""
+        });
     },
     code(token: Tokens.Code): any {
-
+        return makeBlock("code", {
+            codeblock_style: token.codeBlockStyle,
+            language: token.lang,
+            code: token.text,
+            escaped: token.escaped
+        });
     },
     blockquote(token: Tokens.Blockquote): any {
-
+        return makeBlock("blockquote", {}, token.tokens?.map(reconstructBlock) ?? []);
     },
     html(token: Tokens.HTML | Tokens.Tag): any {
-
+        return makeBlock("html", {
+            raw: token.raw,
+            text: token.text,
+            block: token.block,
+            pre: (token as Tokens.HTML).pre
+        });
     },
     hr(token: Tokens.Hr): any {
-
+        return makeBlock("hr", { raw: token.raw });
     },
     list(token: Tokens.List): any {
-        return {
-            kind: "list",
-            data: {
-                items: []
-            },
-            children: token.items.map(reconstructBlock)
-        }
+        return makeBlock("list", {
+            items: [],
+            ordered: token.ordered,
+            start: token.start === "" ? 1 : token.start,
+            loose: token.loose
+        }, token.items.map(reconstructBlock));
     },
     list_item(token: Tokens.ListItem): any {
-        // THis is generating non leaf text nodes
-        console.log(token.tokens)
-
-        let toks = token.tokens
-        if (token.tokens.length == 1 && token.tokens[0].type === "text" && token.tokens[0].tokens.length > 0) {
-            toks = token.tokens[0].tokens
+        let toks = token.tokens ?? [];
+        if (toks.length === 1 && toks[0].type === "text" && toks[0].tokens?.length) {
+            toks = toks[0].tokens;
         }
 
-        return {
-            kind: "item",
-            data: {
-                text: "", // token.text
-            },
-            children: toks.map(reconstructBlock)
+        const children = toks.map(reconstructBlock);
+        if (token.task && (toks.length === 0 || toks[0].type !== "checkbox")) {
+            children.unshift(makeBlock("checkbox", { checked: !!token.checked }));
         }
+
+        return makeBlock("item", {
+            text: token.text ?? "",
+            task: token.task,
+            checked: token.checked,
+            loose: token.loose,
+            listItem: true
+        }, children);
     },
     checkbox(token: Tokens.Checkbox): any {
-
+        return makeBlock("checkbox", { checked: token.checked });
     },
     paragraph(token: Tokens.Paragraph): any {
-        return {
-            kind: "paragraph",
-            data: {
-                text: ""
-            },
-            children: token.tokens.map(reconstructBlock)
-        }
+        const hasInline = token.tokens?.length > 0;
+        return makeBlock("paragraph", {
+            text: hasInline ? "" : token.text
+        }, token.tokens?.map(reconstructBlock) ?? []);
     },
     table(token: Tokens.Table): any {
+        const headerLabels = token.header.map((cell, i) =>
+            cell.text?.trim() || `Column ${i + 1}`
+        );
+        const rows = token.rows.map(row => {
+            const rowObj: Record<string, string> = {};
+            headerLabels.forEach((label, i) => {
+                rowObj[label] = row[i]?.text ?? "";
+            });
+            return rowObj;
+        });
 
+        const headerRow = renderer.tablerow({
+            text: headerLabels.join(" | "),
+            header: true,
+            cells: token.header
+        });
+        const bodyRows = token.rows.map(row => renderer.tablerow({
+            text: row.map(cell => cell.text).join(" | "),
+            header: false,
+            cells: row
+        }));
+
+        return makeBlock("table", {
+            data: JSON.stringify(rows),
+            showHeaders: true,
+            align: token.align,
+            columns: headerLabels
+        }, [headerRow, ...bodyRows]);
     },
     tablerow(token: Tokens.TableRow): any {
-
+        const cells = (token as any).cells as Tokens.TableCell[] | undefined;
+        return makeBlock("tablerow", {
+            header: (token as any).header ?? false,
+            text: token.text
+        }, cells ? cells.map((cell) => renderer.tablecell(cell)) : []);
     },
     tablecell(token: Tokens.TableCell): any {
-
+        return makeBlock("tablecell", {
+            text: token.text,
+            header: token.header,
+            align: token.align
+        }, token.tokens?.map(reconstructBlock) ?? []);
     },
 
     // Inline level
     // ===========
     strong(token: Tokens.Strong): any {
-        return {
-            kind: "text",
-            data: {
-                "style": "strong",
-                "text": token.text
-            },
-            children: [], // token.tokens.map(reconstructBlock)
-        }
+        return makeBlock("text", {
+            style: "strong",
+            text: token.text
+        });
     },
     em(token: Tokens.Em): any {
-        return {
-            kind: "text",
-            data: {
-                "style": "em",
-                "text": token.text
-            },
-            children: [], //token.tokens.map(reconstructBlock)
-        }
+        return makeBlock("text", {
+            style: "em",
+            text: token.text
+        });
     },
     codespan(token: Tokens.Codespan): any {
-        console.log(token.type, token);
+        return makeBlock("codespan", {
+            text: token.text
+        });
     },
     br(token: Tokens.Br): any {
-        console.log(token.type, token);
+        return makeBlock("br");
     },
     del(token: Tokens.Del): any {
-        console.log(token.type, token);
+        return makeBlock("text", {
+            style: "del",
+            text: token.text
+        });
     },
     link(token: Tokens.Link): any {
-        return {
-            kind: "link",
-            data: {
-                text: token.text,
-                url: token.href,
-                title: token.title
-            },
-            children: []
-        }
+        return makeBlock("link", {
+            text: token.text,
+            url: token.href,
+            title: token.title
+        }, token.tokens?.map(reconstructBlock) ?? []);
     },
     image(token: Tokens.Image): any {
-        console.log(token.type, token);
+        return makeBlock("image", {
+            url: token.href,
+            alt: token.text,
+            caption: token.title
+        });
     },
     text(token: Tokens.Text | Tokens.Escape | Tokens.Tag): any {
-        if (token.type == "text") {
-            return {
-                kind: "text",
-                data: {
-                    "style": null,
-                    "text": token.text
-                },
-                // we want to try to avoid this
-                children: token.tokens ? token.tokens.map(reconstructBlock) : []
-            }
+        if (token.type === "text") {
+            return makeBlock("text", {
+                style: null,
+                text: token.text
+            }, token.tokens ? token.tokens.map(reconstructBlock) : []);
         }
+        return makeBlock("text", {
+            style: null,
+            text: token.raw ?? ""
+        });
     },
 
 }
@@ -177,12 +214,16 @@ const renderer = {
 
 // marked.use({ renderer });
 
+export function tokenToBlock(token: any) {
+    const fun = renderer[token.type];
+    if (!fun) {
+        return makeBlock("unknown", { raw: token?.raw, type: token?.type });
+    }
+    return fun(token);
+}
+
 function reconstructBlock(token: any) {
-    const fun = renderer[token.type]
-    console.log("reconstruct", token.type, fun);
-    const ret = fun(token)
-    console.log("ret", ret);
-    return ret;
+    return tokenToBlock(token);
 }
 
 

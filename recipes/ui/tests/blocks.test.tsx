@@ -57,6 +57,14 @@ const renderWithProvider = (component: React.ReactNode) => {
 import '../src/components/article/blocks/heading';
 import '../src/components/article/blocks/paragraph';
 import '../src/components/article/blocks/text';
+import '../src/components/article/blocks/codespan';
+import '../src/components/article/blocks/br';
+import '../src/components/article/blocks/hr';
+import '../src/components/article/blocks/html';
+import '../src/components/article/blocks/checkbox';
+import '../src/components/article/blocks/blockquote';
+import '../src/components/article/blocks/tablecell';
+import '../src/components/article/blocks/tablerow';
 import '../src/components/article/blocks/list';
 import '../src/components/article/blocks/item';
 import '../src/components/article/blocks/layout';
@@ -875,7 +883,7 @@ describe('Article Blocks', () => {
     describe('Block Registration', () => {
         it('should register all block types', () => {
             const blockTypes = [
-                'heading', 'paragraph', 'text', 'list', 'item', 'layout',
+                'heading', 'paragraph', 'text', 'codespan', 'br', 'hr', 'html', 'checkbox', 'blockquote', 'tablecell', 'tablerow', 'list', 'item', 'layout',
                 'toc', 'code', 'image', 'video', 'audio', 'latex', 'mermaid',
                 'reference', 'footnote', 'bibliography', 'footnotes',
                 'spreadsheet', 'plot', 'table', 'timeline',

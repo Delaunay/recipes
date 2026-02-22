@@ -85,7 +85,7 @@ const SidebarSection: FC<SidebarSectionProps> = ({
             </Link>
             <div className="nav-section-items">
                 {itemsToRender.map((item) => {
-                    const itemPath = item.href.split('?')[0];
+                    const itemPath = item.href;//.split('?')[0];
                     const currentFullPath = location.pathname + location.search;
                     const isActive = currentFullPath === item.href || location.pathname === itemPath;
 

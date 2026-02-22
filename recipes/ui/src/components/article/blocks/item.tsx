@@ -43,6 +43,10 @@ export class ItemBlock extends BlockBase {
     }
 
     as_markdown(ctx: MarkdownGeneratorContext): string {
-        return this.children.map(child => child.as_markdown(ctx)).join("\n\n");
+        const children = this.children.filter(child => child.def.kind !== "separator");
+        if (this.def.data?.listItem) {
+            return children.map(child => child.as_markdown(ctx)).join("");
+        }
+        return children.map(child => child.as_markdown(ctx)).join("\n\n");
     }
 }
