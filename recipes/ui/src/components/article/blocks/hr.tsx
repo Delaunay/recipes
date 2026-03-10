@@ -26,6 +26,10 @@ export class HrBlock extends BlockBase {
         return true;
     }
 
+    is_md_block(): boolean {
+        return true;
+    }
+
     as_markdown(_ctx: MarkdownGeneratorContext): string {
         return this.def.data.raw ?? "---";
     }

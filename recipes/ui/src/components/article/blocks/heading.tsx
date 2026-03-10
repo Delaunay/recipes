@@ -42,6 +42,10 @@ export class HeadingBlock extends BlockBase {
         return true;
     }
 
+    is_md_block(): boolean {
+        return true;
+    }
+
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const level = Math.min(Math.max(this.def.data.level || 1, 1), 6); // clamp 1..6
         const text = this.def.data.text ?? "";

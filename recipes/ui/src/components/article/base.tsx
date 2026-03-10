@@ -419,6 +419,10 @@ export abstract class BlockBase implements ArticleBlock {
     return true;
   }
 
+  is_md_block(): boolean {
+    return false;
+  }
+
   as_markdown(ctx: MarkdownGeneratorContext): string {
     return ``
   }

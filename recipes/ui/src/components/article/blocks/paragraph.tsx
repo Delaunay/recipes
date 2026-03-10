@@ -29,6 +29,10 @@ export class ParagraphBlock extends BlockBase {
         return true;
     }
 
+    is_md_block(): boolean {
+        return true;
+    }
+
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const text = this.def.data.text ?? "";
         const inline = this.children.map(child => child.as_markdown(ctx)).join("");

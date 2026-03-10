@@ -33,6 +33,10 @@ export class ListBlock extends BlockBase {
         return true;
     }
 
+    is_md_block(): boolean {
+        return true;
+    }
+
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const indent = "  ".repeat(ctx.level);
         const ordered = !!this.def.data.ordered;

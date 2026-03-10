@@ -82,8 +82,14 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
             children.unshift(makeBlock("checkbox", { checked: !!token.checked }));
         }
 
+        // token.text includes nested list markup (e.g. "Item 2\n* Item 2.1");
+        // extract just the item's own text from its first text token
+        const rawToks = token.tokens ?? [];
+        const firstTextTok = rawToks.find(t => t.type === "text");
+        const itemText = firstTextTok ? (firstTextTok as Tokens.Text).text : (token.text ?? "");
+
         return makeBlock("item", {
-            text: token.text ?? "",
+            text: itemText,
             task: token.task,
             checked: token.checked,
             loose: token.loose,
@@ -188,10 +194,15 @@ const renderer: Record<string, (token: any) => ArticleBlockDef> = {
     },
     text(token: Tokens.Text | Tokens.Escape | Tokens.Tag): any {
         if (token.type === "text") {
+            const children = reconstructBlocks(token.tokens);
+            if (children.length === 1 && children[0].kind === "text" &&
+                children[0].data?.style === null && children[0].data?.text === token.text) {
+                return makeBlock("text", { style: null, text: token.text });
+            }
             return makeBlock("text", {
                 style: null,
                 text: token.text
-            }, reconstructBlocks(token.tokens));
+            }, children);
         }
         return makeBlock("text", {
             style: null,

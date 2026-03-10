@@ -168,12 +168,20 @@ function blockUpdateReconciliation(article: ArticleInstance, queuedActions: Pend
 }
 
 
+function deepEquals(a: any, b: any): boolean {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+    return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, newer: BlockDef, depth: number = 0) {
     //
     // Merge a parsed block definition with the currently displayed block definition
     //
     //  This will create insert, update, delete action to be executed by the backend
     //
+    const oldDefSnapshot = structuredClone(original.def);
+
     const keys = new Set([
         ...Object.keys(original.def),
         ...Object.keys(newer)
@@ -190,22 +198,27 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
         if (skipKeys.has(key))
             continue;
 
+        // Only modify if the key exists in the newer definition;
+        // keys only in the original (e.g. extension) are left as-is
+        if (!(key in newer))
+            continue;
+
         const oValue = original.def[key];
         const nValue = newer[key];
 
         // New field
-        if (oValue === undefined) {
-            original.def[key] = nValue;
-            wasModified = true;
-        }
-        // Updated fields
-        else if (oValue !== nValue) {
+        if (oValue === undefined && nValue !== undefined) {
             original.def[key] = nValue;
             wasModified = true;
         }
         // Deleted fields
-        else if (nValue === undefined) {
+        else if (nValue === undefined && oValue !== undefined) {
             original.def[key] = undefined;
+            wasModified = true;
+        }
+        // Updated fields (deep compare for objects)
+        else if (!deepEquals(oValue, nValue)) {
+            original.def[key] = nValue;
             wasModified = true;
         }
     }
@@ -225,22 +238,24 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
             }
 
             // INSERT MISSING children
-            if (nChildrenCount >= oChildrenCount) {
+            if (nChildrenCount > oChildrenCount) {
                 article.insertBlock(original, original.children[oChildrenCount - 1], 'after', newer.children.slice(sharedCount))
             }
 
             // DELETE extra children
-            if (oChildrenCount >= nChildrenCount) {
-                for (let i = sharedCount; i < original.children.length; i++) {
-                    article.deleteBlock(original.children[i])
+            if (oChildrenCount > nChildrenCount) {
+                const toDelete = original.children.slice(sharedCount);
+                for (const child of toDelete) {
+                    article.deleteBlock(child)
                 }
             }
 
         }
         // DELETE all original children
         else {
-            for (let i = 0; i < oChildrenCount; i++) {
-                article.deleteBlock(original.children[i])
+            const toDelete = [...original.children];
+            for (const child of toDelete) {
+                article.deleteBlock(child)
             }
         }
     }
@@ -250,7 +265,7 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
     }
 
     if (wasModified) {
-        article._updateBlock(original, original.def)
+        article._updateBlock(original, original.def, oldDefSnapshot)
     }
 }
 
@@ -325,28 +340,40 @@ export class ArticleInstance implements ArticleBlock {
     }
 
     public deleteBlock(blockTarget: BlockBase) {
-        const index = this.children.indexOf(blockTarget);
+        const parent = blockTarget.getParent() ?? this;
+        const siblings = parent.children as BlockBase[];
+        const siblingDefs = parent.getDefinitionChildren();
 
-        // How to execute the action on the current view
         const doAction = () => {
-
+            const index = siblings.indexOf(blockTarget);
             if (index === -1) {
                 console.warn("Block not found, cannot delete:", blockTarget);
                 return;
             }
-            this.children.splice(index, 1);
+            siblings.splice(index, 1);
+
+            if (siblingDefs) {
+                const defIndex = siblingDefs.indexOf(blockTarget.def);
+                if (defIndex !== -1) {
+                    siblingDefs.splice(defIndex, 1);
+                }
+            }
             this.notify()
         }
 
-        // How to revert the action on the current view
         const undoAction = () => {
-            // this.insertBlock(index, [blockTarget])
+            const index = siblings.indexOf(blockTarget);
+            if (index === -1) {
+                siblings.push(blockTarget);
+                if (siblingDefs) {
+                    siblingDefs.push(blockTarget.def);
+                }
+            }
         }
 
-        // How to make the server persist the action to the database
         const remoteAction: ActionDeleteBlock = {
             op: "delete",
-            index: index,
+            index: siblings.indexOf(blockTarget),
             block_id: blockTarget.def.id
         }
 
@@ -357,20 +384,18 @@ export class ArticleInstance implements ArticleBlock {
         })
     }
 
-    _updateBlock(blockTarget: BlockBase, newData: BlockDef) {
-        let oldDef = blockTarget.def
+    _updateBlock(blockTarget: BlockBase, newData: BlockDef, oldDefSnapshot?: BlockDef) {
+        const oldDef = oldDefSnapshot ?? structuredClone(blockTarget.def);
 
-        // How to execute the action on the current view
         const doAction = () => {
-            blockTarget.children = blockTarget.def.children ? blockTarget.def.children?.map(
-                child => newBlock(blockTarget.article, child, blockTarget)) : [];
+            this.notify();
         }
 
-        // How to revert the action on the current view
         const undoAction = () => {
             blockTarget.def = oldDef
-            blockTarget.children = blockTarget.def.children ? blockTarget.def.children?.map(
+            blockTarget.children = blockTarget.def.children ? blockTarget.def.children.map(
                 child => newBlock(blockTarget.article, child, blockTarget)) : [];
+            this.notify();
         }
 
         // How to make the server persist the action to the database
@@ -553,7 +578,7 @@ export class ArticleInstance implements ArticleBlock {
         if (obj.children) {
             for (let i = 0; i < obj.children.length; i++) {
                 if (obj.children[i] !== undefined) {
-                    obj.children[i].sequence = i
+                    obj.children[i].sequence = obj.sequence + i + 1
                     ArticleInstance.fixSequenceRecursively(obj.children[i]);
                 }
             }

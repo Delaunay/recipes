@@ -44,6 +44,10 @@ export class CodeBlock extends BlockBase {
         return true;
     }
 
+    is_md_block(): boolean {
+        return true;
+    }
+
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const lang = this.def.data.language || "";
         return `\`\`\`${lang}\n${this.def.data.code}\n\`\`\``;

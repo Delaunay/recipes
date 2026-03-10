@@ -36,6 +36,10 @@ export class BlockquoteBlock extends BlockBase {
         return true;
     }
 
+    is_md_block(): boolean {
+        return true;
+    }
+
     as_markdown(ctx: MarkdownGeneratorContext): string {
         const content = this.children.map(child => child.as_markdown(ctx)).join("\n");
         return content

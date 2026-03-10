@@ -70,6 +70,10 @@ export class TableBlock extends BlockBase {
         return true;
     }
 
+    is_md_block(): boolean {
+        return true;
+    }
+
     as_markdown(ctx: MarkdownGeneratorContext): string {
         if (this.children.length > 0) {
             const rows = this.children;
