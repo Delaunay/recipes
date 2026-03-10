@@ -112,23 +112,56 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
     const parsed = parseMarkdown(e.target.value);
 
     if (block.def.kind === "input") {
-      // Simple case of inserting the user's input
       const parent = block.getParent()
       const target = parent.children.at(-1) ?? null;
-      console.log("Inserting", parent, target, parsed)
-      
       block.article.insertBlock(parent, target, "after", [parsed])
       return
     }
 
     parsed.children = parsed.children.filter(child => child.kind !== "separator")
-    console.log("parsed", parsed)
-    console.log("before", block)
-    console.log(block.def.kind, parsed.kind)
 
-    // block definition existed before
-    // we need to reconcile the newblock with the new block
-    // trying to reduce the amount of updates we make
+    // parseMarkdown wraps multiple top-level blocks in an item wrapper.
+    // When the original block is NOT an item, we need to split:
+    // update the original with the matching child, insert the rest as siblings.
+    const isMultiBlockWrapper = parsed.kind === "item" &&
+      Object.keys(parsed.data ?? {}).length === 0 &&
+      parsed.children?.length > 1;
+
+    if (isMultiBlockWrapper && block.def.kind !== "item") {
+      const children = parsed.children;
+
+      // Find the child that matches the original block's kind
+      const matchIndex = children.findIndex(c => c.kind === block.def.kind);
+
+      if (matchIndex !== -1) {
+        // Update the original block with its matching child
+        updateBlock(children[matchIndex]);
+
+        // Insert blocks before the match as siblings before
+        const before = children.slice(0, matchIndex);
+        if (before.length > 0) {
+          const parent = block.getParent();
+          block.article.insertBlock(parent, block, "before", before);
+        }
+
+        // Insert blocks after the match as siblings after
+        const after = children.slice(matchIndex + 1);
+        if (after.length > 0) {
+          const parent = block.getParent();
+          block.article.insertBlock(parent, block, "after", after);
+        }
+      } else {
+        // No matching kind found — update with first child, insert the rest after
+        updateBlock(children[0]);
+        const rest = children.slice(1);
+        if (rest.length > 0) {
+          const parent = block.getParent();
+          block.article.insertBlock(parent, block, "after", rest);
+        }
+      }
+      return;
+    }
+
     updateBlock(parsed)
   }
 
