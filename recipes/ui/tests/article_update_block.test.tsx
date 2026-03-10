@@ -1105,4 +1105,269 @@ describe('ArticleInstance.updateBlock - list block editing', () => {
             expect(deletedIds).toContain(30);
         });
     });
+
+    describe('multi-block split (adding blocks before/after via editor)', () => {
+        // Simulates what MarkdownEditor.updateBlocks does when parseMarkdown
+        // returns a multi-block wrapper (item with empty data and multiple children).
+        function simulateEditorUpdate(article: ArticleInstance, block: BlockBase, parsed: any) {
+            parsed.children = (parsed.children ?? []).filter((c: any) => c.kind !== "separator");
+
+            const isMultiBlockWrapper = parsed.kind === "item" &&
+                Object.keys(parsed.data ?? {}).length === 0 &&
+                parsed.children?.length > 1;
+
+            if (isMultiBlockWrapper && block.def.kind !== "item") {
+                const children = parsed.children;
+                const matchIndex = children.findIndex((c: any) => c.kind === block.def.kind);
+
+                if (matchIndex !== -1) {
+                    article.updateBlock(block, children[matchIndex]);
+
+                    const parent = block.getParent() ?? article;
+                    const blockId = block.def.id;
+
+                    const before = children.slice(0, matchIndex);
+                    if (before.length > 0) {
+                        article.insertBlock(parent, block, "before", before);
+                    }
+                    const after = children.slice(matchIndex + 1);
+                    if (after.length > 0) {
+                        const current = (parent.children as BlockBase[]).find(c => c.def.id === blockId) ?? block;
+                        article.insertBlock(parent, current, "after", after);
+                    }
+                } else {
+                    article.updateBlock(block, children[0]);
+
+                    const rest = children.slice(1);
+                    if (rest.length > 0) {
+                        const parent = block.getParent() ?? article;
+                        const blockId = block.def.id;
+                        const current = (parent.children as BlockBase[]).find(c => c.def.id === blockId) ?? block;
+                        article.insertBlock(parent, current, "after", rest);
+                    }
+                }
+            } else {
+                article.updateBlock(block, parsed);
+            }
+        }
+
+        it('should insert a heading before when user adds # Header 0 above # Header 1', () => {
+            const headingDef = makeBlockDef('heading', { level: 1, text: '' }, [
+                makeBlockDef('text', { style: null, text: 'Header 1' }, [], { id: 200, sequence: 0 }),
+            ], { id: 100, sequence: 0 });
+
+            const article = new ArticleInstance(makeArticleDef([headingDef]));
+            expect(article.children.length).toBe(1);
+            expect(article.children[0].def.kind).toBe('heading');
+
+            const block = article.children[0];
+
+            // Simulates parseMarkdown("# Header 0\n\n# Header 1")
+            const parsed = {
+                kind: 'item',
+                data: {},
+                children: [
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Header 0' }, children: [] }
+                    ]},
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Header 1' }, children: [] }
+                    ]},
+                ]
+            };
+
+            simulateEditorUpdate(article, block, parsed);
+
+            // Should now have 2 top-level blocks
+            expect(article.children.length).toBe(2);
+            expect(article.children[0].def.kind).toBe('heading');
+            expect(article.children[1].def.kind).toBe('heading');
+
+            // Header 0 was inserted before, Header 1 stays in place
+            expect(article.children[0].children[0].def.data.text).toBe('Header 0');
+            expect(article.children[1].children[0].def.data.text).toBe('Header 1');
+
+            // Original heading block should still be Header 1 (the match)
+            expect(block.def.kind).toBe('heading');
+        });
+
+        it('should insert a heading after when user adds # Header 2 below # Header 1', () => {
+            const headingDef = makeBlockDef('heading', { level: 1, text: '' }, [
+                makeBlockDef('text', { style: null, text: 'Header 1' }, [], { id: 200, sequence: 0 }),
+            ], { id: 100, sequence: 0 });
+
+            const article = new ArticleInstance(makeArticleDef([headingDef]));
+            const block = article.children[0];
+
+            const parsed = {
+                kind: 'item',
+                data: {},
+                children: [
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Header 1' }, children: [] }
+                    ]},
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Header 2' }, children: [] }
+                    ]},
+                ]
+            };
+
+            simulateEditorUpdate(article, block, parsed);
+
+            expect(article.children.length).toBe(2);
+            expect(article.children[0].children[0].def.data.text).toBe('Header 1');
+            expect(article.children[1].children[0].def.data.text).toBe('Header 2');
+        });
+
+        it('should insert a paragraph after a heading when user adds text below', () => {
+            const headingDef = makeBlockDef('heading', { level: 1, text: '' }, [
+                makeBlockDef('text', { style: null, text: 'Title' }, [], { id: 200, sequence: 0 }),
+            ], { id: 100, sequence: 0 });
+
+            const article = new ArticleInstance(makeArticleDef([headingDef]));
+            const block = article.children[0];
+
+            // parseMarkdown("# Title\n\nSome paragraph text")
+            const parsed = {
+                kind: 'item',
+                data: {},
+                children: [
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Title' }, children: [] }
+                    ]},
+                    { kind: 'paragraph', data: { text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Some paragraph text' }, children: [] }
+                    ]},
+                ]
+            };
+
+            simulateEditorUpdate(article, block, parsed);
+
+            expect(article.children.length).toBe(2);
+            expect(article.children[0].def.kind).toBe('heading');
+            expect(article.children[1].def.kind).toBe('paragraph');
+        });
+
+        it('should insert blocks both before and after when match is in the middle', () => {
+            const paraDef = makeBlockDef('paragraph', { text: '' }, [
+                makeBlockDef('text', { style: null, text: 'Middle' }, [], { id: 200, sequence: 0 }),
+            ], { id: 100, sequence: 0 });
+
+            const article = new ArticleInstance(makeArticleDef([paraDef]));
+            const block = article.children[0];
+
+            // parseMarkdown("# Before\n\nMiddle\n\n---")
+            const parsed = {
+                kind: 'item',
+                data: {},
+                children: [
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Before' }, children: [] }
+                    ]},
+                    { kind: 'paragraph', data: { text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Middle' }, children: [] }
+                    ]},
+                    { kind: 'hr', data: { raw: '---' }, children: [] },
+                ]
+            };
+
+            simulateEditorUpdate(article, block, parsed);
+
+            expect(article.children.length).toBe(3);
+            expect(article.children[0].def.kind).toBe('heading');
+            expect(article.children[1].def.kind).toBe('paragraph');
+            expect(article.children[2].def.kind).toBe('hr');
+        });
+
+        it('should fall back to first child when no kind matches', () => {
+            const paraDef = makeBlockDef('paragraph', { text: '' }, [
+                makeBlockDef('text', { style: null, text: 'Old text' }, [], { id: 200, sequence: 0 }),
+            ], { id: 100, sequence: 0 });
+
+            const article = new ArticleInstance(makeArticleDef([paraDef]));
+            const block = article.children[0];
+
+            // User replaces paragraph with two headings (no paragraph in result)
+            const parsed = {
+                kind: 'item',
+                data: {},
+                children: [
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Heading 1' }, children: [] }
+                    ]},
+                    { kind: 'heading', data: { level: 2, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Heading 2' }, children: [] }
+                    ]},
+                ]
+            };
+
+            simulateEditorUpdate(article, block, parsed);
+
+            // First child replaces original, second is inserted after
+            expect(article.children.length).toBe(2);
+        });
+
+        it('should not split when parsed result is a single block', () => {
+            const headingDef = makeBlockDef('heading', { level: 1, text: '' }, [
+                makeBlockDef('text', { style: null, text: 'Header 1' }, [], { id: 200, sequence: 0 }),
+            ], { id: 100, sequence: 0 });
+
+            const article = new ArticleInstance(makeArticleDef([headingDef]));
+            const block = article.children[0];
+
+            // Single heading — no wrapper, just update in place
+            const parsed = {
+                kind: 'heading',
+                data: { level: 1, text: '' },
+                children: [
+                    { kind: 'text', data: { style: null, text: 'Updated Header' }, children: [] }
+                ]
+            };
+
+            simulateEditorUpdate(article, block, parsed);
+
+            expect(article.children.length).toBe(1);
+            expect(article.children[0].def.kind).toBe('heading');
+            expect(article.children[0].children[0].def.data.text).toBe('Updated Header');
+        });
+
+        it('should generate correct server actions for the split', () => {
+            const headingDef = makeBlockDef('heading', { level: 1, text: '' }, [
+                makeBlockDef('text', { style: null, text: 'Header 1' }, [], { id: 200, sequence: 0 }),
+            ], { id: 100, sequence: 0 });
+
+            const article = new ArticleInstance(makeArticleDef([headingDef]));
+            const block = article.children[0];
+
+            const parsed = {
+                kind: 'item',
+                data: {},
+                children: [
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Header 0' }, children: [] }
+                    ]},
+                    { kind: 'heading', data: { level: 1, text: '' }, children: [
+                        { kind: 'text', data: { style: null, text: 'Header 1' }, children: [] }
+                    ]},
+                ]
+            };
+
+            simulateEditorUpdate(article, block, parsed);
+
+            const actions = article.pendingChange.map(p => p.action);
+            const inserts = actions.filter(a => a.op === 'insert');
+            const updates = actions.filter(a => a.op === 'update');
+
+            // findIndex matches the first heading ("Header 0"), so the original
+            // heading is updated from "Header 1" → "Header 0", and "Header 1" is inserted after
+            expect(inserts.length).toBe(1);
+            expect(inserts[0].children[0].kind).toBe('heading');
+            expect(updates.length).toBeGreaterThanOrEqual(1);
+
+            // Verify the structure is correct regardless
+            expect(article.children.length).toBe(2);
+            expect(article.children[0].children[0].def.data.text).toBe('Header 0');
+            expect(article.children[1].children[0].def.data.text).toBe('Header 1');
+        });
+    });
 });

@@ -134,29 +134,32 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
       const matchIndex = children.findIndex(c => c.kind === block.def.kind);
 
       if (matchIndex !== -1) {
-        // Update the original block with its matching child
         updateBlock(children[matchIndex]);
 
-        // Insert blocks before the match as siblings before
+        const parent = block.getParent();
+        const blockId = block.def.id;
+
         const before = children.slice(0, matchIndex);
         if (before.length > 0) {
-          const parent = block.getParent();
           block.article.insertBlock(parent, block, "before", before);
         }
 
-        // Insert blocks after the match as siblings after
         const after = children.slice(matchIndex + 1);
         if (after.length > 0) {
-          const parent = block.getParent();
-          block.article.insertBlock(parent, block, "after", after);
+          // After inserting "before" items, parent.children was rebuilt;
+          // re-find the block by ID since the old reference is stale
+          const current = (parent.children as BlockBase[]).find(c => c.def.id === blockId) ?? block;
+          block.article.insertBlock(parent, current, "after", after);
         }
       } else {
-        // No matching kind found — update with first child, insert the rest after
         updateBlock(children[0]);
+
         const rest = children.slice(1);
         if (rest.length > 0) {
           const parent = block.getParent();
-          block.article.insertBlock(parent, block, "after", rest);
+          const blockId = block.def.id;
+          const current = (parent.children as BlockBase[]).find(c => c.def.id === blockId) ?? block;
+          block.article.insertBlock(parent, current, "after", rest);
         }
       }
       return;
