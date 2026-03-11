@@ -20,6 +20,7 @@ import type {
     ActionUpdateArticle
 } from './base'
 import { recipeAPI } from '../../services/api'
+import { useColorModeValue } from '../ui/color-mode'
 import { SubPageList } from './subpages'
 
 import "./blocks/heading"
@@ -271,6 +272,16 @@ function blockDefinitionMerger(article: ArticleInstance, original: BlockBase, ne
 
 
 
+export type EditTrigger = "hover" | "click";
+
+export interface ArticleOptions {
+    editTrigger: EditTrigger;
+}
+
+const defaultArticleOptions: ArticleOptions = {
+    editTrigger: "click",
+};
+
 export class ArticleInstance implements ArticleBlock {
     // TODO: amek this a BlockBase too
     //
@@ -288,6 +299,7 @@ export class ArticleInstance implements ArticleBlock {
     article: ArticleInstance
     saveTimeoutRef: NodeJS.Timeout | null = null
     inputBlock: BlockBase
+    options: ArticleOptions
 
     // For connection loss and change batching
     // pendingChange: ActionBatch = loadUncomittedChange()
@@ -298,7 +310,8 @@ export class ArticleInstance implements ArticleBlock {
     notify() {
         for (const l of this.listeners) l();
     }
-    constructor(article: ArticleDef) {
+    constructor(article: ArticleDef, options?: Partial<ArticleOptions>) {
+        this.options = { ...defaultArticleOptions, ...options }
         this.def = article
         this.children = this.def.blocks.map(child => newBlock(this, child, this))
         this.article = this
@@ -805,6 +818,7 @@ export class ArticleInstance implements ArticleBlock {
 
 interface ArticleProps {
     article: ArticleDef
+    options?: Partial<ArticleOptions>
 }
 
 
@@ -815,56 +829,70 @@ const TitleDisplay: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     const [focused, setFocused] = useState(false);
     const [text, setText] = useState(article.def.title);
 
-    // Update local state when model changes (e.g. undo/redo)
+    const editTrigger = article.options?.editTrigger ?? "click";
+    const editing = editTrigger === "hover"
+        ? hovered || focused
+        : focused;
+
+    const hoverBg = useColorModeValue("blackAlpha.50", "whiteAlpha.50");
+    const showHoverHint = hovered && !editing;
+
     useEffect(() => {
         setText(article.def.title);
     }, [article.def.title]);
 
-    const mode = hovered || focused ? "edit" : "view";
+    useEffect(() => {
+        document.title = article.def.title || "Untitled";
+    }, [article.def.title]);
 
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setText(e.target.value);
-        // We update the model immediately so it feels responsive and auto-saves
         article.updateTitle(e.target.value);
-    }
-
-    if (mode === "view") {
-        return (
-            <Heading
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
-                onClick={() => setFocused(true)}
-                mb={4}
-            >
-                {article.def.title}
-            </Heading>
-        )
     }
 
     return (
         <Box
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
+            onClick={(e) => {
+                e.stopPropagation()
+                setFocused(true)
+            }}
+            onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setFocused(false)
+                }
+            }}
+            tabIndex={0}
+            cursor={!editing && editTrigger === "click" ? "pointer" : undefined}
+            bg={showHoverHint ? hoverBg : undefined}
+            borderRadius={showHoverHint ? "md" : undefined}
+            outline={focused ? "2px solid" : "none"}
+            outlineColor="blue.500"
+            transition="background 0.15s ease"
             mb={4}
         >
-            <Input
-                value={text}
-                onChange={onChange}
-                onBlur={() => setFocused(false)}
-                autoFocus
-                size="lg"
-                fontWeight="bold"
-                fontSize="3xl" // Matches default Heading size roughly but can adjust if needed
-            />
+            {editing ? (
+                <Input
+                    value={text}
+                    onChange={onChange}
+                    autoFocus
+                    size="lg"
+                    fontWeight="bold"
+                    fontSize="3xl"
+                />
+            ) : (
+                <Heading>{article.def.title}</Heading>
+            )}
         </Box>
     )
 }
 
-const Article: React.FC<ArticleProps> = ({ article }) => {
+const Article: React.FC<ArticleProps> = ({ article, options }) => {
     const instanceRef = useRef<ArticleInstance | null>(null);
 
     if (!instanceRef.current) {
-        instanceRef.current = new ArticleInstance(article);
+        instanceRef.current = new ArticleInstance(article, options);
     }
 
     return (

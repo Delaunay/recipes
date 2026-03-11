@@ -29,7 +29,8 @@ const renderWithProvider = (component: React.ReactNode) => {
 const createMockArticle = () => ({
     updateBlock: vi.fn(),
     insertBlock: vi.fn(),
-    notify: vi.fn()
+    notify: vi.fn(),
+    options: { editTrigger: "click" as const },
 });
 
 const baseDef = (kind: string, data: any, extra?: Partial<BlockDef>): BlockDef => ({
@@ -46,7 +47,7 @@ const baseDef = (kind: string, data: any, extra?: Partial<BlockDef>): BlockDef =
 const showEditor = (container: HTMLElement) => {
     const wrapper = container.querySelector('.TOP_LEVEL_BLOCK') as HTMLElement;
     expect(wrapper).toBeTruthy();
-    fireEvent.mouseEnter(wrapper);
+    fireEvent.click(wrapper);
     const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
     expect(textarea).toBeTruthy();
     return textarea;

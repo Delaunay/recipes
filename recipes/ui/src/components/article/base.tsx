@@ -8,6 +8,7 @@ import {
 import { Button, CloseButton, Dialog, Portal } from "@chakra-ui/react";
 import { IconButton, Flex } from "@chakra-ui/react";
 import { Trash, GripVertical, Settings } from "lucide-react";
+import { useColorModeValue } from '../ui/color-mode';
 import { Textarea, Input } from '@chakra-ui/react';
 import { parseMarkdown } from './markdown';
 import {
@@ -194,8 +195,15 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
 
+  const editTrigger = block.article.options?.editTrigger ?? "click";
   const is_md_ok = block.is_md_representable();
-  const mode = hovered || focused ? "edit" : "view";
+  const hoverBg = useColorModeValue("blackAlpha.50", "whiteAlpha.50");
+
+  const editing = editTrigger === "hover"
+    ? hovered || focused
+    : focused;
+  const mode = editing ? "edit" : "view";
+  const showHoverHint = hovered && !editing && is_md_ok;
 
   return (
     <Box
@@ -210,11 +218,19 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
         e.stopPropagation()
         setFocused(true)
       }}
-      onBlur={() => setFocused(false)}
-      tabIndex={0} // makes div focusable
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setFocused(false)
+        }
+      }}
+      tabIndex={0}
       position="relative"
+      cursor={is_md_ok && !editing && editTrigger === "click" ? "pointer" : undefined}
+      bg={showHoverHint ? hoverBg : undefined}
+      borderRadius={showHoverHint ? "md" : undefined}
       outline={focused ? "2px solid" : "none"}
       outlineColor="blue.500"
+      transition="background 0.15s ease"
       minHeight="2rem"
     >
       {/* Drag handle (left) */}
