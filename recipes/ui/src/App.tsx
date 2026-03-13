@@ -28,6 +28,8 @@ import ArticleTestPage from './components/ArticleTestPage';
 import ArticleView from './components/ArticleView';
 import SectionView from './components/SectionView';
 import ContentView from './components/ContentView';
+import CodeVisualization from './components/CodeVisualization';
+import FilamentMath from './components/FilamentMath';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -84,9 +86,11 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/api-tester" element={<ApiTester />} />
                 <Route path="/article" element={<ArticleView />} />
+                <Route path="/scratch/code-viz" element={<CodeVisualization />} />
+                <Route path="/scratch/filament-math" element={<FilamentMath />} />
   
                 {/* Test pages */}
-                <Route path="/test/article" element={<ArticleTestPage />} />
+                <Route path="/scratch/article-blocks" element={<ArticleTestPage />} />
               </Routes>
             </Layout>
           </Router>

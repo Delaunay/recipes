@@ -1,5 +1,5 @@
 import { FC, ReactNode, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, type Location } from 'react-router-dom';
 import { ColorModeButton } from "@/components/ui/color-mode"
 import { IconButton, Box } from '@chakra-ui/react';
 import { recipeAPI } from '../services/api';
@@ -26,23 +26,16 @@ interface LayoutProps {
 
 
 async function getArticles(): Promise<SidebarItem[]> {
-  const testArticle = {
-    name: "Test",
-    href: "/test/article"
-  }
-
   try {
     const articles = await recipeAPI.getLastAccessedArticles();
     const articleSection: SidebarItem[] = articles.map(article => ({
       name: article.title || 'Untitled',
       href: `/article?id=${article.id}`
     }))
-    articleSection.push(testArticle);
     return articleSection;
   } catch (error) {
     console.error('Failed to fetch articles for sidebar:', error);
-    // Return only TestArticle if fetch fails
-    return [testArticle];
+    return [];
   }
 }
 
@@ -102,7 +95,7 @@ const getStaticSidebarSections = () => [
   {
     title: 'Notes',
     href: '/content',
-    isSelected: function (location) {
+    isSelected: function (location: Location) {
       return location.pathname.startsWith("/content") || location.pathname.startsWith("/article") 
     },
     items: [],
@@ -122,7 +115,15 @@ const getStaticSidebarSections = () => [
     items: [
       { name: 'Settings', href: '/settings' },
       { name: 'API Tester', href: '/api-tester' },
-      { name: 'Code Visualization', href: '/code-viz' },
+    ]
+  },
+  {
+    title: 'Scratch',
+    href: '/scratch',
+    items: [
+      { name: 'Code Visualization', href: '/scratch/code-viz' },
+      { name: 'Article Blocks', href: '/scratch/article-blocks' },
+      { name: 'Filament Math', href: '/scratch/filament-math' },
     ]
   },
 ];

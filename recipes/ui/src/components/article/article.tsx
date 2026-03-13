@@ -411,7 +411,6 @@ export class ArticleInstance implements ArticleBlock {
             this.notify();
         }
 
-        // How to make the server persist the action to the database
         const remoteAction: ActionUpdateBlock = {
             op: "update",
             id: blockTarget.def.id,
