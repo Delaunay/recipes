@@ -1,8 +1,4 @@
-import React, { useState, useRef } from 'react';
-import { Box, Heading, ListItem } from '@chakra-ui/react';
-import { Input, List } from '@chakra-ui/react';
-
-import {BlockBase, BlockDef, MarkdownGeneratorContext} from "../base";
+import {BlockBase, BlockDef, MarkdownGeneratorContext, EmptyBlockPlaceholder} from "../base";
 
 
 export interface ItemData {
@@ -33,7 +29,7 @@ export class ItemBlock extends BlockBase {
             // this makes the children not EDITABLE
             return <>{this.children.map(child => child.component(mode))}</>
         }
-        return <Box flex="1" minH="50px" display="flex" border="1px solid"></Box>
+        return <EmptyBlockPlaceholder icon="📝" label="Empty block" hint="Click to add content" />
     }
 
     is_md_representable(): boolean {

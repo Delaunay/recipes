@@ -35,6 +35,7 @@ export class ToggleBlock extends BlockBase {
 
 function ToggleDisplay({ block }: { block: ToggleBlock }) {
     const [open, setOpen] = useState(block.def.data.defaultOpen || false);
+    const content = block.def.data.content || "";
 
     return (
         <Box>
@@ -45,13 +46,16 @@ function ToggleDisplay({ block }: { block: ToggleBlock }) {
                 fontWeight="bold"
                 mb={open ? 2 : 0}
             >
-                {block.def.data.title} {open ? '▼' : '▶'}
+                {block.def.data.title || "Toggle"} {open ? '▼' : '▶'}
             </Box>
             {open && (
                 <Box>
-                    {block.def.data.content.split("\n").map((line, i) => (
-                        <Text key={i}>{line}</Text>
-                    ))}
+                    {content
+                        ? content.split("\n").map((line, i) => (
+                            <Text key={i}>{line}</Text>
+                        ))
+                        : <Text color="gray.400" fontStyle="italic">Empty toggle content — configure via settings</Text>
+                    }
                 </Box>
             )}
         </Box>

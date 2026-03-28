@@ -18,9 +18,9 @@ export class ParagraphBlock extends BlockBase {
     }
 
     component(mode: string): React.ReactNode {
-        // This output <p>
-        return <Text key={this.def.id}>
-            {this.def.data.text}
+        const hasContent = this.def.data.text || this.children.length > 0;
+        return <Text key={this.def.id} color={hasContent ? undefined : "gray.400"} fontStyle={hasContent ? undefined : "italic"}>
+            {hasContent ? this.def.data.text : "Empty paragraph — click to edit"}
             {this.children.map(child => child.component(mode))}
         </Text>
     }

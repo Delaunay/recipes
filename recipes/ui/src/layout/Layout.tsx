@@ -41,6 +41,11 @@ async function getArticles(): Promise<SidebarItem[]> {
 
 const getStaticSidebarSections = () => [
   {
+    title: 'Home',
+    href: '/',
+    items: []
+  },
+  {
     title: 'Cooking',
     href: '/cooking',
     items: [
@@ -74,8 +79,11 @@ const getStaticSidebarSections = () => [
     href: '/home-management',
     items: [
       // Add your home management features here
-      { name: 'Taxes', href: '/tax' },
-      { name: 'Retirement', href: '/retirement' }
+      { name: 'Computers', href: '/computers' },
+      { name: 'Home', href: '/home' },
+      { name: 'Sensors', href: "/sensors"},
+      { name: 'Switches', href: "/switches"},
+      { name: 'AI', href: "/ai"}
     ]
   },
   {
@@ -83,6 +91,8 @@ const getStaticSidebarSections = () => [
     href: '/investing',
     items: [
       // Add your home management features here
+      { name: 'Taxes', href: '/tax' },
+      { name: 'Retirement', href: '/retirement' }
     ]
   },
   {
@@ -124,6 +134,7 @@ const getStaticSidebarSections = () => [
       { name: 'Code Visualization', href: '/scratch/code-viz' },
       { name: 'Article Blocks', href: '/scratch/article-blocks' },
       { name: 'Filament Math', href: '/scratch/filament-math' },
+      { name: 'Wood Planner', href: '/scratch/wood-planner' },
     ]
   },
 ];
@@ -149,7 +160,7 @@ const Layout: FC<LayoutProps> = ({ children }) => {
 
   // Check if a section contains the active route or if we're on the section page itself
   const isSectionActive = (section: typeof sidebarSections[number]) => {
-    console.log(location.pathname, section)
+    // console.log(location.pathname, section)
     const itemPath = section.href.split('?')[0];
 
     // check if section has "isSelected", if so call that, if true return else continue

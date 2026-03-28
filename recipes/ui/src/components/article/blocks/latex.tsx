@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, EmptyBlockPlaceholder } from "../base";
 import { Box, Textarea, Text } from '@chakra-ui/react';
 import 'katex/dist/katex.min.css';
 
@@ -41,7 +41,11 @@ function LatexViewer({ formula }: { formula: string }) {
         let mounted = true;
 
         const renderFormula = async () => {
-            if (!containerRef.current || !formula) return;
+            if (!containerRef.current) return;
+            if (!formula) {
+                containerRef.current.innerHTML = '';
+                return;
+            }
 
             // Clear previous content
             containerRef.current.innerHTML = '';
@@ -75,6 +79,7 @@ function LatexViewer({ formula }: { formula: string }) {
 
     return (
         <Box p={4} borderRadius="md" textAlign="center" overflowX="auto">
+            {!formula && <EmptyBlockPlaceholder icon="∑" label="LaTeX Formula" hint="Click to edit — type a formula like $$E=mc^2$$" />}
             <div ref={containerRef} />
             {error && (
                 <Text fontSize="sm" color="red.500" mt={2}>

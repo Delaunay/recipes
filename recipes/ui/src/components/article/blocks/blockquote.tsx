@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Text } from '@chakra-ui/react';
 import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
 
 export interface BlockquoteBlockDef extends BlockDef {
@@ -27,7 +27,10 @@ export class BlockquoteBlock extends BlockBase {
                 pl={3}
                 color="gray.600"
             >
-                {this.children.map(child => child.component(mode))}
+                {this.children.length > 0
+                    ? this.children.map(child => child.component(mode))
+                    : <Text color="gray.400" fontStyle="italic">Empty quote — click to edit</Text>
+                }
             </Box>
         );
     }

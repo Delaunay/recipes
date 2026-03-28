@@ -30,6 +30,7 @@ import SectionView from './components/SectionView';
 import ContentView from './components/ContentView';
 import CodeVisualization from './components/CodeVisualization';
 import FilamentMath from './components/FilamentMath';
+import WoodPlanner from './components/WoodPlanner';
 import './App.css';
 
 // Create the theme system for Chakra UI v3
@@ -88,6 +89,7 @@ function App() {
                 <Route path="/article" element={<ArticleView />} />
                 <Route path="/scratch/code-viz" element={<CodeVisualization />} />
                 <Route path="/scratch/filament-math" element={<FilamentMath />} />
+                <Route path="/scratch/wood-planner" element={<WoodPlanner />} />
   
                 {/* Test pages */}
                 <Route path="/scratch/article-blocks" element={<ArticleTestPage />} />

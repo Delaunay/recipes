@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, EmptyBlockPlaceholder } from "../base";
 import { Box, Text, Input } from '@chakra-ui/react';
 
 export interface VideoData {
@@ -38,6 +38,9 @@ export class VideoBlock extends BlockBase {
 }
 
 function VideoEditor({ block }: { block: VideoBlock }) {
+    if (!block.def.data.url) {
+        return <EmptyBlockPlaceholder icon="🎬" label="Video" hint="Configure via settings to add a video URL" />;
+    }
     return (
         <Box width={block.def.data.width} height={block.def.data.height}>
             <video src={block.def.data.url} controls style={{width: block.def.data.width, height: block.def.data.height, borderRadius: "8px" }} />

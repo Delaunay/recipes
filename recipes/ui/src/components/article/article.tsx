@@ -8,7 +8,7 @@ import {
 } from '@chakra-ui/react';
 
 
-import { BlockBase, newBlock, ArticleDef, BlockDef, PendingAction } from './base'
+import { BlockBase, newBlock, ArticleDef, BlockDef, PendingAction, InsertBlockGap, BlockPickerDialog } from './base'
 import type {
     ActionDeleteBlock,
     ActionUpdateBlock,
@@ -17,7 +17,8 @@ import type {
     ActionBatch,
     ArticleBlock,
     ActionInsertBlockReply,
-    ActionUpdateArticle
+    ActionUpdateArticle,
+    BlockTypeEntry,
 } from './base'
 import { recipeAPI } from '../../services/api'
 import { useColorModeValue } from '../ui/color-mode'
@@ -300,6 +301,19 @@ export class ArticleInstance implements ArticleBlock {
     saveTimeoutRef: NodeJS.Timeout | null = null
     inputBlock: BlockBase
     options: ArticleOptions
+    blockPickerCallback: ((entry: BlockTypeEntry) => void) | null = null
+
+    openBlockPicker(onSelect: (entry: BlockTypeEntry) => void) {
+        console.log("[Picker] opened");
+        this.blockPickerCallback = onSelect;
+        this.notify();
+    }
+
+    closeBlockPicker() {
+        console.log("[Picker] closed");
+        this.blockPickerCallback = null;
+        this.notify();
+    }
 
     // For connection loss and change batching
     // pendingChange: ActionBatch = loadUncomittedChange()
@@ -528,8 +542,7 @@ export class ArticleInstance implements ArticleBlock {
         let insertIndex: number;
 
         if (siblings.length !== parent.children.length) {
-            console.log("ERROR children size mismatch", siblings.length, parent.children.length)
-            console.log("ERROR children size mismatch", parent)
+            console.log("WARN children size mismatch — siblings (def):", siblings.length, "children (runtime):", parent.children.length, parent)
         }
 
         if (target === null) {
@@ -548,25 +561,29 @@ export class ArticleInstance implements ArticleBlock {
                 throw new Error("Target block not found in parent");
             }
 
-            if (direction === "after") {
-                insertIndex = targetIndex + 1;
+            // Target exists in runtime children but def.children is empty or shorter.
+            // Clamp targetIndex so we don't read past the end of siblings.
+            const clampedIndex = Math.min(targetIndex, siblings.length - 1);
 
-                if (targetIndex + 1 === siblings.length) {
-                    start = target.def.sequence;
+            if (direction === "after") {
+                insertIndex = siblings.length === 0 ? 0 : clampedIndex + 1;
+
+                if (siblings.length === 0 || clampedIndex + 1 >= siblings.length) {
+                    start = target.def.sequence ?? targetIndex;
                     end = start + newChildren.length + 1;
                 }
                 else {
                     start = target.def.sequence;
-                    end = siblings[targetIndex + 1].sequence;
+                    end = siblings[clampedIndex + 1].sequence;
                 }
             } else {
-                insertIndex = targetIndex;
+                insertIndex = siblings.length === 0 ? 0 : clampedIndex;
 
-                if (targetIndex === 0) {
-                    end = target.def.sequence;
+                if (siblings.length === 0 || clampedIndex <= 0) {
+                    end = target.def.sequence ?? targetIndex;
                     start = end - (newChildren.length + 1);
                 } else {
-                    start = siblings[targetIndex - 1].sequence;
+                    start = siblings[clampedIndex - 1].sequence;
                     end = target.def.sequence;
                 }
             }
@@ -713,6 +730,31 @@ export class ArticleInstance implements ArticleBlock {
 
         console.log("Action was generated")
         this.pushAction(futureAction)
+    }
+
+    getArticlePath(): string {
+        const current = this.def;
+        const top = current.top_level_article;
+
+        if (!top || top.id === current.id) {
+            return current.title;
+        }
+
+        const path = this._findPathInTree(current.children || [], current.id, [top.title]);
+        return path ? path.join('/') : `${top.title}/${current.title}`;
+    }
+
+    private _findPathInTree(children: ArticleDef[], targetId: number, currentPath: string[]): string[] | null {
+        for (const child of children) {
+            if (child.id === targetId) {
+                return [...currentPath, child.title];
+            }
+            if (child.children && child.children.length > 0) {
+                const result = this._findPathInTree(child.children as ArticleDef[], targetId, [...currentPath, child.title]);
+                if (result) return result;
+            }
+        }
+        return null;
     }
 
     getParentId() {
@@ -924,6 +966,7 @@ function renderSortedBySequence(items: BlockBase[]): any {
 
 const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     const [, setTick] = useState(0);
+    const [selectedCategory, setSelectedCategory] = useState("Text");
 
     useEffect(() => {
         const rerender = () => {
@@ -933,7 +976,6 @@ const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
         article.listeners.add(rerender);
         return () => {
             article.listeners.delete(rerender);
-            // Cleanup auto-save timeout on unmount
             if (article.saveTimeoutRef) {
                 clearTimeout(article.saveTimeoutRef);
                 article.saveTimeoutRef = null;
@@ -943,17 +985,36 @@ const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
 
     return (
         <Flex gap={6} align="start" overflowX="auto" width="100%">
-            {/* Main Article Content */}
             <Box flex="1" minW="0">
                 <TitleDisplay article={article} />
-                {renderSortedBySequence(article.children)}
+                <InsertBlockGap article={article} after={null} />
+                {article.children.map((block) => (
+                    <React.Fragment key={block.key}>
+                        <Box mb="12px">
+                            {block.react()}
+                        </Box>
+                        <InsertBlockGap article={article} after={block} />
+                    </React.Fragment>
+                ))}
                 {article.inputBlock.react()}
             </Box>
 
-            {/* Right Sidebar */}
             <Box width="300px" flexShrink={0} pl={4} borderLeft="1px solid" borderColor="gray.100">
                 <SubPageList articleDef={article.def} />
             </Box>
+
+            <BlockPickerDialog
+                open={!!article.blockPickerCallback}
+                onOpenChange={(open) => { if (!open) article.closeBlockPicker(); }}
+                onSelect={(entry) => {
+                    console.log("[Picker] selected:", entry.kind, entry);
+                    const cb = article.blockPickerCallback;
+                    article.closeBlockPicker();
+                    cb?.(entry);
+                }}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+            />
         </Flex>
     );
 };

@@ -72,7 +72,7 @@ import time
 
 
 class FlashForgeClient:
-    def __init__(self, ip, port=8899, timeout=3):
+    def __init__(self, ip, port=8899, timeout=10):
         self.ip = ip
         self.port = port
         self.timeout = timeout
@@ -146,7 +146,6 @@ def upload_file(path, chunk_size):
 
     file_sent_end = [
         "M29",
-        
     ]
 
     for i in file_sent_end:
@@ -155,37 +154,56 @@ def upload_file(path, chunk_size):
     time.sleep(1)
     print(filesize)
 
+    
 
 
 if __name__ == "__main__":
-    c = FlashForgeClient("192.168.2.192")
+    c = FlashForgeClient("192.168.2.196")
     c.connect()
 
-    p = "/home/setepenre/work/website/before_print.gx"
+    dump(c.send(f"M601 S1"))
+    dump(c.send(f"M20"))
+    dump(c.send(f"M22"))
+    dump(c.send(f"M21"))
+    dump(c.send(f"M81"))
+    dump(c.send(f"M17"))
+    dump(c.send(f"G28"))
+    dump(c.send(f"G29"))
 
-    import os
-    filename = os.path.basename(p)
 
-    upload_file(p, chunk_size=2048)
+    c.close()
 
-    time.sleep(1)
-
-    # M23 => Select file 
-    # M24 => Resume
-    # M25 => Pause
-    # M27 => Print status
-    # M30 => delete
+    from time import sleep
+    while True:
+        sleep(1)
     
-    dump(c.send(f"M23 0:/user/{filename}"))
 
-    cmd = [
-        # "M34"
-        # "M81"
 
-        # "M26" # <== CANCEL PRINT
-    ]
-    for i in cmd:
-        dump(c.send(i))
+    # p = "/home/setepenre/work/website/before_print.gx"
+
+    # import os
+    # filename = os.path.basename(p)
+
+    # upload_file(p, chunk_size=2048)
+
+    # time.sleep(1)
+
+    # # M23 => Select file 
+    # # M24 => Resume
+    # # M25 => Pause
+    # # M27 => Print status
+    # # M30 => delete
+    
+    # dump(c.send(f"M23 0:/user/{filename}"))
+
+    # cmd = [
+    #     # "M34"
+    #     # "M81"
+
+    #     # "M26" # <== CANCEL PRINT
+    # ]
+    # for i in cmd:
+    #     dump(c.send(i))
 
 
 

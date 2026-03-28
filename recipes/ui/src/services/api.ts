@@ -353,6 +353,36 @@ class RecipeAPI {
     }
   }
 
+  async downloadImage(file: File, articlePath: string): Promise<{ url: string; filename: string }> {
+    if (isStaticMode()) {
+      throw new Error('Image download is not supported in static mode');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', articlePath);
+
+    const url = `${API_BASE_URL}/download-image`;
+    const config: RequestInit = {
+      method: 'POST',
+      body: formData,
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Image download failed:', error);
+      throw error;
+    }
+  }
+
   // Utility method to check if we're in static mode
   isStaticMode(): boolean {
     return isStaticMode();

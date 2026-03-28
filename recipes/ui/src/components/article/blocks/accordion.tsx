@@ -1,5 +1,5 @@
 import React from 'react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, EmptyBlockPlaceholder } from "../base";
 import { Accordion } from '@chakra-ui/react';
 
 export interface AccordionItem {
@@ -29,6 +29,10 @@ export class AccordionBlock extends BlockBase {
         const items = this.def.data.items || [];
         const allowMultiple = this.def.data.allowMultiple !== false;
         const defaultIndex = this.def.data.defaultExpanded || [];
+
+        if (items.length === 0) {
+            return <EmptyBlockPlaceholder icon="▸" label="Accordion" hint="Configure via settings to add sections" />;
+        }
 
         return (
             <Accordion.Root

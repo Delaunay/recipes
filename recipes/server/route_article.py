@@ -290,7 +290,6 @@ def article_routes(app, db):
 
     @app.route("/blocks/delete", methods=["PUT"])
     def delete_blocks(delete, depth=0):
-
         if hasattr(delete, "_id"):
             block_id = delete._id
         else:
@@ -329,7 +328,10 @@ def article_routes(app, db):
                     case "reorder":
                         results.append(reorder_blocks(action, depth=1))
                     case "delete":
-                        results.append(delete_blocks(action, depth=1))
+                        try:
+                            results.append(delete_blocks(action, depth=1))
+                        except KeyError:
+                            pass
 
             db.session.commit()
             return results

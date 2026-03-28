@@ -1,4 +1,4 @@
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, EmptyBlockPlaceholder } from "../base";
 import { Box, Text } from '@chakra-ui/react';
 
 export interface EmbedData {
@@ -20,6 +20,10 @@ export class EmbedBlock extends BlockBase {
     }
 
     component(mode: string): React.ReactNode {
+        if (!this.def.data.url) {
+            return <EmptyBlockPlaceholder icon="🔗" label="Embed" hint="Configure via settings to add an embed URL" />;
+        }
+
         const aspectRatio = this.def.data.aspectRatio || "16/9";
         const [width, height] = aspectRatio.split("/").map(Number);
         const paddingBottom = `${(height / width) * 100}%`;

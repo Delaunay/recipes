@@ -105,6 +105,48 @@ def images_routes(app):
             traceback.print_exc()
             return jsonify({"error": str(e)}), 500
 
+    @app.route('/download-image', methods=['POST'])
+    def download_image() -> Dict[str, Any]:
+        """Download/save a dropped image into uploads under an article path"""
+        try:
+            if 'file' not in request.files:
+                return jsonify({"error": "No file provided"}), 400
+
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({"error": "No file selected"}), 400
+
+            if not allowed_file(file.filename):
+                return jsonify({"error": "File type not allowed. Please use: png, jpg, jpeg, gif, webp"}), 400
+
+            article_path = request.form.get('path', '')
+            if not article_path:
+                return jsonify({"error": "Missing article path"}), 400
+
+            safe_parts = [secure_filename(p) for p in article_path.split('/') if p.strip()]
+            if not safe_parts:
+                return jsonify({"error": "Invalid article path"}), 400
+
+            filename = secure_filename(file.filename)
+            dest_dir = os.path.join(app.config['UPLOAD_FOLDER'], *safe_parts)
+            os.makedirs(dest_dir, exist_ok=True)
+
+            dest_path = os.path.join(dest_dir, filename)
+            if os.path.exists(dest_path):
+                name, ext = os.path.splitext(filename)
+                filename = f"{name}_{uuid.uuid4().hex[:8]}{ext}"
+                dest_path = os.path.join(dest_dir, filename)
+
+            file.save(dest_path)
+
+            relative = '/'.join(safe_parts + [filename])
+            file_url = f"/api/uploads/{relative}"
+
+            return jsonify({"url": file_url, "filename": filename}), 201
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
     @app.route('/uploads/<path:filepath>')
     def uploaded_file(filepath):
         """Serve uploaded files from recipe-specific folders or direct files"""

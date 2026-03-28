@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { BlockBase, BlockDef, MarkdownGeneratorContext, BlockSetting } from "../base";
-import { Box, Text, Input } from '@chakra-ui/react';
+import React from 'react';
+import { BlockBase, BlockDef, MarkdownGeneratorContext, BlockSetting, EmptyBlockPlaceholder } from "../base";
+import { Box } from '@chakra-ui/react';
 
 export interface AudioData {
     url: string;
@@ -43,28 +43,12 @@ export class AudioBlock extends BlockBase {
 }
 
 function AudioEditor({ block }: { block: AudioBlock }) {
-    const [url, setUrl] = useState(block.def.data.url || "");
-    const [caption, setCaption] = useState(block.def.data.caption || "");
-
-    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setUrl(e.target.value);
-        block.def.data.url = e.target.value;
-        block.version += 1;
-    };
-
-    const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setCaption(e.target.value);
-        block.def.data.caption = e.target.value;
-        block.version += 1;
-    };
-
+    if (!block.def.data.url) {
+        return <EmptyBlockPlaceholder icon="🔊" label="Audio" hint="Configure via settings to add an audio URL" />;
+    }
     return (
         <Box>
-            {url && (
-                <Box mt={4}>
-                    <audio src={url} controls style={{ width: "100%" }} />
-                </Box>
-            )}
+            <audio src={block.def.data.url} controls style={{ width: "100%" }} />
         </Box>
     );
 }

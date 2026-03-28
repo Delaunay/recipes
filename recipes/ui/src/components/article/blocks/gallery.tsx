@@ -1,4 +1,4 @@
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, EmptyBlockPlaceholder } from "../base";
 import { Box, Image, Text } from '@chakra-ui/react';
 
 export interface GalleryImage {
@@ -27,6 +27,10 @@ export class GalleryBlock extends BlockBase {
     component(mode: string): React.ReactNode {
         const columns = this.def.data.columns || 3;
         const images = this.def.data.images || [];
+
+        if (images.length === 0) {
+            return <EmptyBlockPlaceholder icon="🖼️" label="Gallery" hint="Configure via settings to add images" />;
+        }
 
         return (
             <Box>

@@ -99,6 +99,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
   //
   const [markdown, setMarkdown] = useState(block.as_markdown(new MarkdownGeneratorContext()));
   const lineCount = markdown.split("\n").length || 1;
+  const isEmpty = !markdown.trim();
 
   const updateBlock = (parsedDef) => {
     block.article.updateBlock(block, parsedDef)
@@ -147,8 +148,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
 
         const after = children.slice(matchIndex + 1);
         if (after.length > 0) {
-          // After inserting "before" items, parent.children was rebuilt;
-          // re-find the block by ID since the old reference is stale
           const current = (parent.children as BlockBase[]).find(c => c.def.id === blockId) ?? block;
           block.article.insertBlock(parent, current, "after", after);
         }
@@ -169,16 +168,139 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ block }) => {
     updateBlock(parsed)
   }
 
+  const openPicker = () => {
+    block.article.openBlockPicker((entry: BlockTypeEntry) => {
+      const newDef: BlockDef = {
+        id: 0,
+        page_id: block.article.def.id,
+        parent_id: undefined,
+        kind: entry.kind,
+        data: { ...entry.defaultData },
+        extension: null,
+        sequence: 0,
+        children: entry.defaultChildren ? structuredClone(entry.defaultChildren) : undefined,
+      };
+
+      console.log("[Picker/MarkdownEditor] inserting block:", entry.kind);
+      console.log("[Picker/MarkdownEditor] newDef:", newDef);
+      console.log("[Picker/MarkdownEditor] current block:", block.def.kind, "id:", block.def.id);
+
+      if (block.def.kind === "input") {
+        const parent = block.getParent();
+        const target = parent.children.at(-1) ?? null;
+        console.log("[Picker/MarkdownEditor] input mode — parent:", parent.def?.kind, "target:", target?.def?.kind, "parent.children:", parent.children.length);
+        block.article.insertBlock(parent, target, "after", [newDef]);
+      } else {
+        const parent = block.getParent();
+        console.log("[Picker/MarkdownEditor] replace mode — parent:", parent.def?.kind, "parent.children:", parent.children.length, "parent.def.children:", parent.def?.children?.length);
+        block.article.insertBlock(parent, block, "after", [newDef]);
+        block.article.deleteBlock(block);
+      }
+    });
+  };
+
   return (
-    <Textarea
-      value={markdown}
-      onChange={updateMarkdown}
-      onBlur={updateBlocks}
-      rows={lineCount}
-      fontFamily="mono"
-    />
+    <Flex align="center" gap={1}>
+      <Textarea
+        value={markdown}
+        onChange={updateMarkdown}
+        onBlur={updateBlocks}
+        rows={lineCount}
+        fontFamily="mono"
+        placeholder="Type markdown here..."
+        flex="1"
+      />
+      {isEmpty && (
+        <IconButton
+          size="xs"
+          borderRadius="full"
+          variant="outline"
+          aria-label="Insert non-markdown block"
+          onClick={openPicker}
+          colorPalette="blue"
+          flexShrink={0}
+        >
+          <span style={{ fontSize: "13px", lineHeight: 1, fontWeight: "bold" }}>+</span>
+        </IconButton>
+      )}
+    </Flex>
   );
 };
+
+// ─── Block Picker Dialog (shared by MarkdownEditor and InsertBlockGap) ────────
+
+interface BlockPickerDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (entry: BlockTypeEntry) => void;
+  selectedCategory: string;
+  onCategoryChange: (cat: string) => void;
+}
+
+export const BlockPickerDialog: React.FC<BlockPickerDialogProps> = ({
+  open, onOpenChange, onSelect, selectedCategory, onCategoryChange,
+}) => (
+  <Dialog.Root
+    open={open}
+    onOpenChange={d => onOpenChange(d.open)}
+    placement="center"
+    motionPreset="slide-in-bottom"
+  >
+    <Portal>
+      <Dialog.Backdrop />
+      <Dialog.Positioner>
+        <Dialog.Content maxW="560px">
+          <Dialog.Header>
+            <Dialog.Title>Insert block</Dialog.Title>
+          </Dialog.Header>
+          <Dialog.Body pb={6}>
+            <Flex gap={2} mb={4} flexWrap="wrap">
+              {BLOCK_CATEGORIES.map(cat => (
+                <Box
+                  key={cat}
+                  as="button"
+                  px={3}
+                  py={1}
+                  borderRadius="full"
+                  fontSize="sm"
+                  bg={selectedCategory === cat ? "blue.500" : "gray.100"}
+                  color={selectedCategory === cat ? "white" : "gray.700"}
+                  cursor="pointer"
+                  onClick={() => onCategoryChange(cat)}
+                  _hover={{ bg: selectedCategory === cat ? "blue.600" : "gray.200" }}
+                >
+                  {cat}
+                </Box>
+              ))}
+            </Flex>
+            <Grid templateColumns="repeat(3, 1fr)" gap={3}>
+              {BLOCK_TYPES.filter(t => t.category === selectedCategory).map(entry => (
+                <Box
+                  key={entry.kind}
+                  as="button"
+                  p={3}
+                  border="1px solid"
+                  borderColor="gray.200"
+                  borderRadius="md"
+                  textAlign="left"
+                  cursor="pointer"
+                  _hover={{ bg: "blue.50", borderColor: "blue.300" }}
+                  onClick={() => onSelect(entry)}
+                >
+                  <Box fontWeight="semibold" fontSize="sm">{entry.label}</Box>
+                  <Box fontSize="xs" color="gray.500">{entry.kind}</Box>
+                </Box>
+              ))}
+            </Grid>
+          </Dialog.Body>
+          <Dialog.CloseTrigger asChild>
+            <CloseButton size="sm" />
+          </Dialog.CloseTrigger>
+        </Dialog.Content>
+      </Dialog.Positioner>
+    </Portal>
+  </Dialog.Root>
+);
 
 
 
@@ -194,6 +316,7 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   //
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const editTrigger = block.article.options?.editTrigger ?? "click";
   const is_md_ok = block.is_md_representable();
@@ -205,14 +328,26 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
   const mode = editing ? "edit" : "view";
   const showHoverHint = hovered && !editing && is_md_ok;
 
+  const handleMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!wrapperRef.current) return;
+    // Find the nearest .TOP_LEVEL_BLOCK ancestor (or self) of the hovered element.
+    // If it's this wrapper, the mouse is over this block's own content → show icons.
+    // If it's a child block, hide this block's icons.
+    const nearest = (e.target as HTMLElement).closest('.TOP_LEVEL_BLOCK');
+    setHovered(nearest === wrapperRef.current);
+  }, []);
+
   return (
     <Box
+      ref={wrapperRef}
       key={`bx-${block.key}`}
       data-block-id={block.def.id}
-      padding="5px"
+      pl="5px"
+      pr="36px"
+      py="5px"
       className="TOP_LEVEL_BLOCK"
       display="flex" flexDirection="column" flex="1" minH={0}
-      onMouseEnter={() => setHovered(true)}
+      onMouseOver={handleMouseOver}
       onMouseLeave={() => setHovered(false)}
       onClick={(e) => {
         e.stopPropagation()
@@ -251,8 +386,9 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
         <Dialog.Root size="cover" placement="center" motionPreset="slide-in-bottom">
           <Dialog.Trigger asChild>
             <IconButton
+              className="block-icon"
               position="absolute"
-              insetBlockStart="4px"
+              insetBlockStart="0px"
               insetInlineEnd="4px"
               size="xs"
               variant="ghost"
@@ -291,6 +427,7 @@ const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
 
       {/* Delete button (bottom-right) */}
       <IconButton
+        className="block-icon"
         position="absolute"
         bottom="4px"
         right="4px"
@@ -454,7 +591,10 @@ export abstract class BlockBase implements ArticleBlock {
     return <AutoBlockSettingsForm
       schema={this.settings()}
       values={this.def.data}
-      onSubmit={(data) => this.def.data = data} />
+      onSubmit={(data) => {
+        this.def.data = data;
+        this.article._updateBlock(this, this.def);
+      }} />
   }
 
   settings(): BlockSetting {
@@ -520,8 +660,9 @@ export function AutoBlockSettingsForm({
   const [state, setState] = useState(values)
 
   function update(key: string, value: any) {
-    setState((s) => ({ ...s, [key]: value }))
-    onSubmit(state)
+    const next = { ...state, [key]: value };
+    setState(next);
+    onSubmit(next);
   }
 
   return (
@@ -559,6 +700,31 @@ export function AutoBlockSettingsForm({
                   >
                     <NumberInput.Input />
                   </NumberInput.Root>
+                </Field.Root>
+              )
+
+            case "select":
+              return (
+                <Field.Root key={key}>
+                  <Field.Label>{label}</Field.Label>
+                  <select
+                    value={state[key] ?? ""}
+                    onChange={(e) => update(key, e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0 0.75rem",
+                      height: "2.5rem",
+                      borderRadius: "var(--chakra-radii-md)",
+                      border: "1px solid var(--chakra-colors-border)",
+                      background: "var(--chakra-colors-bg)",
+                      color: "inherit",
+                      fontSize: "inherit",
+                    }}
+                  >
+                    {(def.options ?? []).map((opt: string) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
                 </Field.Root>
               )
 
@@ -635,3 +801,172 @@ export interface PendingAction {
   undoAction: () => void;
   blocks?: ArticleBlock[];
 }
+
+// ─── Empty Block Placeholder ──────────────────────────────────────────────────
+
+interface EmptyBlockPlaceholderProps {
+  icon?: string;
+  label: string;
+  hint?: string;
+}
+
+export const EmptyBlockPlaceholder: React.FC<EmptyBlockPlaceholderProps> = ({ icon, label, hint }) => (
+  <Flex
+    direction="column"
+    align="center"
+    justify="center"
+    minH="60px"
+    py={4}
+    px={6}
+    border="2px dashed"
+    borderColor="gray.300"
+    borderRadius="md"
+    color="gray.400"
+    gap={1}
+    _dark={{ borderColor: "gray.600", color: "gray.500" }}
+  >
+    {icon && <Box fontSize="2xl" lineHeight={1}>{icon}</Box>}
+    <Box fontSize="sm" fontWeight="medium">{label}</Box>
+    {hint && <Box fontSize="xs" fontStyle="italic">{hint}</Box>}
+  </Flex>
+);
+
+// ─── Block Type Registry (for the insert picker) ─────────────────────────────
+
+export interface BlockTypeEntry {
+  kind: string;
+  label: string;
+  category: string;
+  defaultData: any;
+  defaultChildren?: BlockDef[];
+}
+
+const BLOCK_TYPES: BlockTypeEntry[] = [
+  // Text
+  { kind: "paragraph",  label: "Paragraph",   category: "Text",        defaultData: { text: "" } },
+  { kind: "heading",    label: "Heading",      category: "Text",        defaultData: { level: 2, text: "Heading" } },
+  { kind: "code",       label: "Code",         category: "Text",        defaultData: { code: "", language: "python" } },
+  { kind: "blockquote", label: "Blockquote",   category: "Text",        defaultData: { text: "" } },
+  { kind: "alert",      label: "Alert",        category: "Text",        defaultData: { type: "info", title: "Note", message: "" } },
+  { kind: "latex",      label: "LaTeX",        category: "Text",        defaultData: { formula: "" } },
+  // Data
+  { kind: "table",      label: "Table",        category: "Data",        defaultData: { data: "[]", columns: [] } },
+  { kind: "spreadsheet",label: "Spreadsheet",  category: "Data",        defaultData: { data: [["","",""],["","",""],["","",""]], headers: ["A","B","C"] } },
+  { kind: "plot",       label: "Plot",         category: "Data",        defaultData: { spec: {} } },
+  // Media
+  { kind: "image",      label: "Image",        category: "Media",       defaultData: { url: "", alt: "" } },
+  { kind: "video",      label: "Video",        category: "Media",       defaultData: { url: "" } },
+  { kind: "audio",      label: "Audio",        category: "Media",       defaultData: { url: "" } },
+  { kind: "gallery",    label: "Gallery",      category: "Media",       defaultData: { images: [] } },
+  // Layout
+  { kind: "layout",     label: "Layout",       category: "Layout",      defaultData: { layout: "column", column: 2 }, defaultChildren: [
+    { id: 0, page_id: 0, kind: "item", data: {}, extension: null, sequence: 0, children: [] },
+    { id: 0, page_id: 0, kind: "item", data: {}, extension: null, sequence: 1, children: [] },
+  ] },
+  { kind: "accordion",  label: "Accordion",    category: "Layout",      defaultData: { items: [{ title: "Section", content: "Content here" }] } },
+  { kind: "toggle",     label: "Toggle",       category: "Layout",      defaultData: { title: "Details", content: "" } },
+  { kind: "slideshow",  label: "Slideshow",    category: "Layout",      defaultData: { slides: [] } },
+  // Interactive
+  { kind: "quiz",       label: "Quiz",         category: "Interactive", defaultData: { question: "", choices: [] } },
+  { kind: "form",       label: "Form",         category: "Interactive", defaultData: { fields: [] } },
+  { kind: "button",     label: "Button",       category: "Interactive", defaultData: { label: "Click me", url: "" } },
+  // Visual
+  { kind: "mermaid",    label: "Mermaid",      category: "Visual",      defaultData: { diagram: "graph TD\n  A --> B" } },
+  { kind: "timeline",   label: "Timeline",     category: "Visual",      defaultData: { events: [] } },
+  { kind: "drawing",    label: "Drawing",      category: "Visual",      defaultData: {} },
+  // Advanced
+  { kind: "embed",      label: "Embed",        category: "Advanced",    defaultData: { url: "" } },
+  { kind: "iframe",     label: "iFrame",       category: "Advanced",    defaultData: { url: "" } },
+  { kind: "sandbox",    label: "Sandbox",      category: "Advanced",    defaultData: {} },
+];
+
+const BLOCK_CATEGORIES = Array.from(new Set(BLOCK_TYPES.map(t => t.category)));
+
+// ─── InsertBlockGap ───────────────────────────────────────────────────────────
+
+interface InsertBlockGapProps {
+  article: ArticleInstance;
+  after: BlockBase | null; // null = insert at start
+}
+
+export const InsertBlockGap: React.FC<InsertBlockGapProps> = ({ article, after }) => {
+  const [hovered, setHovered] = useState(false);
+
+  const handleClick = () => {
+    article.openBlockPicker((entry: BlockTypeEntry) => {
+      const newDef: BlockDef = {
+        id: 0,
+        page_id: article.def.id,
+        parent_id: undefined,
+        kind: entry.kind,
+        data: { ...entry.defaultData },
+        extension: null,
+        sequence: 0,
+        children: entry.defaultChildren ? structuredClone(entry.defaultChildren) : undefined,
+      };
+      console.log("[Picker/Gap] inserting block:", entry.kind);
+      console.log("[Picker/Gap] newDef:", newDef);
+      console.log("[Picker/Gap] after:", after?.def?.kind, "id:", after?.def?.id);
+
+      if (after === null) {
+        const firstBlock = (article.children as BlockBase[])[0] ?? null;
+        console.log("[Picker/Gap] insert at start — firstBlock:", firstBlock?.def?.kind);
+        
+        if (firstBlock) {
+          article.insertBlock(article, firstBlock, "before", [newDef]);
+        } else {
+          article.insertBlock(article, null, "after", [newDef]);
+        }
+      } else {
+        console.log("[Picker/Gap] insert after block — parent children:", article.children.length, "parent def.children:", article.def.blocks?.length);
+        article.insertBlock(article, after, "after", [newDef]);
+      }
+    });
+  };
+
+  return (
+    <Box position="relative" h="0" zIndex={20}>
+      <Box
+        position="absolute"
+        left={0}
+        right={0}
+        top="-10px"
+        bottom="-10px"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        cursor="default"
+      />
+
+      {hovered && (
+        <Box
+          position="absolute"
+          left={0}
+          right={0}
+          top="-1px"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <Box h="2px" bg="blue.300" borderRadius="full" />
+          <Flex
+            position="absolute"
+            top="50%"
+            left="50%"
+            transform="translate(-50%, -50%)"
+            zIndex={21}
+          >
+            <IconButton
+              size="2xs"
+              borderRadius="full"
+              variant="solid"
+              aria-label="Insert block"
+              onClick={handleClick}
+              style={{ background: "#3182ce", color: "white" }}
+            >
+              <span style={{ fontSize: "13px", lineHeight: 1, fontWeight: "bold" }}>+</span>
+            </IconButton>
+          </Flex>
+        </Box>
+      )}
+    </Box>
+  );
+};

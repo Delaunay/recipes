@@ -1,4 +1,4 @@
-import { BlockBase, BlockDef, MarkdownGeneratorContext } from "../base";
+import { BlockBase, BlockDef, MarkdownGeneratorContext, EmptyBlockPlaceholder } from "../base";
 import { Box, Text } from '@chakra-ui/react';
 
 export interface IframeData {
@@ -21,6 +21,9 @@ export class IframeBlock extends BlockBase {
     }
 
     component(mode: string): React.ReactNode {
+        if (!this.def.data.url) {
+            return <EmptyBlockPlaceholder icon="🌐" label="iFrame" hint="Configure via settings to add a URL" />;
+        }
         return (
             <Box>
                 <iframe
