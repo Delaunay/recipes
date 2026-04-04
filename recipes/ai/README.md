@@ -8,15 +8,105 @@ The AI plugin is designed to work with both remote providers and local models. W
 
 Local models run in a container environment and never have access to the full system. They only receive access to the resources they need to complete their assigned task.
 
+## Architecture — Four Agents
+
+Work is split across four specialised agents that communicate through
+an event bus (in-process) and a persistent work queue (cross-process).
+
+```
+Human ──► Converse ──events──► Scribe
+               │                  │
+               │ task_request      │ spec files (git tracked)
+               ▼                  ▼
+          Work Queue ◄────────────
+               │
+               ▼
+           Curator  ──► context bundle
+               │
+               ▼
+            Worker  ──► deliverable (in a git worktree)
+```
+
+| Agent       | Role | Trigger |
+|-------------|------|---------|
+| **Converse** | Dialogue with the human, grounded by the current spec | Human message |
+| **Scribe**   | Distil conversation into living spec documents | Structured events from Converse |
+| **Curator**  | Select relevant specs and build a context bundle for a task | Queue poll (pending tasks) |
+| **Worker**   | Execute the task, verify the deliverable, commit to a worktree | Queue poll (ready tasks) |
+
+### Event Flow
+
+The Converse agent classifies each conversation turn and emits structured
+events (`new_requirement`, `clarification`, `decision`, `contradiction`,
+`task_request`).  The Scribe subscribes to these and incrementally refines
+the spec — which is the single source of truth.
+
+### Work Queue
+
+Tasks flow through the queue with these statuses:
+
+    pending → curating → ready → in_progress → completed
+                                             → failed
+                                             → review (human required)
+
+The queue is backed by SQLite (swappable to PostgreSQL) and supports
+**priority** and **dependencies**.  A task is eligible only when all its
+dependencies are resolved.
+
+### Git Tracking
+
+All artifacts (specs, context bundles, results) are text files tracked by
+git.  Each task gets its own **worktree** so work is isolated.  Humans or
+agents review worktrees and merge/refine as needed.
+
+## Configuration
+
+Configuration follows the milabench pattern: values are defined as
+dataclass fields and resolved from (highest priority first):
+
+1. Environment variables (`ASSAI_` prefix, e.g. `ASSAI_LLM_BACKEND`)
+2. YAML config file
+3. Dataclass defaults
+
+```python
+from assai.config import load_config, AssaiConfig
+
+load_config("config.yaml")   # or load_config() for defaults
+config = AssaiConfig()
+```
+
+Example `config.yaml`:
+
+```yaml
+llm:
+  backend: openai
+  endpoint: http://127.0.0.1:9123
+  model: llama-4-scout
+  max_tokens: 4096
+  temperature: 0.7
+
+scribe:
+  trigger: event
+  specs_dir: specs
+
+worker:
+  max_retries: 3
+  sandbox: container
+  timeout: 300
+
+git:
+  repo_path: .
+  worktree_dir: .worktrees
+  auto_commit: true
+
+queue:
+  url: sqlite:///work.db      # or postgresql://user:pass@host/db
+  poll_interval: 5
+```
+
 ## State Management & Versioning
 
 Model state is managed through the article block, which supports versioning. This allows agent changes to be reviewed, approved, or rolled back.
-
-## Work Distribution
-
-Regardless of where the model actually runs, work is distributed using a PostgreSQL table as a work queue. Agents pop work items and push results in parallel.
-
-The work queue supports **priority** and **dependencies**, forming a tree of work items. A task is only eligible to be popped when its dependencies have been resolved. Priority determines the order in which eligible tasks are picked up.
 
 ## Task Contract
 
@@ -38,3 +128,27 @@ Tasks flagged for human approval are skipped — agents will pick the next eligi
 Dependencies are optional. When present, a task is only eligible once its dependencies are resolved. A blocked dependency will block its entire subtree, which is by design — don't declare dependencies unless the tasks genuinely depend on each other.
 
 If no eligible task is available, the agent waits until one becomes available.
+
+## Module Layout
+
+```
+ai/
+├── config.py              # Config system (milabench-style)
+├── events.py              # Event types + EventBus
+├── agents/
+│   ├── __init__.py        # Agent base class
+│   ├── llm.py             # Unified LLM interface (OpenAI-compatible)
+│   ├── converse.py        # Converse agent
+│   ├── scribe.py          # Scribe agent
+│   ├── curator.py         # Curator agent
+│   └── worker.py          # Worker agent
+├── queue/
+│   └── work.py            # SQLite work queue (priority + deps)
+├── tracker/
+│   └── git.py             # Git operations + worktree management
+├── models/                # Model backends (text2text, text2image, …)
+├── server/                # Flask + SocketIO web server
+├── tools/                 # Shared utilities (caching, routing, monitoring)
+├── mcp/                   # MCP tool exposure
+└── data/                  # Static data (model registry, stats)
+```
