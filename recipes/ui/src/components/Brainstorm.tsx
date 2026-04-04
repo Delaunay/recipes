@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react';
 import { useColorModeValue } from './ui/color-mode';
 import { jsonStore } from '../services/jsonstore';
-import { Plus, Save, Trash2, Link2, MousePointer, X, Pencil, Eye } from 'lucide-react';
+import { Plus, Save, Trash2, Link2, MousePointer, X, Pencil, Eye, Lightbulb } from 'lucide-react';
 import { marked } from 'marked';
 
 // ─────────────────────────────────────────
@@ -13,6 +13,8 @@ import { marked } from 'marked';
 
 type Timeframe = 'short-term' | 'long-term' | 'unset';
 type Scope = 'personal' | 'societal' | 'regional' | 'worldwide' | 'unset';
+type NodeKind = 'issue' | 'solution';
+type LinkKind = 'causes' | 'mitigates';
 type Mode = 'select' | 'link';
 
 interface IssueNode {
@@ -21,6 +23,7 @@ interface IssueNode {
   description: string;
   timeframe: Timeframe;
   scope: Scope;
+  kind?: NodeKind;
   x: number;
   y: number;
 }
@@ -31,6 +34,7 @@ interface IssueLink {
   to: string;
   label: string;
   weight?: number;
+  kind?: LinkKind;
 }
 
 interface BrainstormData {
@@ -215,6 +219,7 @@ const Brainstorm = () => {
   } | null>(null);
   const [fTime, setFTime] = useState<Timeframe | 'all'>('all');
   const [fScope, setFScope] = useState<Scope | 'all'>('all');
+  const [fKind, setFKind] = useState<NodeKind | 'all'>('all');
   const [projName, setProjName] = useState('default');
   const [projects, setProjects] = useState<string[]>([]);
   const [status, setStatus] = useState('');
@@ -237,6 +242,9 @@ const Brainstorm = () => {
   const border = useColorModeValue('#e2e8f0', '#2d3748');
   const hintBg = useColorModeValue('#EBF8FF', '#1A365D');
   const hintTx = useColorModeValue('#2B6CB0', '#90CDF4');
+  const solBg = useColorModeValue('rgba(56,161,105,0.08)', 'rgba(56,161,105,0.12)');
+  const solBorder = '#38A169';
+  const mitigateCol = '#38A169';
 
   // ── Helpers ──
   const toWorld = useCallback((cx: number, cy: number) => {
@@ -252,8 +260,9 @@ const Brainstorm = () => {
   const matches = useCallback((n: IssueNode) => {
     if (fTime !== 'all' && n.timeframe !== fTime) return false;
     if (fScope !== 'all' && n.scope !== fScope) return false;
+    if (fKind !== 'all' && (n.kind || 'issue') !== fKind) return false;
     return true;
-  }, [fTime, fScope]);
+  }, [fTime, fScope, fKind]);
 
   // ── Persistence ──
   useEffect(() => {
@@ -305,10 +314,10 @@ const Brainstorm = () => {
   };
 
   // ── CRUD ──
-  const addNode = (x: number, y: number) => {
+  const addNode = (x: number, y: number, kind: NodeKind = 'issue') => {
     const n: IssueNode = {
-      id: uid(), title: 'New Issue', description: '',
-      timeframe: 'unset', scope: 'unset', x, y,
+      id: uid(), title: kind === 'solution' ? 'New Solution' : 'New Issue',
+      description: '', timeframe: 'unset', scope: 'unset', kind, x, y,
     };
     setNodes(prev => [...prev, n]);
     select(n.id, 'node');
@@ -552,9 +561,27 @@ const Brainstorm = () => {
           ))}
         </HStack>
 
+        <HStack gap={1}>
+          <Text fontSize="xs" fontWeight="bold">Kind:</Text>
+          <Button size="xs" variant={fKind === 'all' ? 'solid' : 'outline'}
+            onClick={() => setFKind('all')}>All</Button>
+          <Button size="xs" variant={fKind === 'issue' ? 'solid' : 'outline'}
+            onClick={() => setFKind(fKind === 'issue' ? 'all' : 'issue')}>Issues</Button>
+          <Button size="xs" variant={fKind === 'solution' ? 'solid' : 'outline'}
+            onClick={() => setFKind(fKind === 'solution' ? 'all' : 'solution')}
+            style={fKind === 'solution' ? { backgroundColor: solBorder, color: '#fff' } : {}}>
+            <Lightbulb size={12} /> Solutions
+          </Button>
+        </HStack>
+
         <Button size="sm" variant="outline"
           onClick={() => addNode((-pan.x + 200) / zoom, (-pan.y + 150) / zoom)}>
           <Plus size={14} /> Add Issue
+        </Button>
+        <Button size="sm" variant="outline"
+          onClick={() => addNode((-pan.x + 250) / zoom, (-pan.y + 150) / zoom, 'solution')}
+          style={{ color: solBorder, borderColor: solBorder }}>
+          <Lightbulb size={14} /> Add Solution
         </Button>
       </Flex>
 
@@ -611,18 +638,21 @@ const Brainstorm = () => {
               const { path, x1, y1, x2, y2, endAngle } = computeLink(a, b);
               const vis = matches(a) && matches(b);
               const sel = selId === lk.id;
+              const isMitigate = (lk.kind || 'causes') === 'mitigates';
               const w = lk.weight;
               const gKey = lk.label ? `${lk.to}::${lk.label}` : lk.id;
               const gTotal = groupTotals[gKey] || 1;
               const ratio = w != null ? w / gTotal : 0;
               const sw = sel ? Math.max(2.5, 1 + ratio * 32) : (w != null ? 1 + ratio * 32 : 1.5);
               const aw = w != null ? 5 + ratio * 32 : 8;
-              const col = sel ? '#6366F1' : wire;
+              const baseCol = isMitigate ? mitigateCol : wire;
+              const col = sel ? '#6366F1' : baseCol;
               return (
                 <g key={lk.id} opacity={vis ? 1 : 0.12}>
                   <path
                     d={path} fill="none"
                     stroke={col} strokeWidth={sw}
+                    strokeDasharray={isMitigate ? '8 4' : undefined}
                   />
                   <polygon
                     points={arrowHead(x2, y2, endAngle, aw)}
@@ -637,7 +667,8 @@ const Brainstorm = () => {
                   {lk.label && (
                     <text
                       x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 8}
-                      textAnchor="middle" fontSize={11} fill={sub}
+                      textAnchor="middle" fontSize={11}
+                      fill={isMitigate ? mitigateCol : sub}
                       style={{ pointerEvents: 'none' }}
                     >
                       {lk.label}
@@ -653,6 +684,7 @@ const Brainstorm = () => {
               const isSel = selId === node.id;
               const isSrc = linkSrc === node.id;
               const sc = SCOPE_COLORS[node.scope];
+              const isSolution = (node.kind || 'issue') === 'solution';
               return (
                 <g
                   key={node.id} opacity={vis ? 1 : 0.12}
@@ -667,16 +699,38 @@ const Brainstorm = () => {
                   />
                   {/* Card with left color bar (clipped to rounded rect) */}
                   <g clipPath={`url(#c${node.id})`}>
-                    <rect x={node.x} y={node.y} width={NODE_W} height={NODE_H} fill={cardBg} />
+                    <rect x={node.x} y={node.y} width={NODE_W} height={NODE_H}
+                      fill={isSolution ? solBg : cardBg} />
                     <rect x={node.x} y={node.y} width={6} height={NODE_H} fill={sc} />
                   </g>
+                  {/* Solution: dashed green border always visible */}
+                  {isSolution && (
+                    <rect
+                      x={node.x} y={node.y} width={NODE_W} height={NODE_H} rx={NODE_R}
+                      fill="none" stroke={solBorder} strokeWidth={2}
+                      strokeDasharray="6 3"
+                    />
+                  )}
                   {/* Selection / link-source border */}
                   {(isSel || isSrc) && (
                     <rect
                       x={node.x} y={node.y} width={NODE_W} height={NODE_H} rx={NODE_R}
-                      fill="none" stroke={sc} strokeWidth={2.5}
+                      fill="none" stroke={isSolution ? solBorder : sc} strokeWidth={2.5}
                       strokeDasharray={isSrc ? '6 3' : undefined}
                     />
+                  )}
+                  {/* Solution badge: lightbulb icon in top-right */}
+                  {isSolution && (
+                    <g transform={`translate(${node.x + NODE_W - 22}, ${node.y + 6})`}>
+                      <circle cx={7} cy={7} r={9} fill={solBorder} opacity={0.18} />
+                      <svg x={1} y={1} width={12} height={12} viewBox="0 0 24 24"
+                        fill="none" stroke={solBorder} strokeWidth={2.5}
+                        strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 18h6" />
+                        <path d="M10 22h4" />
+                        <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+                      </svg>
+                    </g>
                   )}
                   {/* Title */}
                   <text
@@ -689,10 +743,10 @@ const Brainstorm = () => {
                   {/* Subtitle */}
                   <text
                     x={node.x + 16} y={node.y + 44}
-                    fontSize={10} fill={sub}
+                    fontSize={10} fill={isSolution ? solBorder : sub}
                     style={{ pointerEvents: 'none' }}
                   >
-                    {SCOPE_LABELS[node.scope]} · {TIMEFRAME_LABELS[node.timeframe]}
+                    {isSolution ? '💡 ' : ''}{SCOPE_LABELS[node.scope]} · {TIMEFRAME_LABELS[node.timeframe]}
                   </text>
                 </g>
               );
@@ -742,6 +796,23 @@ const Brainstorm = () => {
               </IconButton>
             </Flex>
             <VStack gap={3} align="stretch">
+              <Box>
+                <Text fontSize="xs" fontWeight="bold" mb={1}>Kind</Text>
+                <HStack gap={1}>
+                  <Button size="xs"
+                    variant={(selLink.kind || 'causes') === 'causes' ? 'solid' : 'outline'}
+                    onClick={() => patchLink(selLink.id, { kind: 'causes' })}>
+                    Causes
+                  </Button>
+                  <Button size="xs"
+                    variant={(selLink.kind || 'causes') === 'mitigates' ? 'solid' : 'outline'}
+                    onClick={() => patchLink(selLink.id, { kind: 'mitigates' })}
+                    style={(selLink.kind || 'causes') === 'mitigates'
+                      ? { backgroundColor: mitigateCol, color: '#fff' } : {}}>
+                    Mitigates
+                  </Button>
+                </HStack>
+              </Box>
               <Box>
                 <Text fontSize="xs" fontWeight="bold" mb={1}>Label</Text>
                 <Input
@@ -810,8 +881,16 @@ const Brainstorm = () => {
             >
               <Box
                 w="6px" h="36px" borderRadius="3px" flexShrink={0}
-                bg={SCOPE_COLORS[modalNode.scope]}
+                bg={(modalNode.kind || 'issue') === 'solution' ? solBorder : SCOPE_COLORS[modalNode.scope]}
               />
+              {(modalNode.kind || 'issue') === 'solution' && (
+                <Flex
+                  align="center" gap={1} px={2} py={0.5} borderRadius="md" flexShrink={0}
+                  bg="rgba(56,161,105,0.12)" color={solBorder} fontSize="xs" fontWeight="bold"
+                >
+                  <Lightbulb size={12} /> Solution
+                </Flex>
+              )}
               <Input
                 flex={1} size="lg" variant="flushed" fontWeight="600"
                 value={modalNode.title}
@@ -829,6 +908,21 @@ const Brainstorm = () => {
             <Flex px={6} py={2} gap={3} align="center" flexWrap="wrap"
               borderBottom="1px solid" borderColor={border} flexShrink={0}
             >
+              <HStack gap={1}>
+                <Text fontSize="xs" fontWeight="bold">Kind:</Text>
+                <Button size="xs"
+                  variant={(modalNode.kind || 'issue') === 'issue' ? 'solid' : 'outline'}
+                  onClick={() => patchNode(modalNode.id, { kind: 'issue' })}>
+                  Issue
+                </Button>
+                <Button size="xs"
+                  variant={(modalNode.kind || 'issue') === 'solution' ? 'solid' : 'outline'}
+                  onClick={() => patchNode(modalNode.id, { kind: 'solution' })}
+                  style={(modalNode.kind || 'issue') === 'solution'
+                    ? { backgroundColor: solBorder, color: '#fff' } : {}}>
+                  <Lightbulb size={12} /> Solution
+                </Button>
+              </HStack>
               <HStack gap={1}>
                 <Text fontSize="xs" fontWeight="bold">Scope:</Text>
                 {ALL_SCOPES.map(s => (
@@ -939,7 +1033,7 @@ const Brainstorm = () => {
                 onClick={() => { rmNode(modalNode.id); setModalNodeId(null); }}
                 style={{ color: '#E53E3E', borderColor: '#E53E3E' }}
               >
-                <Trash2 size={14} /> Delete Issue
+                <Trash2 size={14} /> Delete {(modalNode.kind || 'issue') === 'solution' ? 'Solution' : 'Issue'}
               </Button>
               <Button
                 size="sm" variant="solid"
