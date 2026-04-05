@@ -53,13 +53,13 @@ interface ColumnDef {
 const COLUMNS: ColumnDef[] = [
   { key: 'date',       label: 'Date',       width: '100px', type: 'date',     editable: true },
   { key: 'amount',     label: 'Amount',     width: '110px', type: 'number',   editable: true },
+  { key: 'comment',    label: 'Comment',    width: '200px', type: 'text',     editable: true },
   { key: 'type',       label: 'Type',       width: '120px', type: 'text',     editable: true },
   { key: 'from',       label: 'From',       width: '140px', type: 'text',     editable: true },
   { key: 'bank',       label: 'Bank',       width: '120px', type: 'text',     editable: true },
   { key: 'details',    label: 'Details',    width: '200px', type: 'text',     editable: true },
   { key: 'adjustment', label: 'Adjustment', width: '110px', type: 'number',   editable: true },
   { key: 'adjusted',   label: 'Adjusted',   width: '110px', type: 'computed', editable: false },
-  { key: 'comment',    label: 'Comment',    width: '200px', type: 'text',     editable: true },
 ];
 
 const EDITABLE_COLS = COLUMNS.filter(c => c.editable);
@@ -1200,13 +1200,13 @@ const BudgetSheet: React.FC = () => {
                         setCsvImport({ ...csvImport, preview: csvImport.preview.map(r => ({ ...r, selected: r.valid && checked })) });
                       }}
                       style={{ cursor: 'pointer' }}
-                    />
+                    /> 
                   </th>
                   <th style={{ padding: '6px 8px', background: hx.header, borderBottom: `2px solid ${hx.border}`, position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', fontWeight: 600, fontSize: '12px' }}>Date</th>
                   <th style={{ padding: '6px 8px', background: hx.header, borderBottom: `2px solid ${hx.border}`, position: 'sticky', top: 0, zIndex: 2, textAlign: 'right', fontWeight: 600, fontSize: '12px', width: '120px' }}>Amount</th>
+                  <th style={{ padding: '6px 8px', background: hx.header, borderBottom: `2px solid ${hx.border}`, position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', fontWeight: 600, fontSize: '12px' }}>Comment</th>
                   <th style={{ padding: '6px 8px', background: hx.header, borderBottom: `2px solid ${hx.border}`, position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', fontWeight: 600, fontSize: '12px' }}>From</th>
                   <th style={{ padding: '6px 8px', background: hx.header, borderBottom: `2px solid ${hx.border}`, position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', fontWeight: 600, fontSize: '12px' }}>Details</th>
-                  <th style={{ padding: '6px 8px', background: hx.header, borderBottom: `2px solid ${hx.border}`, position: 'sticky', top: 0, zIndex: 2, textAlign: 'left', fontWeight: 600, fontSize: '12px' }}>Comment</th>
                 </tr>
               </thead>
               <tbody>
@@ -1220,9 +1220,9 @@ const BudgetSheet: React.FC = () => {
                     </td>
                     <td style={{ padding: '2px 8px', borderBottom: `1px solid ${hx.border}`, fontSize: '13px' }}>{r.date || '—'}</td>
                     <td style={{ padding: '2px 8px', borderBottom: `1px solid ${hx.border}`, textAlign: 'right', fontFamily: 'monospace', fontSize: '13px', color: r.amount < 0 ? hx.expense : undefined }}>{r.valid ? fmtNum(r.amount) : '—'}</td>
+                    <td style={{ padding: '2px 8px', borderBottom: `1px solid ${hx.border}`, fontSize: '13px' }}>{r.comment}</td>
                     <td style={{ padding: '2px 8px', borderBottom: `1px solid ${hx.border}`, fontSize: '13px' }}>{r.from}</td>
                     <td style={{ padding: '2px 8px', borderBottom: `1px solid ${hx.border}`, fontSize: '13px' }}>{r.details}</td>
-                    <td style={{ padding: '2px 8px', borderBottom: `1px solid ${hx.border}`, fontSize: '13px' }}>{r.comment}</td>
                   </tr>
                 ))}
                 {csvImport.preview.length === 0 && (
@@ -1399,10 +1399,10 @@ const BudgetSheet: React.FC = () => {
                 <td style={{ borderTop: `2px solid ${hx.border}` }} />
                 <td style={{ borderTop: `2px solid ${hx.border}` }} />
                 <td style={{ borderTop: `2px solid ${hx.border}` }} />
+                <td style={{ borderTop: `2px solid ${hx.border}` }} />
                 <td style={{ padding: '4px 6px', borderTop: `2px solid ${hx.border}`, textAlign: 'right', fontFamily: 'monospace', fontSize: '13px' }}>
                   {fmtNum(displayedEntries.reduce((s, e) => s + adjusted(e), 0))}
                 </td>
-                <td style={{ borderTop: `2px solid ${hx.border}` }} />
               </tr>
             </tfoot>
           )}
