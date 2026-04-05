@@ -51,6 +51,7 @@ if __name__ == "__main__":
             "pillow",
             "appdirs",
             "python-telegram-bot",
+            "argklass",
         ],
          entry_points={
             "console_scripts": [

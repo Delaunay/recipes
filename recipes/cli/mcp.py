@@ -5,19 +5,21 @@ Automatically generates MCP tool definitions from Flask routes.
 Introspects the Flask app to discover all routes and creates the TOOLS dictionary.
 """
 
+from __future__ import annotations
+
 import logging
 import sys
 import inspect
 import json
 from pathlib import Path
 from dataclasses import dataclass
-from typing import get_type_hints, Dict, Any, Optional, List
-from werkzeug.routing import Rule
+from typing import get_type_hints, Dict, Any, Optional, List, TYPE_CHECKING
 
 from argklass.arguments import add_arguments
 from argklass.command import Command, newparser
 
-from recipes.server.server import annotation_registry
+if TYPE_CHECKING:
+    from werkzeug.routing import Rule
 
 
 @dataclass

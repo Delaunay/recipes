@@ -8,3 +8,4 @@ flask-cors
 pillow
 appdirs
 python-telegram-bot
+argklass

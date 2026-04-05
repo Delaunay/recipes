@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 from flask import jsonify
 
 from .models import Ingredient, UnitConversion, RecipeIngredient
+from .decorators import expose
 
 
 # Hard coded defaults
@@ -273,6 +274,12 @@ def units_routes(app, db):
     """Handle ingredient unit"""
 
     @app.route('/unit/definition/<string:name>')
+    @expose(name=lambda: [
+        unit for (unit,) in
+        db.session.query(UnitConversion.from_unit)
+        .filter(UnitConversion.from_unit == UnitConversion.to_unit)
+        .distinct().all()
+    ])
     def flask_get_unit(name):
         unit =  get_unit(db, name)
         if unit is not None:
@@ -285,6 +292,10 @@ def units_routes(app, db):
     #     return get_ingredient(db, ingredient_id).to_json()
 
     @app.route('/unit/convert/<string:from_unit>/<string:to_unit>')
+    @expose(
+        from_unit=lambda: [u for (u,) in db.session.query(UnitConversion.from_unit).distinct().all()],
+        to_unit=lambda: [u for (u,) in db.session.query(UnitConversion.to_unit).distinct().all()],
+    )
     def convert(from_unit, to_unit):
         conversion = conversion_factor(db, from_unit, to_unit)
         if conversion is not None:
@@ -292,6 +303,7 @@ def units_routes(app, db):
         return {}
 
     @app.route('/units/available', methods=['GET'])
+    @expose()
     def all_units() -> List[str]:
         conversions = (
             db.session.query(UnitConversion.to_unit)
@@ -301,6 +313,7 @@ def units_routes(app, db):
         return jsonify([unit for (unit,) in conversions])
 
     @app.route('/units/available/volume', methods=['GET'])
+    @expose()
     def get_volume_units():
         conversions = (
             db.session.query(UnitConversion.to_unit)
@@ -328,6 +341,7 @@ def units_routes(app, db):
             return jsonify([unit for (unit,) in units])
 
     @app.route('/units/available/mass', methods=['GET'])
+    @expose()
     def get_mass_units():
         conversions = (
             db.session.query(UnitConversion.to_unit)
@@ -339,6 +353,7 @@ def units_routes(app, db):
     # -----
 
     @app.route('/unit/conversions', methods=['GET'])
+    @expose()
     def get_all_conversions() -> Dict[str, Any]:
         conversions = (
             db.session.query(UnitConversion)
@@ -540,6 +555,7 @@ def units_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     @app.route('/units/used-in-recipes', methods=['GET'])
+    @expose()
     def get_units_used_in_recipes() -> Dict[str, Any]:
         """Get all units currently used in recipe ingredients"""
         try:

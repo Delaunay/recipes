@@ -64,14 +64,17 @@ def args(*a):
 def main(argv=None):
     """Entry point for the command line interface"""
 
-    with timeit("discover_commands"):
-        commands = discover_commands()
+    import recipes.cli
 
-    with timeit("parse_args"):
-        try:
-            parsed_args = parse_args(commands, argv)
-        except HelpActionException:
-            return 0
+    with with_cache_location(recipes.cli.__name__):
+        with timeit("discover_commands"):
+            commands = discover_commands()
+
+        with timeit("parse_args"):
+            try:
+                parsed_args = parse_args(commands, argv)
+            except HelpActionException:
+                return 0
 
     cmd_name = parsed_args.command
     command = commands.get(cmd_name)

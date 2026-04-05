@@ -15,8 +15,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
+from sqlalchemy import select
 from ..tools.images import centercrop_resize_image
 from .models import Base, Recipe, Ingredient, Category, UnitConversion, RecipeIngredient, Event, Task, IngredientComposition
+from .decorators import expose
 
 
 def ingredient_routes(app, db):
@@ -26,6 +28,7 @@ def ingredient_routes(app, db):
         return jsonify([ingredient.to_json() for ingredient in ingredients])
 
     @app.route('/ingredients', methods=['GET'])
+    @expose()
     def get_ingredients() -> Dict[str, Any]:
         ingredients = db.session.query(Ingredient).all()
         return jsonify([ingredient.to_json() for ingredient in ingredients])
@@ -43,6 +46,7 @@ def ingredient_routes(app, db):
             return jsonify({"error": str(e)}), 400
 
     @app.route('/ingredients/<int:ingredient_id>', methods=['GET'])
+    @expose(ingredient_id=select(Ingredient._id))
     def get_ingredient(ingredient_id: int) -> Dict[str, Any]:
         ingredient = db.session.get(Ingredient, ingredient_id)
         if not ingredient:
@@ -50,6 +54,10 @@ def ingredient_routes(app, db):
         return jsonify(ingredient.to_json())
 
     @app.route('/ingredients/<string:ingredient_name>', methods=['GET'])
+    @expose(ingredient_name=lambda: [
+        name.lower().replace(' ', '-')
+        for (name,) in db.session.query(Ingredient.name).all()
+    ])
     def get_ingredient_by_name(ingredient_name: str) -> Dict[str, Any]:
         # Replace hyphens with spaces for URL-friendly names
         formatted_name = ingredient_name.replace('-', ' ')

@@ -30,6 +30,7 @@ from .route_usda import usda_routes
 from .route_article import article_routes
 from .projects.graph import code_conversion
 from .route_jsonstore import jsonstore_routes
+from .decorators import expose
 
 # from .mcp import routes as mcp_routes
 
@@ -119,10 +120,12 @@ class RecipeApp:
                 return send_from_directory(self.app.static_folder, 'index.html')
 
         @self.app.route('/health')
+        @expose()
         def health_check() -> Dict[str, str]:
             return jsonify({"status": "healthy"})
 
         @self.app.route('/categories', methods=['GET'])
+        @expose()
         def get_categories() -> Dict[str, Any]:
             categories = self.db.session.query(Category).all()
             return jsonify([category.to_json() for category in categories])

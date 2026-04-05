@@ -27,12 +27,12 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.12'
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: 'lts/*'
         cache: 'npm'
         cache-dependency-path: |
           package-lock.json
@@ -69,15 +69,11 @@ jobs:
     - name: Build static website
       run: |
         source venv/bin/activate
-        python scripts/static_generator.py
-        cp -R ${{ github.repository }}/website/uploads static_build/api
+        python -m recipes.cli.main static --base_path /recipes/ --api_url /recipes/api
       env:
         PYTHONPATH: ${{ github.workspace }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        GITHUB_ACTIONS: true
         FLASK_STATIC: ${{ github.repository }}/website
-        VITE_USE_STATIC_MODE: true
-        VITE_API_URL: /recipes/api
+        FDC_API_KEY: DEMO_KEY
 
     - name: Verify build output
       run: |

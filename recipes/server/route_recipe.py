@@ -36,6 +36,7 @@ def recipes_routes(app, db):
         return jsonify(result)
 
     @app.route('/recipes', methods=['GET'])
+    @expose()
     def get_recipes() -> Dict[str, Any]:
         # recipes = db.session.query(Recipe).filter(Recipe.component == False).all()
         recipes = db.session.query(Recipe).all()
@@ -140,6 +141,10 @@ def recipes_routes(app, db):
         return jsonify(recipe.to_json())
 
     @app.route('/recipes/<string:recipe_name>', methods=['GET'])
+    @expose(recipe_name=lambda: [
+        title.lower().replace(' ', '-')
+        for (title,) in db.session.query(Recipe.title).all()
+    ])
     def get_recipe_by_name(recipe_name: str) -> Dict[str, Any]:
         # Replace hyphens with spaces for URL-friendly names
         formatted_name = recipe_name.replace('-', ' ')
@@ -251,6 +256,7 @@ def recipes_routes(app, db):
             return jsonify({"error": str(e)}), 400
 
     @app.route('/recipes/nutrition/<int:recipe_id>', methods=['GET'])
+    @expose(recipe_id=select(Recipe._id))
     def get_recipe_nutrition(recipe_id: int):
         compositions = db.session.query(IngredientComposition).filter_by(recipe_id=recipe_id).all()
         return jsonify([comp.to_json() for comp in compositions])

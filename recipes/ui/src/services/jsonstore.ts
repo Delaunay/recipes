@@ -1,5 +1,5 @@
 const USE_STATIC_MODE = import.meta.env.VITE_USE_STATIC_MODE === 'true';
-const API_BASE_URL = USE_STATIC_MODE ? '/recipes/api' : '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (USE_STATIC_MODE ? '/api' : '/api');
 
 class JsonStore {
   async list(collection: string): Promise<string[]> {
