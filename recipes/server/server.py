@@ -104,7 +104,12 @@ class RecipeApp:
         recipes_routes(self.app, self.db)
         ingredient_routes(self.app, self.db)
         projects_routes(self.app, self.db)
-        usda_routes(self.app, self.db)
+        try:
+            usda_routes(self.app, self.db)
+        except ModuleNotFoundError:
+            print("Ignoring USDA routes")
+            pass
+        
         article_routes(self.app, self.db)
         code_conversion(self.app)
         jsonstore_routes(self.app)

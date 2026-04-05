@@ -9,3 +9,4 @@ pillow
 appdirs
 python-telegram-bot
 argklass
+usda_fdc

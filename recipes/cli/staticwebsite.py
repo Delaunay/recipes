@@ -345,3 +345,6 @@ class StaticWebsite(Command):
             json.dump(build_info, f, indent=2)
 
         logger.info("Created build-info.json")
+
+
+COMMANDS = StaticWebsite

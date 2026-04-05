@@ -69,7 +69,7 @@ jobs:
     - name: Build static website
       run: |
         source venv/bin/activate
-        python -m recipes.cli.main static --base_path /recipes/ --api_url /recipes/api
+        python -m recipes.main static --base_path /recipes/ --api_url /recipes/api
       env:
         PYTHONPATH: ${{ github.workspace }}
         FLASK_STATIC: ${{ github.repository }}/website

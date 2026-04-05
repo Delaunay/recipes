@@ -30,6 +30,7 @@ if __name__ == "__main__":
             "Operating System :: OS Independent",
         ],
         packages=[
+            "recipes.main",
             "recipes.server",
             "recipes.tools",
             "recipes.cli",
@@ -52,10 +53,11 @@ if __name__ == "__main__":
             "appdirs",
             "python-telegram-bot",
             "argklass",
+            "usda_fdc",
         ],
          entry_points={
             "console_scripts": [
-                "recipe = recipes.cli.main:main_force",
+                "recipe = recipes.main:main_force",
             ],
         },
     )
