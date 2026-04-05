@@ -21,7 +21,7 @@ def calendar_routes(app, db):
             return jsonify([event.to_json() for event in events])
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-
+ 
     # Events endpoints
     @app.route('/events', methods=['GET'])
     def get_events() -> Dict[str, Any]:

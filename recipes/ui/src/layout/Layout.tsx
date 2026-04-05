@@ -136,6 +136,7 @@ const getStaticSidebarSections = () => [
       { name: 'Filament Math', href: '/scratch/filament-math' },
       { name: 'Wood Planner', href: '/scratch/wood-planner' },
       { name: 'Brainstorm', href: '/scratch/brainstorm' },
+      { name: 'Budget Sheet', href: '/scratch/budget-sheet' },
     ]
   },
 ];

@@ -264,16 +264,31 @@ const Brainstorm = () => {
     return true;
   }, [fTime, fScope, fKind]);
 
+  const centerOnNodes = useCallback((ns: IssueNode[]) => {
+    if (ns.length === 0) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const cx = ns.reduce((s, n) => s + n.x + NODE_W / 2, 0) / ns.length;
+    const cy = ns.reduce((s, n) => s + n.y + NODE_H / 2, 0) / ns.length;
+    setPan({ x: r.width / 2 - cx * zoom, y: r.height / 2 - cy * zoom });
+  }, [zoom]);
+
   // ── Persistence ──
   useEffect(() => {
     jsonStore.list(COLLECTION).then(p => {
       setProjects(p);
       if (p.includes('default')) {
         jsonStore.get<BrainstormData>(COLLECTION, 'default')
-          .then(d => { setNodes(d.nodes || []); setLinks(d.links || []); })
+          .then(d => {
+            setNodes(d.nodes || []);
+            setLinks(d.links || []);
+            requestAnimationFrame(() => centerOnNodes(d.nodes || []));
+          })
           .catch(() => {});
       }
     }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const save = async () => {
@@ -296,6 +311,7 @@ const Brainstorm = () => {
       setLinks(d.links || []);
       setProjName(name);
       deselect();
+      requestAnimationFrame(() => centerOnNodes(d.nodes || []));
     } catch {
       setStatus('Load error');
       setTimeout(() => setStatus(''), 2000);

@@ -20,7 +20,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }
-    }
+    },
+    watch: {
+      ignored: ['**/uploads/**', '**/database.db'],
+    },
   },
   build: {
     outDir: 'dist',
