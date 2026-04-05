@@ -1,4 +1,4 @@
-import { FC, ReactNode, useState } from 'react';
+import { FC, ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation, type Location } from 'react-router-dom';
 import { ColorModeButton } from "@/components/ui/color-mode"
 import { IconButton, Box } from '@chakra-ui/react';
@@ -151,6 +151,25 @@ const Layout: FC<LayoutProps> = ({ children }) => {
 
   // Use static sidebar sections (Content section will fetch its own items)
   const sidebarSections = getStaticSidebarSections();
+
+  useEffect(() => {
+    const path = location.pathname;
+    for (const section of sidebarSections) {
+      if (section.href === path && section.items.length === 0) {
+        document.title = section.title;
+        return;
+      }
+      for (const item of section.items) {
+        if (item.href === path || (item.href.includes('?') && path === item.href.split('?')[0])) {
+          document.title = item.name;
+          return;
+        }
+      }
+    }
+    if (path === '/') {
+      document.title = 'Home';
+    }
+  }, [location.pathname, sidebarSections]);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);

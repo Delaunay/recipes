@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react';
 import { useColorModeValue } from './ui/color-mode';
 import { jsonStore } from '../services/jsonstore';
-import { Plus, Save, Trash2, Link2, MousePointer, X, Pencil, Eye, Lightbulb } from 'lucide-react';
+import { Plus, Save, Trash2, Link2, MousePointer, X, Pencil, Eye, Lightbulb, FileDown, Zap, List, ChevronRight, ChevronLeft } from 'lucide-react';
 import { marked } from 'marked';
 
 // ─────────────────────────────────────────
@@ -225,6 +225,10 @@ const Brainstorm = () => {
   const [status, setStatus] = useState('');
   const [modalNodeId, setModalNodeId] = useState<string | null>(null);
   const [mdEditing, setMdEditing] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importErr, setImportErr] = useState('');
+  const [listOpen, setListOpen] = useState(false);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef(zoom);
@@ -273,6 +277,20 @@ const Brainstorm = () => {
     const cy = ns.reduce((s, n) => s + n.y + NODE_H / 2, 0) / ns.length;
     setPan({ x: r.width / 2 - cx * zoom, y: r.height / 2 - cy * zoom });
   }, [zoom]);
+
+  const focusNode = useCallback((node: IssueNode) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const targetZoom = 1.4;
+    const cx = node.x + NODE_W / 2;
+    const cy = node.y + NODE_H / 2;
+    setZoom(targetZoom);
+    setPan({ x: r.width / 2 - cx * targetZoom, y: r.height / 2 - cy * targetZoom });
+    select(node.id, 'node');
+    setModalNodeId(node.id);
+    setMdEditing(false);
+  }, []);
 
   // ── Persistence ──
   useEffect(() => {
@@ -366,6 +384,140 @@ const Brainstorm = () => {
     deselect();
   };
 
+  const mergeJson = (raw: string) => {
+    let data: BrainstormData;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      setImportErr('Invalid JSON');
+      return;
+    }
+    const inNodes: IssueNode[] = Array.isArray(data.nodes) ? data.nodes : [];
+    const inLinks: IssueLink[] = Array.isArray(data.links) ? data.links : [];
+    if (inNodes.length === 0 && inLinks.length === 0) {
+      setImportErr('No nodes or links found in JSON');
+      return;
+    }
+    const existingIds = new Set(nodes.map(n => n.id));
+    const idMap: Record<string, string> = {};
+    for (const n of inNodes) {
+      if (existingIds.has(n.id)) {
+        const newId = uid();
+        idMap[n.id] = newId;
+      } else {
+        idMap[n.id] = n.id;
+      }
+    }
+    const mappedNodes = inNodes.map(n => ({ ...n, id: idMap[n.id] ?? n.id }));
+    const mappedLinks = inLinks.map(l => ({
+      ...l,
+      id: uid(),
+      from: idMap[l.from] ?? l.from,
+      to: idMap[l.to] ?? l.to,
+    }));
+    setNodes(prev => [...prev, ...mappedNodes]);
+    setLinks(prev => [...prev, ...mappedLinks]);
+    setImportOpen(false);
+    setImportJson('');
+    setImportErr('');
+    setStatus(`Merged ${mappedNodes.length} nodes, ${mappedLinks.length} links`);
+    setTimeout(() => setStatus(''), 3000);
+  };
+
+  // ── Force layout simulation ──
+  const simRef = useRef<number | null>(null);
+  const [simActive, setSimActive] = useState(false);
+
+  const stopSim = useCallback(() => {
+    if (simRef.current != null) {
+      cancelAnimationFrame(simRef.current);
+      simRef.current = null;
+    }
+    setSimActive(false);
+  }, []);
+
+  const startSim = useCallback(() => {
+    stopSim();
+    setSimActive(true);
+
+    const REPULSION = 80_000;
+    const SPRING_K = 0.005;
+    const SPRING_LEN = 280;
+    const DAMPING = 0.85;
+    const DT = 0.8;
+    const MAX_ITER = 600;
+
+    let iter = 0;
+    const vx: Record<string, number> = {};
+    const vy: Record<string, number> = {};
+
+    const tick = () => {
+      setNodes(prevNodes => {
+        const ns = prevNodes.map(n => ({ ...n }));
+        const idIdx: Record<string, number> = {};
+        ns.forEach((n, i) => { idIdx[n.id] = i; });
+
+        for (const n of ns) {
+          if (!(n.id in vx)) { vx[n.id] = 0; vy[n.id] = 0; }
+        }
+
+        for (let i = 0; i < ns.length; i++) {
+          for (let j = i + 1; j < ns.length; j++) {
+            const a = ns[i], b = ns[j];
+            let dx = (b.x + NODE_W / 2) - (a.x + NODE_W / 2);
+            let dy = (b.y + NODE_H / 2) - (a.y + NODE_H / 2);
+            const dist2 = dx * dx + dy * dy;
+            const dist = Math.sqrt(dist2) || 1;
+            const force = REPULSION / dist2;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            vx[a.id] -= fx; vy[a.id] -= fy;
+            vx[b.id] += fx; vy[b.id] += fy;
+          }
+        }
+
+        setLinks(prevLinks => {
+          for (const lk of prevLinks) {
+            const ai = idIdx[lk.from], bi = idIdx[lk.to];
+            if (ai == null || bi == null) continue;
+            const a = ns[ai], b = ns[bi];
+            const dx = (b.x + NODE_W / 2) - (a.x + NODE_W / 2);
+            const dy = (b.y + NODE_H / 2) - (a.y + NODE_H / 2);
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const displacement = dist - SPRING_LEN;
+            const force = SPRING_K * displacement;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            vx[a.id] += fx; vy[a.id] += fy;
+            vx[b.id] -= fx; vy[b.id] -= fy;
+          }
+          return prevLinks;
+        });
+
+        for (const n of ns) {
+          vx[n.id] *= DAMPING;
+          vy[n.id] *= DAMPING;
+          n.x += vx[n.id] * DT;
+          n.y += vy[n.id] * DT;
+        }
+
+        return ns;
+      });
+
+      iter++;
+      if (iter < MAX_ITER) {
+        simRef.current = requestAnimationFrame(tick);
+      } else {
+        simRef.current = null;
+        setSimActive(false);
+      }
+    };
+
+    simRef.current = requestAnimationFrame(tick);
+  }, [stopSim]);
+
+  useEffect(() => () => { if (simRef.current != null) cancelAnimationFrame(simRef.current); }, []);
+
   // ── Mouse – background ──
   const onBgDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button !== 0) return;
@@ -439,6 +591,7 @@ const Brainstorm = () => {
   // ── Mouse – nodes ──
   const onNodeDown = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (simActive) stopSim();
     if (mode === 'link') {
       if (!linkSrc) {
         setLinkSrc(id);
@@ -598,6 +751,16 @@ const Brainstorm = () => {
           onClick={() => addNode((-pan.x + 250) / zoom, (-pan.y + 150) / zoom, 'solution')}
           style={{ color: solBorder, borderColor: solBorder }}>
           <Lightbulb size={14} /> Add Solution
+        </Button>
+        <Button size="sm" variant="outline"
+          onClick={() => { setImportOpen(true); setImportErr(''); setImportJson(''); }}>
+          <FileDown size={14} /> Import JSON
+        </Button>
+        <Button size="sm"
+          variant={simActive ? 'solid' : 'outline'}
+          onClick={() => simActive ? stopSim() : startSim()}
+          style={simActive ? { backgroundColor: '#6366F1', color: '#fff' } : {}}>
+          <Zap size={14} /> {simActive ? 'Stop Layout' : 'Auto Layout'}
         </Button>
       </Flex>
 
@@ -873,6 +1036,69 @@ const Brainstorm = () => {
             </VStack>
           </Box>
         )}
+
+        {/* ─── Node List Panel (collapsible right) ─── */}
+        <Box
+          position="absolute" top={0} right={0} h="100%" zIndex={5}
+          display="flex" flexDirection="row"
+        >
+          {/* Toggle tab */}
+          <Flex
+            align="center" justify="center" cursor="pointer"
+            w="24px" bg={chrome} borderLeft="1px solid" borderColor={border}
+            onClick={() => setListOpen(o => !o)}
+            style={{ boxShadow: '-2px 0 6px rgba(0,0,0,0.05)' }}
+          >
+            {listOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </Flex>
+          {/* Panel body */}
+          {listOpen && (
+            <Box
+              w="260px" h="100%" bg={chrome}
+              borderLeft="1px solid" borderColor={border}
+              overflowY="auto" display="flex" flexDirection="column"
+              style={{ boxShadow: '-4px 0 12px rgba(0,0,0,0.08)' }}
+            >
+              <Flex px={3} py={2} align="center" gap={2}
+                borderBottom="1px solid" borderColor={border} flexShrink={0}>
+                <List size={14} />
+                <Text fontSize="sm" fontWeight="600" flex={1}>
+                  Nodes ({nodes.length})
+                </Text>
+              </Flex>
+              <Box flex={1} overflowY="auto">
+                {[...nodes]
+                  .sort((a, b) => a.title.localeCompare(b.title))
+                  .map(node => {
+                    const isSolution = (node.kind || 'issue') === 'solution';
+                    const isSelected = selId === node.id;
+                    return (
+                      <Flex
+                        key={node.id}
+                        px={3} py={1.5} gap={2} align="center" cursor="pointer"
+                        bg={isSelected ? 'blackAlpha.100' : undefined}
+                        _hover={{ bg: 'blackAlpha.50' }}
+                        onClick={() => focusNode(node)}
+                        borderBottom="1px solid" borderColor={border}
+                      >
+                        <Box
+                          w="8px" h="8px" borderRadius="full" flexShrink={0}
+                          bg={SCOPE_COLORS[node.scope]}
+                        />
+                        {isSolution && <Lightbulb size={12} color={solBorder} style={{ flexShrink: 0 }} />}
+                        <Text fontSize="xs" flex={1} lineClamp={1}>
+                          {node.title}
+                        </Text>
+                        <Text fontSize="9px" color={sub} flexShrink={0}>
+                          {TIMEFRAME_LABELS[node.timeframe]}
+                        </Text>
+                      </Flex>
+                    );
+                  })}
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {/* ─── Node Detail Modal ─── */}
@@ -1056,6 +1282,70 @@ const Brainstorm = () => {
                 onClick={() => { setModalNodeId(null); setMdEditing(false); }}
               >
                 Done
+              </Button>
+            </Flex>
+          </Box>
+        </Box>
+      )}
+
+      {/* ─── Import JSON Modal ─── */}
+      {importOpen && (
+        <Box
+          position="fixed" inset={0} zIndex={100}
+          display="flex" alignItems="center" justifyContent="center"
+          onClick={() => setImportOpen(false)}
+        >
+          <Box position="absolute" inset={0} bg="blackAlpha.600" />
+          <Box
+            position="relative"
+            bg={chrome} borderRadius="xl" w="100%" maxW="620px"
+            maxH="80vh" overflow="hidden" display="flex" flexDirection="column"
+            style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <Flex
+              px={6} py={4} gap={3} align="center"
+              borderBottom="1px solid" borderColor={border} flexShrink={0}
+            >
+              <FileDown size={18} />
+              <Heading size="sm" flex={1}>Import JSON — Merge into graph</Heading>
+              <IconButton
+                aria-label="Close" size="sm" variant="ghost"
+                onClick={() => setImportOpen(false)}
+              >
+                <X size={18} />
+              </IconButton>
+            </Flex>
+
+            <Box flex={1} overflowY="auto" px={6} py={4}>
+              <Text fontSize="sm" color={sub} mb={3}>
+                Paste a JSON object with <code>nodes</code> and/or <code>links</code> arrays.
+                Nodes and links will be merged into the current graph. Conflicting IDs are
+                automatically remapped.
+              </Text>
+              <Textarea
+                w="100%" minH="280px" fontFamily="mono" fontSize="sm"
+                value={importJson}
+                onChange={e => { setImportJson(e.target.value); setImportErr(''); }}
+                placeholder='{"nodes": [...], "links": [...]}'
+              />
+              {importErr && (
+                <Text fontSize="sm" color="red.400" mt={2}>{importErr}</Text>
+              )}
+            </Box>
+
+            <Flex px={6} py={3} borderTop="1px solid" borderColor={border}
+              justify="flex-end" align="center" gap={3} flexShrink={0}
+            >
+              <Button size="sm" variant="outline" onClick={() => setImportOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm" variant="solid"
+                disabled={!importJson.trim()}
+                onClick={() => mergeJson(importJson)}
+              >
+                Merge into graph
               </Button>
             </Flex>
           </Box>
