@@ -228,9 +228,14 @@ class StaticWebsite(Command):
         env = os.environ.copy()
         env["VITE_USE_STATIC_MODE"] = "true"
         env["VITE_BASE_PATH"] = base_path
-        # Combine base_path with api_url so image/asset URLs resolve correctly
-        # e.g. base_path="/recipes", api_url="/api" → VITE_API_URL="/recipes/api"
-        env["VITE_API_URL"] = base_path.rstrip("/") + "/" + api_url.lstrip("/")
+        # Combine base_path with api_url into an absolute path (always starts with /)
+        # so that image/asset URLs resolve correctly on any hosting sub-path.
+        # e.g. base_path="/recipes", api_url="/api" → "/recipes/api"
+        #      base_path="recipes",  api_url="/api" → "/recipes/api"  (handles missing leading /)
+        #      base_path="/",        api_url="/api" → "/api"
+        _base = base_path.strip("/")
+        _api  = api_url.strip("/")
+        env["VITE_API_URL"] = "/" + "/".join(filter(None, [_base, _api]))
 
         result = subprocess.run(
             ["npx", "vite", "build"],
