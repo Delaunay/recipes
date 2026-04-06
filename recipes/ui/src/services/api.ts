@@ -36,9 +36,11 @@ const isStaticMode = () => {
 };
 
 
-function imagePath(image: string): string {
+export function imagePath(image: string): string {
   return API_BASE_URL + image;
 }
+
+export { isStaticMode };
 
 class RecipeAPI {
   private async requestStatic<T>(endpoint: string): Promise<T> {
@@ -383,9 +385,12 @@ class RecipeAPI {
     }
   }
 
-  // Utility method to check if we're in static mode
   isStaticMode(): boolean {
     return isStaticMode();
+  }
+
+  imagePath(image: string): string {
+    return imagePath(image);
   }
 
   // Task methods
@@ -633,7 +638,8 @@ class RecipeAPI {
 
   // Article methods
   async getArticles(): Promise<Article[]> {
-    return this.request<Article[]>('/articles');
+    const endpoint = isStaticMode() ? '/articles/public' : '/articles';
+    return this.request<Article[]>(endpoint);
   }
 
   async getLastAccessedArticles(): Promise<Article[]> {

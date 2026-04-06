@@ -17,7 +17,7 @@ class Product(Base):
     price = Column(Float)                                   # unitary price
     count = Column(Integer)                                 # Number of item purchase
     organic = Column(Boolean)                               # Organic or not
-    created_at = Column(DateTime, default=datetime.utcnow)  # Date of purchase
+    created_at = Column(DateTime, default=lambda: datetime.now(datetime.UTC))  # Date of purchase
     ingredient = Column(String(50))                         # Ingredient this is usually used for
     fdc_id = Column(Integer)
 

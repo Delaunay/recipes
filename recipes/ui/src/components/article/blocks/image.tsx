@@ -133,6 +133,8 @@ function ImageView({ block }: { block: ImageBlock }) {
         );
     }
 
+    const src = recipeAPI.imagePath(block.def.data.url);
+
     return (
         <Box {...dropZoneProps} position="relative">
             {dragging && (
@@ -147,7 +149,7 @@ function ImageView({ block }: { block: ImageBlock }) {
                 </Box>
             )}
             <Image
-                src={block.def.data.url}
+                src={src}
                 alt={block.def.data.alt}
                 maxW="100%"
                 width={block.def.data.width}

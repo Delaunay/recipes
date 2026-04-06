@@ -107,8 +107,8 @@ class Recipe(Base):
     prep_time = Column(Integer)  # in minutes
     cook_time = Column(Integer)  # in minutes
     servings = Column(Integer)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda:datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda:  datetime.utcnow, onupdate=datetime.utcnow)
     author_id = Column(Integer, ForeignKey('users._id'))
 
     component = Column(Boolean, default=False)

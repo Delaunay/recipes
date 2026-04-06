@@ -37,6 +37,9 @@ class Article(Base):
     tags = Column(JSON)
     extension = Column(JSON)
 
+    public = Column(Boolean, default=False)
+    article_kind = Column(String(25))
+
     # Add a view counter for optimizing UX display view
 
     @staticmethod
@@ -155,6 +158,8 @@ class Article(Base):
             "extension": self.extension,
             "parent_id": self.parent,
             "root_id": self.root_id,
+            "public": self.public,
+            "article_kind": self.article_kind,
             "blocks": [],
         }
 

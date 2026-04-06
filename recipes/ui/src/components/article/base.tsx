@@ -8,6 +8,7 @@ import {
 import { Button, CloseButton, Dialog, Portal } from "@chakra-ui/react";
 import { IconButton, Flex } from "@chakra-ui/react";
 import { Trash, GripVertical, Settings } from "lucide-react";
+import { isStaticMode } from '../../services/api';
 import { useColorModeValue } from '../ui/color-mode';
 import { Textarea, Input } from '@chakra-ui/react';
 import { parseMarkdown } from './markdown';
@@ -39,6 +40,8 @@ export interface ArticleDef {
   sequence: number;
   tags: any;
   extension: any;
+  public?: boolean;
+  article_kind?: string;
   blocks: Array<BlockDef>;
   children?: Array<ArticleDef>;
   top_level_article?: { id: number; title: string };
@@ -305,6 +308,10 @@ export const BlockPickerDialog: React.FC<BlockPickerDialogProps> = ({
 
 
 const BlockWrapper: React.FC<BlockWrapperProps> = ({ block }) => {
+  if (isStaticMode()) {
+    return <>{block.component("view")}</>;
+  }
+
   //
   // This is the core wrapper
   // Every block gets wrapped with this component
@@ -775,7 +782,9 @@ export interface ActionInsertBlock extends Action {
 
 export interface ActionUpdateArticle extends Action {
   op: "update_article"
-  title: string
+  title?: string
+  public?: boolean
+  article_kind?: string
 }
 
 
@@ -890,6 +899,10 @@ interface InsertBlockGapProps {
 }
 
 export const InsertBlockGap: React.FC<InsertBlockGapProps> = ({ article, after }) => {
+  if (isStaticMode()) {
+    return null;
+  }
+
   const [hovered, setHovered] = useState(false);
 
   const handleClick = () => {

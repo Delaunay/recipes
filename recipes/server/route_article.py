@@ -4,8 +4,10 @@ from datetime import datetime
 from traceback import print_exc
 
 from flask import jsonify, request
+from sqlalchemy import select
 
 from .models.article import Article, ArticleBlock
+from .decorators import expose
 
 
 def article_routes(app, db):
@@ -14,11 +16,26 @@ def article_routes(app, db):
     Supports batch updates to minimize frontend requests.
     """
 
-    # Get all articles (metadata only)
+    # Get all articles (metadata only) — admin use, returns all including drafts
     @app.route("/articles", methods=["GET"])
     def get_articles() -> Dict[str, Any]:
         try:
             articles = db.session.query(Article).filter(Article.parent.is_(None)).all()
+            return jsonify([article.to_json() for article in articles])
+        except Exception as e:
+            print_exc()
+            return jsonify({"error": str(e)}), 500
+
+    # Public article list — only published root articles, used by the static site
+    @app.route("/articles/public", methods=["GET"])
+    @expose()
+    def get_public_articles() -> Dict[str, Any]:
+        try:
+            articles = (
+                db.session.query(Article)
+                .filter(Article.parent.is_(None), Article.public == True)
+                .all()
+            )
             return jsonify([article.to_json() for article in articles])
         except Exception as e:
             print_exc()
@@ -30,6 +47,7 @@ def article_routes(app, db):
 
     # Get a single article with all its blocks in tree structure
     @app.route("/articles/<int:article_id>", methods=["GET"])
+    @expose(article_id=select(Article._id).where(Article.public == True))
     def get_article(article_id: int) -> Dict[str, Any]:
         try:
             article = db.session.query(Article).get(article_id)
@@ -159,6 +177,7 @@ def article_routes(app, db):
 
     # Get all child articles for a given parent
     @app.route("/articles/<int:parent_id>/children", methods=["GET"])
+    @expose(parent_id=select(Article._id).where(Article.public == True))
     def get_child_articles(parent_id: int) -> Dict[str, Any]:
         try:
             parent_article = db.session.query(Article).get(parent_id)
@@ -191,6 +210,10 @@ def article_routes(app, db):
                 article.tags = data["tags"]
             if "extension" in data:
                 article.extension = data["extension"]
+            if "public" in data:
+                article.public = data["public"]
+            if "article_kind" in data:
+                article.article_kind = data["article_kind"]
 
             db.session.commit()
 

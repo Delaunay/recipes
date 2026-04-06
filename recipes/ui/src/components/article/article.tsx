@@ -5,7 +5,13 @@ import {
     Heading,
     Input,
     Flex,
+    Text,
+    Button,
+    Badge,
+    IconButton,
+    Portal,
 } from '@chakra-ui/react';
+import { Settings } from 'lucide-react';
 
 
 import { BlockBase, newBlock, ArticleDef, BlockDef, PendingAction, InsertBlockGap, BlockPickerDialog } from './base'
@@ -20,7 +26,7 @@ import type {
     ActionUpdateArticle,
     BlockTypeEntry,
 } from './base'
-import { recipeAPI } from '../../services/api'
+import { recipeAPI, isStaticMode } from '../../services/api'
 import { useColorModeValue } from '../ui/color-mode'
 import { SubPageList } from './subpages'
 
@@ -782,27 +788,41 @@ export class ArticleInstance implements ArticleBlock {
     }
 
     updateTitle(newTitle: string) {
-        let oldTitle = this.def.title;
+        const oldTitle = this.def.title;
 
-        const doAction = () => {
-            this.def.title = newTitle;
-            this.notify();
-        }
-
-        const undoAction = () => {
-            this.def.title = oldTitle;
-            this.notify();
-        }
-
-        const remoteAction: ActionUpdateArticle = {
-            op: "update_article",
-            title: newTitle
-        }
+        const doAction = () => { this.def.title = newTitle; this.notify(); }
+        const undoAction = () => { this.def.title = oldTitle; this.notify(); }
 
         this.pushAction({
-            action: remoteAction,
-            doAction: doAction,
-            undoAction: undoAction
+            action: { op: "update_article", title: newTitle } as ActionUpdateArticle,
+            doAction,
+            undoAction,
+        })
+    }
+
+    updatePublic(value: boolean) {
+        const oldValue = this.def.public;
+
+        const doAction = () => { this.def.public = value; this.notify(); }
+        const undoAction = () => { this.def.public = oldValue; this.notify(); }
+
+        this.pushAction({
+            action: { op: "update_article", public: value } as ActionUpdateArticle,
+            doAction,
+            undoAction,
+        })
+    }
+
+    updateArticleKind(kind: string) {
+        const oldKind = this.def.article_kind;
+
+        const doAction = () => { this.def.article_kind = kind; this.notify(); }
+        const undoAction = () => { this.def.article_kind = oldKind; this.notify(); }
+
+        this.pushAction({
+            action: { op: "update_article", article_kind: kind } as ActionUpdateArticle,
+            doAction,
+            undoAction,
         })
     }
 
@@ -833,9 +853,13 @@ export class ArticleInstance implements ArticleBlock {
             }
 
             if (articleActions.length > 0) {
-                // We only need to send the last title update if there are multiple
-                const lastAction = articleActions[articleActions.length - 1];
-                promises.push(recipeAPI.updateArticle(this.def.id, { title: lastAction.title }));
+                const merged: Partial<ActionUpdateArticle> = {};
+                for (const action of articleActions) {
+                    if (action.title !== undefined) merged.title = action.title;
+                    if (action.public !== undefined) merged.public = action.public;
+                    if (action.article_kind !== undefined) merged.article_kind = action.article_kind;
+                }
+                promises.push(recipeAPI.updateArticle(this.def.id, merged));
             }
 
             await Promise.all(promises);
@@ -865,10 +889,21 @@ interface ArticleProps {
 
 import { VegaProvider } from '../../contexts/VegaContext';
 
+const ARTICLE_KINDS = ["", "blog", "tutorial", "project-log", "note", "recipe"];
+
 const TitleDisplay: React.FC<{ article: ArticleInstance }> = ({ article }) => {
+    if (isStaticMode()) {
+        return <Heading mb={4}>{article.def.title}</Heading>;
+    }
+
     const [hovered, setHovered] = useState(false);
     const [focused, setFocused] = useState(false);
     const [text, setText] = useState(article.def.title);
+    const [isPublic, setIsPublic] = useState(article.def.public ?? false);
+    const [kind, setKind] = useState(article.def.article_kind ?? "");
+    const [gearOpen, setGearOpen] = useState(false);
+    const [gearPos, setGearPos] = useState<{ x: number; y: number } | null>(null);
+    const gearRef = useRef<HTMLButtonElement | null>(null);
 
     const editTrigger = article.options?.editTrigger ?? "click";
     const editing = editTrigger === "hover"
@@ -877,6 +912,8 @@ const TitleDisplay: React.FC<{ article: ArticleInstance }> = ({ article }) => {
 
     const hoverBg = useColorModeValue("blackAlpha.50", "whiteAlpha.50");
     const showHoverHint = hovered && !editing;
+    const panelBg = useColorModeValue("white", "gray.800");
+    const panelBorder = useColorModeValue("gray.200", "gray.600");
 
     useEffect(() => {
         setText(article.def.title);
@@ -889,44 +926,138 @@ const TitleDisplay: React.FC<{ article: ArticleInstance }> = ({ article }) => {
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setText(e.target.value);
         article.updateTitle(e.target.value);
-    }
+    };
+
+    const handleGearClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (gearRef.current) {
+            const rect = gearRef.current.getBoundingClientRect();
+            setGearPos({ x: rect.left, y: rect.bottom + 4 });
+        }
+        setGearOpen(v => !v);
+    };
+
+    const handlePublicToggle = () => {
+        const value = !isPublic;
+        setIsPublic(value);
+        article.updatePublic(value);
+    };
+
+    const handleKindChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        setKind(value);
+        article.updateArticleKind(value);
+    };
 
     return (
-        <Box
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-            onClick={(e) => {
-                e.stopPropagation()
-                setFocused(true)
-            }}
-            onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setFocused(false)
-                }
-            }}
-            tabIndex={0}
-            cursor={!editing && editTrigger === "click" ? "pointer" : undefined}
-            bg={showHoverHint ? hoverBg : undefined}
-            borderRadius={showHoverHint ? "md" : undefined}
-            outline={focused ? "2px solid" : "none"}
-            outlineColor="blue.500"
-            transition="background 0.15s ease"
-            mb={4}
-        >
-            {editing ? (
-                <Input
-                    value={text}
-                    onChange={onChange}
-                    autoFocus
-                    size="lg"
-                    fontWeight="bold"
-                    fontSize="3xl"
-                />
-            ) : (
-                <Heading>{article.def.title}</Heading>
+        <Box mb={4}>
+            <Flex
+                align="center"
+                gap={2}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                onClick={(e) => { e.stopPropagation(); setFocused(true); }}
+                onBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setFocused(false);
+                    }
+                }}
+                tabIndex={0}
+                cursor={!editing && editTrigger === "click" ? "pointer" : undefined}
+                bg={showHoverHint ? hoverBg : undefined}
+                borderRadius={showHoverHint ? "md" : undefined}
+                outline={focused ? "2px solid" : "none"}
+                outlineColor="blue.500"
+                transition="background 0.15s ease"
+            >
+                {editing ? (
+                    <Input
+                        value={text}
+                        onChange={onChange}
+                        autoFocus
+                        size="lg"
+                        fontWeight="bold"
+                        fontSize="3xl"
+                        flex="1"
+                    />
+                ) : (
+                    <Heading flex="1">{article.def.title}</Heading>
+                )}
+
+                <Badge
+                    colorScheme={isPublic ? "green" : "gray"}
+                    variant="subtle"
+                    fontSize="xs"
+                    flexShrink={0}
+                >
+                    {isPublic ? "published" : "draft"}
+                </Badge>
+
+                <IconButton
+                    ref={gearRef}
+                    aria-label="Article settings"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleGearClick}
+                    flexShrink={0}
+                >
+                    <Settings size={16} />
+                </IconButton>
+            </Flex>
+
+            {gearOpen && gearPos && (
+                <Portal>
+                    <Box
+                        position="fixed"
+                        inset="0"
+                        onClick={() => setGearOpen(false)}
+                        zIndex={100}
+                    />
+                    <Box
+                        position="fixed"
+                        top={`${gearPos.y}px`}
+                        left={`${gearPos.x}px`}
+                        bg={panelBg}
+                        border="1px solid"
+                        borderColor={panelBorder}
+                        borderRadius="md"
+                        boxShadow="md"
+                        p={4}
+                        width="220px"
+                        zIndex={101}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <Text fontWeight="semibold" fontSize="sm" mb={3}>Article settings</Text>
+
+                        <Flex align="center" justify="space-between" mb={3}>
+                            <Text fontSize="sm">Visibility</Text>
+                            <Button
+                                size="xs"
+                                colorScheme={isPublic ? "green" : "gray"}
+                                variant={isPublic ? "solid" : "outline"}
+                                onClick={handlePublicToggle}
+                            >
+                                {isPublic ? "Published" : "Draft"}
+                            </Button>
+                        </Flex>
+
+                        <Box>
+                            <Text fontSize="sm" mb={1}>Kind</Text>
+                            <select
+                                value={kind}
+                                onChange={handleKindChange}
+                                style={{ width: "100%", fontSize: "0.875rem", padding: "4px 6px", borderRadius: "4px", border: "1px solid #CBD5E0" }}
+                            >
+                                {ARTICLE_KINDS.map(k => (
+                                    <option key={k} value={k}>{k || "— none —"}</option>
+                                ))}
+                            </select>
+                        </Box>
+                    </Box>
+                </Portal>
             )}
         </Box>
-    )
+    );
 }
 
 const Article: React.FC<ArticleProps> = ({ article, options }) => {
@@ -962,6 +1093,7 @@ function renderSortedBySequence(items: BlockBase[]): any {
         //   })
         .map(item => item.react());
 }
+
 
 
 const ArticleView: React.FC<{ article: ArticleInstance }> = ({ article }) => {
