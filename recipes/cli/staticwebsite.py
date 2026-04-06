@@ -120,49 +120,52 @@ class StaticWebsite(Command):
         """Generate all route combinations and save the data."""
         from flask import url_for
         from sqlalchemy.sql import Select
+        from recipes.server.query_context import public_articles_only
 
         logger.info(f"Processing route: {rule}")
 
         combinations = []
 
-        # 1. Process kwargs (Cartesian product)
-        if static_kwargs:
-            resolved_params = {}
-            for param_name, generator in static_kwargs.items():
-                if isinstance(generator, Select):
-                    resolved_params[param_name] = self.db.session.scalars(generator).all()
-                elif callable(generator):
-                    resolved_params[param_name] = generator()
-                else:
-                    resolved_params[param_name] = generator
+        with public_articles_only():
+            # 1. Process kwargs (Cartesian product)
+            if static_kwargs:
+                resolved_params = {}
+                for param_name, generator in static_kwargs.items():
+                    if isinstance(generator, Select):
+                        resolved_params[param_name] = self.db.session.scalars(generator).all()
+                    elif callable(generator):
+                        resolved_params[param_name] = generator()
+                    else:
+                        resolved_params[param_name] = generator
 
-            param_names = resolved_params.keys()
-            param_values = resolved_params.values()
-            for combination in itertools.product(*param_values):
-                combinations.append(dict(zip(param_names, combination)))
+                param_names = resolved_params.keys()
+                param_values = resolved_params.values()
+                for combination in itertools.product(*param_values):
+                    combinations.append(dict(zip(param_names, combination)))
 
-        # 2. Process args (Direct rows)
-        if static_args:
-            for query in static_args:
-                if isinstance(query, Select):
-                    rows = self.db.session.execute(query).all()
-                    for row in rows:
-                        combinations.append(dict(row._mapping))
-                elif callable(query):
-                    for item in query():
-                        combinations.append(item if isinstance(item, dict) else {'id': item})
+            # 2. Process args (Direct rows)
+            if static_args:
+                for query in static_args:
+                    if isinstance(query, Select):
+                        rows = self.db.session.execute(query).all()
+                        for row in rows:
+                            combinations.append(dict(row._mapping))
+                    elif callable(query):
+                        for item in query():
+                            combinations.append(item if isinstance(item, dict) else {'id': item})
 
-        # 3. No-parameter route: just fetch once
-        if not combinations and not static_args and not static_kwargs:
-            combinations = [{}]
+            # 3. No-parameter route: just fetch once
+            if not combinations and not static_args and not static_kwargs:
+                combinations = [{}]
 
-        # 4. Fetch and save
+        # 4. Fetch and save — each request runs inside its own public_articles_only() context
         saved = 0
         for kwargs in combinations:
             try:
                 with self.app.test_request_context():
                     relative_url = url_for(rule.endpoint, **kwargs)
-                response = self.client.get(relative_url)
+                with public_articles_only():
+                    response = self.client.get(relative_url)
 
                 if response.status_code == 200:
                     try:

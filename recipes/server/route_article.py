@@ -4,10 +4,26 @@ from datetime import datetime
 from traceback import print_exc
 
 from flask import jsonify, request
-from sqlalchemy import select
+from sqlalchemy import select, event
+from sqlalchemy.orm import Session, with_loader_criteria
 
 from .models.article import Article, ArticleBlock
 from .decorators import expose
+from .query_context import is_public_only
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _filter_public_articles(execute_state):
+    """Transparently restrict all Article queries to public == True
+    when running inside a `public_articles_only()` context (static build)."""
+    if execute_state.is_select and is_public_only():
+        execute_state.statement = execute_state.statement.options(
+            with_loader_criteria(
+                Article,
+                Article.public == True,
+                include_aliases=True,
+            )
+        )
 
 
 def article_routes(app, db):

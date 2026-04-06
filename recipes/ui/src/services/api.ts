@@ -808,4 +808,3 @@ class RecipeAPI {
 
 // Export a singleton instance
 export const recipeAPI = new RecipeAPI();
-export { imagePath };
