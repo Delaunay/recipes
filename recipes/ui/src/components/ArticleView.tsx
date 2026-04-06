@@ -55,6 +55,8 @@ const ArticleView: React.FC = () => {
                     namespace: fetchedArticle.namespace || '',
                     tags: fetchedArticle.tags || {},
                     extension: fetchedArticle.extension || {},
+                    public: fetchedArticle.public ?? false,
+                    article_kind: fetchedArticle.article_kind ?? '',
                     sequence: 0,
                     blocks: convertBlocks(fetchedArticle.blocks || []),
                     children: childrenSource.children?.map(child => ({
@@ -65,6 +67,8 @@ const ArticleView: React.FC = () => {
                         namespace: child.namespace || '',
                         tags: child.tags || {},
                         extension: child.extension || {},
+                        public: child.public ?? false,
+                        article_kind: child.article_kind ?? '',
                         sequence: 0,
                         blocks: [],
                         children: child.children

@@ -300,6 +300,8 @@ export interface Article {
     extension?: any;
     parent_id?: number; // Reference to parent article
     root_id?: number; // Reference to root article in hierarchy
+    public?: boolean;
+    article_kind?: string;
     blocks?: ArticleBlock[]; // Root blocks of the article
     children?: Article[]; // Child articles (sub-pages)
 }

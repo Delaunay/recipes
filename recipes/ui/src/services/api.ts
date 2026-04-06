@@ -24,7 +24,10 @@ import type {
 } from './type';
 
 const USE_STATIC_MODE = import.meta.env.VITE_USE_STATIC_MODE === 'true';
-const API_BASE_URL = import.meta.env.VITE_API_URL || (USE_STATIC_MODE ? '/api' : '/api');
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Sub-path prefix for hosting on a GitHub Pages project page (e.g. "/recipes").
+// Only needed for absolute asset URLs (images) that are not handled by Vite's base.
+const SITE_BASE = (import.meta.env.VITE_BASE_PATH || '').replace(/\/$/, '');
 
 console.log(USE_STATIC_MODE, API_BASE_URL)
 
@@ -37,7 +40,13 @@ const isStaticMode = () => {
 
 
 export function imagePath(image: string): string {
-  return API_BASE_URL + image;
+  // Images stored in the DB use paths like "/uploads/…" without the /api/ prefix.
+  // The Vite proxy only forwards /api/* to Flask, so we need to add it.
+  // Paths already starting with /api/uploads/ are left untouched.
+  const path = image.startsWith('/uploads/') ? '/api' + image : image;
+  // On GitHub Pages (SITE_BASE="/recipes"), prepend the sub-path so the
+  // absolute URL resolves correctly from the domain root.
+  return SITE_BASE + path;
 }
 
 export { isStaticMode };

@@ -6,7 +6,7 @@ import { Plus, Settings } from 'lucide-react';
 import { Link as RouterLinkBase } from 'react-router-dom';
 import { useColorModeValue } from '../ui/color-mode';
 import { ArticleDef } from './base';
-import { recipeAPI } from '../../services/api';
+import { recipeAPI, isStaticMode } from '../../services/api';
 
 interface SubPageListProps {
     articleDef: ArticleDef;
@@ -165,7 +165,7 @@ export const SubPageList: React.FC<SubPageListProps> = ({ articleDef }) => {
         }
     };
 
-    const actionControls = (
+    const actionControls = isStaticMode() ? null : (
         <HStack gap={1}>
             <Button
                 size="xs"

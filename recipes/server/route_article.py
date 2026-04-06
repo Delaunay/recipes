@@ -58,6 +58,7 @@ def article_routes(app, db):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/articles/last-accessed", methods=["GET"])
+    @expose()
     def latest_accessed_articles() -> Dict[str, Any]:
         return get_articles()
 

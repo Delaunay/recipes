@@ -43,7 +43,8 @@ class StaticSiteGenerator:
             "/unit/conversions",
             "/units/available",
             "/units/available/volume",
-            "/units/available/mass"
+            "/units/available/mass",
+            "/articles/public",
         ]
 
         # Data storage
@@ -54,6 +55,7 @@ class StaticSiteGenerator:
         self.available_units = []
         self.volume_units = []
         self.mass_units = []
+        self.articles_data = []
 
     def start_server(self):
         """Start the Flask development server"""
@@ -204,6 +206,33 @@ class StaticSiteGenerator:
                     if data:
                         self.save_json_file(endpoint, data)
 
+        # Crawl article detail and children endpoints for each public article
+        logger.info("Crawling article endpoints...")
+        articles_to_crawl = list(self.articles_data) if isinstance(self.articles_data, list) else []
+        crawled_ids = set()
+        while articles_to_crawl:
+            article = articles_to_crawl.pop(0)
+            article_id = article.get('id')
+            if not article_id or article_id in crawled_ids:
+                continue
+            crawled_ids.add(article_id)
+
+            # Fetch article detail
+            endpoint = f"/articles/{article_id}"
+            data = self.fetch_json(endpoint)
+            if data:
+                self.save_json_file(endpoint, data)
+
+            # Fetch children
+            children_endpoint = f"/articles/{article_id}/children"
+            children_data = self.fetch_json(children_endpoint)
+            if children_data:
+                self.save_json_file(children_endpoint, children_data)
+                # Queue public children for crawling too
+                for child in (children_data.get('children') or []):
+                    if child.get('public') and child.get('id') not in crawled_ids:
+                        articles_to_crawl.append(child)
+
     def crawl_api_endpoints(self):
         """Crawl all API endpoints and save JSON responses"""
         logger.info("Crawling API endpoints...")
@@ -238,6 +267,9 @@ class StaticSiteGenerator:
                 elif endpoint == "/units/available/mass":
                     self.mass_units = data
                     logger.info(f"Stored {len(data) if isinstance(data, list) else 'non-list'} mass units")
+                elif endpoint == "/articles/public":
+                    self.articles_data = data
+                    logger.info(f"Stored {len(data) if isinstance(data, list) else 'non-list'} public articles for dynamic crawling")
             else:
                 logger.error(f"Failed to fetch data for endpoint: {endpoint}")
 

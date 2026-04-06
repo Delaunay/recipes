@@ -923,6 +923,14 @@ const TitleDisplay: React.FC<{ article: ArticleInstance }> = ({ article }) => {
         document.title = article.def.title || "Untitled";
     }, [article.def.title]);
 
+    useEffect(() => {
+        setIsPublic(article.def.public ?? false);
+    }, [article.def.public]);
+
+    useEffect(() => {
+        setKind(article.def.article_kind ?? "");
+    }, [article.def.article_kind]);
+
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setText(e.target.value);
         article.updateTitle(e.target.value);

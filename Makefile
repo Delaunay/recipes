@@ -62,10 +62,10 @@ alembic-update:
 	cd recipes/alembic && alembic upgrade head
 
 static-build:
-	(. website/.venv/bin/activate; VITE_USE_STATIC_MODE=true FLASK_STATIC=website python scripts/static_generator.py)
+	(. ../.venv/bin/activate && FDC_API_KEY=$${FDC_API_KEY:-DEMO_KEY} FLASK_STATIC=.. python -m recipes.main static --base_path / --api_url /api)
 
 static:
-	cd static_build && python -m http.server
+	cd recipes/static_build && python -m http.server
 
 # flask --app recipes.server.run:main
 
@@ -84,7 +84,7 @@ local-deploy:
 
 
 preprocess-images:
-	(. website/.venv/bin/activate; VITE_USE_STATIC_MODE=true FLASK_STATIC=website python scripts/static_generator.py)
+	(. .venv/bin/activate && cd recipes && FDC_API_KEY=$${FDC_API_KEY:-DEMO_KEY} FLASK_STATIC=.. python -m recipes.main static --skip_frontend --base_path /recipes/ --api_url /recipes/api)
 
 # MCP Tools Generation
 mcp-generate:
