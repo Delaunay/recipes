@@ -92,7 +92,9 @@ function App() {
                 <Route path="/scratch/code-viz" element={<CodeVisualization />} />
                 <Route path="/scratch/filament-math" element={<FilamentMath />} />
                 <Route path="/scratch/wood-planner" element={<WoodPlanner />} />
+                <Route path="/scratch/wood-planner/:project" element={<WoodPlanner />} />
                 <Route path="/scratch/brainstorm" element={<Brainstorm />} />
+                <Route path="/scratch/brainstorm/:project" element={<Brainstorm />} />
                 <Route path="/scratch/budget-sheet" element={<BudgetSheet />} />
   
                 {/* Test pages */}

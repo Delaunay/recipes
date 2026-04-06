@@ -13,7 +13,8 @@ import {
 } from '@chakra-ui/react';
 import { Trash, Plus, Save, FolderOpen } from 'lucide-react';
 import { useColorModeValue } from './ui/color-mode';
-import { jsonStore } from '../services/jsonstore';
+import { useParams, useNavigate } from 'react-router-dom';
+import { jsonStore, isStaticMode } from '../services/jsonstore';
 
 // ──────────────────────────────────────────────
 // Units & parsing
@@ -783,7 +784,8 @@ type Updater<T> = (value: T | ((prev: T) => T)) => void;
 const StockTable: React.FC<{
   items: StockPiece[];
   onChange: Updater<StockPiece[]>;
-}> = ({ items, onChange }) => {
+  readOnly?: boolean;
+}> = ({ items, onChange, readOnly }) => {
   const headerBg = useColorModeValue('gray.100', 'gray.700');
 
   const update = (id: number, patch: Partial<StockPiece>) => {
@@ -829,14 +831,14 @@ const StockTable: React.FC<{
 
   return (
     <VStack align="stretch" gap={0}>
-      <Grid templateColumns="90px 80px 1fr 100px 100px 90px 40px" gap={2} px={2} py={1} bg={headerBg} borderRadius="md">
+      <Grid templateColumns={readOnly ? "90px 80px 1fr 100px 100px 90px" : "90px 80px 1fr 100px 100px 90px 40px"} gap={2} px={2} py={1} bg={headerBg} borderRadius="md">
         <Text fontWeight="semibold" fontSize="sm">Type</Text>
         <Text fontWeight="semibold" fontSize="sm">Size</Text>
         <Text fontWeight="semibold" fontSize="sm">Label</Text>
         <Text fontWeight="semibold" fontSize="sm">Length</Text>
         <Text fontWeight="semibold" fontSize="sm">Width</Text>
         <Text fontWeight="semibold" fontSize="sm">Price</Text>
-        <Box />
+        {!readOnly && <Box />}
       </Grid>
       {items.map(item => {
         const info = lookupNominal(item.nominal);
@@ -844,39 +846,44 @@ const StockTable: React.FC<{
         const tooltip = info ? nominalTooltip(info) + ` | ${formatLength(item.length)} (${formatMm(item.length)})` : undefined;
         const lengthOk = item.length > 0;
         return (
-          <Grid key={item.id} templateColumns="90px 80px 1fr 100px 100px 90px 40px" gap={2} px={2} py={1}
+          <Grid key={item.id} templateColumns={readOnly ? "90px 80px 1fr 100px 100px 90px" : "90px 80px 1fr 100px 100px 90px 40px"} gap={2} px={2} py={1}
             alignItems="center" title={tooltip} cursor="default">
             <select value={item.kind}
+              disabled={readOnly}
               onChange={e => updateKind(item.id, e.target.value as StockKind)}
               style={{ fontSize: '0.875rem', padding: '4px 2px', borderRadius: 4, border: '1px solid #ccc', background: 'transparent', color: 'inherit', width: '100%' }}>
               {STOCK_KINDS.map(k => <option key={k} value={k}>{k === 'lumber' ? 'Lumber' : 'Sheet'}</option>)}
             </select>
-            <Input size="sm" value={item.nominal} placeholder="2x4"
+            <Input size="sm" value={item.nominal} placeholder="2x4" readOnly={readOnly}
               onChange={e => updateNominal(item.id, e.target.value)} />
-            <Input size="sm" value={item.label} placeholder="Label"
+            <Input size="sm" value={item.label} placeholder="Label" readOnly={readOnly}
               onChange={e => update(item.id, { label: e.target.value })} />
-            <Input size="sm" value={item.lengthInput} placeholder="8ft"
+            <Input size="sm" value={item.lengthInput} placeholder="8ft" readOnly={readOnly}
               borderColor={!lengthOk && item.lengthInput ? 'red.400' : undefined}
               onChange={e => updateLength(item.id, e.target.value)} />
             <Input size="sm" value={item.widthInput} placeholder={isSheet ? '4ft' : '—'}
-              disabled={!isSheet}
+              disabled={!isSheet} readOnly={readOnly}
               onChange={e => updateWidth(item.id, e.target.value)} />
-            <Input size="sm" type="number" step="0.01" value={item.price}
+            <Input size="sm" type="number" step="0.01" value={item.price} readOnly={readOnly}
               onChange={e => update(item.id, { price: Number(e.target.value) })} />
-            <IconButton size="xs" variant="ghost" aria-label="Remove" onClick={() => remove(item.id)}>
-              <Trash size={14} />
-            </IconButton>
+            {!readOnly && (
+              <IconButton size="xs" variant="ghost" aria-label="Remove" onClick={() => remove(item.id)}>
+                <Trash size={14} />
+              </IconButton>
+            )}
           </Grid>
         );
       })}
-      <HStack mt={1} gap={2}>
-        <Button size="sm" variant="outline" onClick={addLumber}>
-          <Plus size={14} /> Lumber
-        </Button>
-        <Button size="sm" variant="outline" onClick={addSheet}>
-          <Plus size={14} /> Sheet
-        </Button>
-      </HStack>
+      {!readOnly && (
+        <HStack mt={1} gap={2}>
+          <Button size="sm" variant="outline" onClick={addLumber}>
+            <Plus size={14} /> Lumber
+          </Button>
+          <Button size="sm" variant="outline" onClick={addSheet}>
+            <Plus size={14} /> Sheet
+          </Button>
+        </HStack>
+      )}
     </VStack>
   );
 };
@@ -885,7 +892,8 @@ const CutTable: React.FC<{
   items: CutPiece[];
   stocks: StockPiece[];
   onChange: Updater<CutPiece[]>;
-}> = ({ items, stocks, onChange }) => {
+  readOnly?: boolean;
+}> = ({ items, stocks, onChange, readOnly }) => {
   const headerBg = useColorModeValue('gray.100', 'gray.700');
   const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -935,7 +943,7 @@ const CutTable: React.FC<{
 
   return (
     <VStack align="stretch" gap={0}>
-      <Grid templateColumns="90px 80px 1fr 100px 100px 60px 70px 40px" gap={2} px={2} py={1} bg={headerBg} borderRadius="md">
+      <Grid templateColumns={readOnly ? "90px 80px 1fr 100px 100px 60px 70px" : "90px 80px 1fr 100px 100px 60px 70px 40px"} gap={2} px={2} py={1} bg={headerBg} borderRadius="md">
         <Text fontWeight="semibold" fontSize="sm">Type</Text>
         <Text fontWeight="semibold" fontSize="sm">Size</Text>
         <Text fontWeight="semibold" fontSize="sm">Label</Text>
@@ -943,7 +951,7 @@ const CutTable: React.FC<{
         <Text fontWeight="semibold" fontSize="sm">Width</Text>
         <Text fontWeight="semibold" fontSize="sm">Qty</Text>
         <Text fontWeight="semibold" fontSize="sm">Group</Text>
-        <Box />
+        {!readOnly && <Box />}
       </Grid>
       {items.map(item => {
         const isSheet = item.kind === 'sheet';
@@ -953,15 +961,17 @@ const CutTable: React.FC<{
           : undefined;
         const kindNominals = nominalsForKind(item.kind);
         return (
-          <Grid key={item.id} templateColumns="90px 80px 1fr 100px 100px 60px 70px 40px" gap={2} px={2} py={1}
+          <Grid key={item.id} templateColumns={readOnly ? "90px 80px 1fr 100px 100px 60px 70px" : "90px 80px 1fr 100px 100px 60px 70px 40px"} gap={2} px={2} py={1}
             alignItems="center" title={tooltip} cursor="default">
             <select value={item.kind}
+              disabled={readOnly}
               onChange={e => updateKind(item.id, e.target.value as StockKind)}
               style={{ fontSize: '0.875rem', padding: '4px 2px', borderRadius: 4, border: '1px solid #ccc', background: 'transparent', color: 'inherit', width: '100%' }}>
               {STOCK_KINDS.map(k => <option key={k} value={k}>{k === 'lumber' ? 'Lumber' : 'Sheet'}</option>)}
             </select>
             <select
               value={item.nominal}
+              disabled={readOnly}
               onChange={e => update(item.id, { nominal: e.target.value })}
               style={{ fontSize: '0.875rem', padding: '4px 2px', borderRadius: 4, border: '1px solid #ccc', background: 'transparent', color: 'inherit', width: '100%' }}
             >
@@ -970,27 +980,31 @@ const CutTable: React.FC<{
                 <option value={item.nominal}>{item.nominal}</option>
               )}
             </select>
-            <Input size="sm" value={item.label} placeholder="e.g. Shelf"
+            <Input size="sm" value={item.label} placeholder="e.g. Shelf" readOnly={readOnly}
               onChange={e => update(item.id, { label: e.target.value })} />
-            <Input size="sm" value={item.lengthInput} placeholder="24in"
+            <Input size="sm" value={item.lengthInput} placeholder="24in" readOnly={readOnly}
               borderColor={!lengthOk && item.lengthInput ? 'red.400' : undefined}
               onChange={e => updateLength(item.id, e.target.value)} />
             <Input size="sm" value={item.widthInput} placeholder={isSheet ? '12in' : '—'}
-              disabled={!isSheet}
+              disabled={!isSheet} readOnly={readOnly}
               onChange={e => updateWidth(item.id, e.target.value)} />
-            <Input size="sm" type="number" min={1} value={item.quantity}
+            <Input size="sm" type="number" min={1} value={item.quantity} readOnly={readOnly}
               onChange={e => update(item.id, { quantity: Math.max(1, Number(e.target.value)) })} />
-            <Input size="sm" value={item.group} placeholder="—"
+            <Input size="sm" value={item.group} placeholder="—" readOnly={readOnly}
               onChange={e => update(item.id, { group: e.target.value })} />
-            <IconButton size="xs" variant="ghost" aria-label="Remove" onClick={() => remove(item.id)}>
-              <Trash size={14} />
-            </IconButton>
+            {!readOnly && (
+              <IconButton size="xs" variant="ghost" aria-label="Remove" onClick={() => remove(item.id)}>
+                <Trash size={14} />
+              </IconButton>
+            )}
           </Grid>
         );
       })}
-      <Button size="sm" variant="outline" onClick={add} mt={1}>
-        <Plus size={14} /> Add Cut
-      </Button>
+      {!readOnly && (
+        <Button size="sm" variant="outline" onClick={add} mt={1}>
+          <Plus size={14} /> Add Cut
+        </Button>
+      )}
     </VStack>
   );
 };
@@ -1023,6 +1037,9 @@ interface PlannerData {
 }
 
 const WoodPlanner: React.FC = () => {
+  const { project: urlProject } = useParams<{ project?: string }>();
+  const navigate = useNavigate();
+
   const [kerf, setKerf] = useState(KERF);
   const [clearance, setClearance] = useState(DEFAULT_CLEARANCE);
   const [taxRate, setTaxRate] = useState(14.975);
@@ -1049,26 +1066,7 @@ const WoodPlanner: React.FC = () => {
   const setClearanceDirty = useMemo(() => markDirty(setClearance), [markDirty]);
   const setTaxRateDirty = useMemo(() => markDirty(setTaxRate), [markDirty]);
 
-  useEffect(() => {
-    jsonStore.list(COLLECTION).then(setSavedProjects).catch(() => {});
-  }, []);
-
-  const saveProject = async () => {
-    const name = projectName.trim();
-    if (!name) return;
-    try {
-      await jsonStore.put(COLLECTION, name, { stocks, cuts, kerf, taxRate, clearance } as PlannerData);
-      setDirty(false);
-      setSaveStatus('Saved');
-      setTimeout(() => setSaveStatus(null), 2000);
-      if (!savedProjects.includes(name)) setSavedProjects(prev => [...prev, name].sort());
-    } catch {
-      setSaveStatus('Save failed');
-      setTimeout(() => setSaveStatus(null), 3000);
-    }
-  };
-
-  const loadProject = async (name: string) => {
+  const doLoadProject = useCallback(async (name: string) => {
     try {
       const data = await jsonStore.get<PlannerData>(COLLECTION, name);
       setStocks((data.stocks ?? DEFAULT_STOCKS).map(s => ({
@@ -1093,6 +1091,34 @@ const WoodPlanner: React.FC = () => {
       setSaveStatus('Load failed');
       setTimeout(() => setSaveStatus(null), 3000);
     }
+  }, []);
+
+  useEffect(() => {
+    jsonStore.list(COLLECTION).then(setSavedProjects).catch(() => {});
+    if (urlProject) {
+      doLoadProject(urlProject);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlProject]);
+
+  const saveProject = async () => {
+    const name = projectName.trim();
+    if (!name) return;
+    try {
+      await jsonStore.put(COLLECTION, name, { stocks, cuts, kerf, taxRate, clearance } as PlannerData);
+      setDirty(false);
+      setSaveStatus('Saved');
+      setTimeout(() => setSaveStatus(null), 2000);
+      if (!savedProjects.includes(name)) setSavedProjects(prev => [...prev, name].sort());
+      navigate(`/scratch/wood-planner/${encodeURIComponent(name)}`, { replace: true });
+    } catch {
+      setSaveStatus('Save failed');
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
+  };
+
+  const loadProject = (name: string) => {
+    navigate(`/scratch/wood-planner/${encodeURIComponent(name)}`);
   };
 
   const solver1d = STRATEGIES_1D[strategy1dIdx] ?? STRATEGIES_1D[0];
@@ -1114,16 +1140,22 @@ const WoodPlanner: React.FC = () => {
 
       <Box p={3} mb={6} borderRadius="md" bg={toolbarBg} borderWidth="1px">
         <Flex gap={3} align="center" wrap="wrap">
-          <Input size="sm" placeholder="Project name" value={projectName}
-            onChange={e => setProjectName(e.target.value)} w="200px" />
-          <Button size="sm" onClick={saveProject} disabled={!projectName.trim()}>
-            <Save size={14} /> Save
-          </Button>
-          {saveStatus && (
-            <Text fontSize="sm" color={saveStatus === 'Saved' ? 'green.500' : 'red.400'}>{saveStatus}</Text>
-          )}
-          {dirty && !saveStatus && projectName.trim() && (
-            <Text fontSize="xs" color="orange.400">unsaved changes</Text>
+          {isStaticMode ? (
+            <Text fontSize="sm" fontWeight="600">{projectName || 'No project'}</Text>
+          ) : (
+            <>
+              <Input size="sm" placeholder="Project name" value={projectName}
+                onChange={e => setProjectName(e.target.value)} w="200px" />
+              <Button size="sm" onClick={saveProject} disabled={!projectName.trim()}>
+                <Save size={14} /> Save
+              </Button>
+              {saveStatus && (
+                <Text fontSize="sm" color={saveStatus === 'Saved' ? 'green.500' : 'red.400'}>{saveStatus}</Text>
+              )}
+              {dirty && !saveStatus && projectName.trim() && (
+                <Text fontSize="xs" color="orange.400">unsaved changes</Text>
+              )}
+            </>
           )}
           {savedProjects.length > 0 && (
             <>
@@ -1144,7 +1176,7 @@ const WoodPlanner: React.FC = () => {
           <Text fontSize="sm" color="gray.500" mb={2}>
             Lumber and sheet goods from your supplier. Hover a row for actual dimensions.
           </Text>
-          <StockTable items={stocks} onChange={setStocksDirty} />
+          <StockTable items={stocks} onChange={setStocksDirty} readOnly={isStaticMode} />
         </Box>
 
         <Box>
@@ -1152,23 +1184,23 @@ const WoodPlanner: React.FC = () => {
           <Text fontSize="sm" color="gray.500" mb={2}>
             Parts you need ({totalCutCount} pieces). Each cut uses a stock size. Hover for converted dimensions.
           </Text>
-          <CutTable items={cuts} stocks={stocks} onChange={setCutsDirty} />
+          <CutTable items={cuts} stocks={stocks} onChange={setCutsDirty} readOnly={isStaticMode} />
         </Box>
 
         <Flex gap={6} align="center" wrap="wrap">
           <HStack gap={2} align="center">
             <Text fontWeight="semibold" whiteSpace="nowrap" fontSize="sm">Saw kerf (mm):</Text>
-            <Input type="number" step="0.5" min="0" value={kerf}
+            <Input type="number" step="0.5" min="0" value={kerf} readOnly={isStaticMode}
               onChange={e => setKerfDirty(Math.max(0, Number(e.target.value)))} w="100px" size="sm" />
           </HStack>
           <HStack gap={2} align="center">
             <Text fontWeight="semibold" whiteSpace="nowrap" fontSize="sm">Clearance (mm):</Text>
-            <Input type="number" step="0.1" min="0" value={Number(clearance.toFixed(2))}
+            <Input type="number" step="0.1" min="0" value={Number(clearance.toFixed(2))} readOnly={isStaticMode}
               onChange={e => setClearanceDirty(Math.max(0, Number(e.target.value)))} w="100px" size="sm" />
           </HStack>
           <HStack gap={2} align="center">
             <Text fontWeight="semibold" whiteSpace="nowrap" fontSize="sm">Tax (%):</Text>
-            <Input type="number" step="0.1" min="0" value={taxRate}
+            <Input type="number" step="0.1" min="0" value={taxRate} readOnly={isStaticMode}
               onChange={e => setTaxRateDirty(Math.max(0, Number(e.target.value)))} w="100px" size="sm" />
           </HStack>
           {STRATEGIES_1D.length > 1 && (

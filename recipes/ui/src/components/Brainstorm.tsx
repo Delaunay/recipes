@@ -3,7 +3,8 @@ import {
   Box, Button, Flex, Heading, HStack, IconButton, Input, Text, Textarea, VStack,
 } from '@chakra-ui/react';
 import { useColorModeValue } from './ui/color-mode';
-import { jsonStore } from '../services/jsonstore';
+import { useParams, useNavigate } from 'react-router-dom';
+import { jsonStore, isStaticMode } from '../services/jsonstore';
 import { Plus, Save, Trash2, Link2, MousePointer, X, Pencil, Eye, Lightbulb, FileDown, Zap, List, ChevronRight, ChevronLeft } from 'lucide-react';
 import { marked } from 'marked';
 
@@ -203,6 +204,9 @@ function arrowHead(x: number, y: number, angle: number, size: number): string {
 // ─────────────────────────────────────────
 
 const Brainstorm = () => {
+  const { project: urlProject } = useParams<{ project?: string }>();
+  const navigate = useNavigate();
+
   const [nodes, setNodes] = useState<IssueNode[]>([]);
   const [links, setLinks] = useState<IssueLink[]>([]);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -293,36 +297,7 @@ const Brainstorm = () => {
   }, []);
 
   // ── Persistence ──
-  useEffect(() => {
-    jsonStore.list(COLLECTION).then(p => {
-      setProjects(p);
-      if (p.includes('default')) {
-        jsonStore.get<BrainstormData>(COLLECTION, 'default')
-          .then(d => {
-            setNodes(d.nodes || []);
-            setLinks(d.links || []);
-            requestAnimationFrame(() => centerOnNodes(d.nodes || []));
-          })
-          .catch(() => {});
-      }
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const save = async () => {
-    const name = projName.trim();
-    if (!name) return;
-    try {
-      await jsonStore.put(COLLECTION, name, { nodes, links } as BrainstormData);
-      setStatus('Saved');
-      setProjects(await jsonStore.list(COLLECTION));
-    } catch {
-      setStatus('Error');
-    }
-    setTimeout(() => setStatus(''), 2000);
-  };
-
-  const load = async (name: string) => {
+  const loadProject = useCallback(async (name: string) => {
     try {
       const d = await jsonStore.get<BrainstormData>(COLLECTION, name);
       setNodes(d.nodes || []);
@@ -334,6 +309,34 @@ const Brainstorm = () => {
       setStatus('Load error');
       setTimeout(() => setStatus(''), 2000);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const target = urlProject || 'default';
+    jsonStore.list(COLLECTION).then(p => {
+      setProjects(p);
+    }).catch(() => {});
+    loadProject(target);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlProject]);
+
+  const save = async () => {
+    const name = projName.trim();
+    if (!name) return;
+    try {
+      await jsonStore.put(COLLECTION, name, { nodes, links } as BrainstormData);
+      setStatus('Saved');
+      setProjects(await jsonStore.list(COLLECTION));
+      navigate(`/scratch/brainstorm/${encodeURIComponent(name)}`, { replace: true });
+    } catch {
+      setStatus('Error');
+    }
+    setTimeout(() => setStatus(''), 2000);
+  };
+
+  const load = (name: string) => {
+    navigate(`/scratch/brainstorm/${encodeURIComponent(name)}`);
   };
 
   // ── Selection ──
@@ -610,6 +613,7 @@ const Brainstorm = () => {
   };
 
   const onDbl = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (isStaticMode) return;
     if (!(e.target as Element).classList.contains('bg')) return;
     const w = toWorld(e.clientX, e.clientY);
     addNode(w.x - NODE_W / 2, w.y - NODE_H / 2);
@@ -630,7 +634,7 @@ const Brainstorm = () => {
         return;
       }
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selId && !modalNodeId) {
+      if (!isStaticMode && (e.key === 'Delete' || e.key === 'Backspace') && selId && !modalNodeId) {
         if (selKind === 'node') rmNode(selId);
         else if (selKind === 'link') rmLink(selId);
       }
@@ -667,13 +671,20 @@ const Brainstorm = () => {
         px={4} py={2} gap={3} align="center" flexWrap="wrap" flexShrink={0}
       >
         <HStack gap={2}>
-          <Input
-            size="sm" w="130px" value={projName}
-            onChange={e => setProjName(e.target.value)} placeholder="Project"
-          />
-          <IconButton aria-label="Save" size="sm" onClick={save}>
-            <Save size={16} />
-          </IconButton>
+          {!isStaticMode && (
+            <Input
+              size="sm" w="130px" value={projName}
+              onChange={e => setProjName(e.target.value)} placeholder="Project"
+            />
+          )}
+          {isStaticMode && (
+            <Text fontSize="sm" fontWeight="600">{projName}</Text>
+          )}
+          {!isStaticMode && (
+            <IconButton aria-label="Save" size="sm" onClick={save}>
+              <Save size={16} />
+            </IconButton>
+          )}
           {projects.length > 0 && (
             <select
               value=""
@@ -690,16 +701,18 @@ const Brainstorm = () => {
           {status && <Text fontSize="xs" color="green.400">{status}</Text>}
         </HStack>
 
-        <HStack gap={1}>
-          <Button size="sm" variant={mode === 'select' ? 'solid' : 'outline'}
-            onClick={() => { setMode('select'); setLinkSrc(null); }}>
-            <MousePointer size={14} /> Select
-          </Button>
-          <Button size="sm" variant={mode === 'link' ? 'solid' : 'outline'}
-            onClick={() => setMode('link')}>
-            <Link2 size={14} /> Link
-          </Button>
-        </HStack>
+        {!isStaticMode && (
+          <HStack gap={1}>
+            <Button size="sm" variant={mode === 'select' ? 'solid' : 'outline'}
+              onClick={() => { setMode('select'); setLinkSrc(null); }}>
+              <MousePointer size={14} /> Select
+            </Button>
+            <Button size="sm" variant={mode === 'link' ? 'solid' : 'outline'}
+              onClick={() => setMode('link')}>
+              <Link2 size={14} /> Link
+            </Button>
+          </HStack>
+        )}
 
         <HStack gap={1}>
           <Text fontSize="xs" fontWeight="bold">Scope:</Text>
@@ -743,19 +756,23 @@ const Brainstorm = () => {
           </Button>
         </HStack>
 
-        <Button size="sm" variant="outline"
-          onClick={() => addNode((-pan.x + 200) / zoom, (-pan.y + 150) / zoom)}>
-          <Plus size={14} /> Add Issue
-        </Button>
-        <Button size="sm" variant="outline"
-          onClick={() => addNode((-pan.x + 250) / zoom, (-pan.y + 150) / zoom, 'solution')}
-          style={{ color: solBorder, borderColor: solBorder }}>
-          <Lightbulb size={14} /> Add Solution
-        </Button>
-        <Button size="sm" variant="outline"
-          onClick={() => { setImportOpen(true); setImportErr(''); setImportJson(''); }}>
-          <FileDown size={14} /> Import JSON
-        </Button>
+        {!isStaticMode && (
+          <>
+            <Button size="sm" variant="outline"
+              onClick={() => addNode((-pan.x + 200) / zoom, (-pan.y + 150) / zoom)}>
+              <Plus size={14} /> Add Issue
+            </Button>
+            <Button size="sm" variant="outline"
+              onClick={() => addNode((-pan.x + 250) / zoom, (-pan.y + 150) / zoom, 'solution')}
+              style={{ color: solBorder, borderColor: solBorder }}>
+              <Lightbulb size={14} /> Add Solution
+            </Button>
+            <Button size="sm" variant="outline"
+              onClick={() => { setImportOpen(true); setImportErr(''); setImportJson(''); }}>
+              <FileDown size={14} /> Import JSON
+            </Button>
+          </>
+        )}
         <Button size="sm"
           variant={simActive ? 'solid' : 'outline'}
           onClick={() => simActive ? stopSim() : startSim()}
@@ -969,70 +986,95 @@ const Brainstorm = () => {
             style={{ boxShadow: '-4px 0 12px rgba(0,0,0,0.08)' }}
           >
             <Flex justify="space-between" align="center" mb={4}>
-              <Heading size="sm">Edit Link</Heading>
+              <Heading size="sm">{isStaticMode ? 'Link' : 'Edit Link'}</Heading>
               <IconButton aria-label="Close" size="xs" variant="ghost" onClick={deselect}>
                 <X size={14} />
               </IconButton>
             </Flex>
             <VStack gap={3} align="stretch">
-              <Box>
-                <Text fontSize="xs" fontWeight="bold" mb={1}>Kind</Text>
-                <HStack gap={1}>
-                  <Button size="xs"
-                    variant={(selLink.kind || 'causes') === 'causes' ? 'solid' : 'outline'}
-                    onClick={() => patchLink(selLink.id, { kind: 'causes' })}>
-                    Causes
-                  </Button>
-                  <Button size="xs"
-                    variant={(selLink.kind || 'causes') === 'mitigates' ? 'solid' : 'outline'}
-                    onClick={() => patchLink(selLink.id, { kind: 'mitigates' })}
-                    style={(selLink.kind || 'causes') === 'mitigates'
-                      ? { backgroundColor: mitigateCol, color: '#fff' } : {}}>
-                    Mitigates
-                  </Button>
-                </HStack>
-              </Box>
-              <Box>
-                <Text fontSize="xs" fontWeight="bold" mb={1}>Label</Text>
-                <Input
-                  size="sm" value={selLink.label}
-                  onChange={e => patchLink(selLink.id, { label: e.target.value })}
-                  placeholder="Relationship…"
-                />
-              </Box>
-              <Box>
-                <Text fontSize="xs" fontWeight="bold" mb={1}>Weight</Text>
-                <Input
-                  size="sm" type="number" min={0} step={0.1}
-                  value={selLink.weight ?? ''}
-                  onChange={e => {
-                    const v = e.target.value;
-                    patchLink(selLink.id, { weight: v === '' ? undefined : Math.max(0, parseFloat(v) || 0) });
-                  }}
-                  placeholder="(none)"
-                />
-                {selLink.weight != null && selLink.label && (() => {
-                  const key = `${selLink.to}::${selLink.label}`;
-                  const total = groupTotals[key];
-                  const count = links.filter(l => l.to === selLink.to && l.label === selLink.label && l.weight != null).length;
-                  return total != null && count > 1
-                    ? <Text fontSize="xs" color={sub} mt={1}>
-                        Group total: {total} ({count} "{selLink.label}" links → same target)
-                      </Text>
-                    : null;
-                })()}
-              </Box>
+              {isStaticMode ? (
+                <>
+                  <Box>
+                    <Text fontSize="xs" fontWeight="bold" mb={1}>Kind</Text>
+                    <Text fontSize="sm">{(selLink.kind || 'causes') === 'mitigates' ? 'Mitigates' : 'Causes'}</Text>
+                  </Box>
+                  {selLink.label && (
+                    <Box>
+                      <Text fontSize="xs" fontWeight="bold" mb={1}>Label</Text>
+                      <Text fontSize="sm">{selLink.label}</Text>
+                    </Box>
+                  )}
+                  {selLink.weight != null && (
+                    <Box>
+                      <Text fontSize="xs" fontWeight="bold" mb={1}>Weight</Text>
+                      <Text fontSize="sm">{selLink.weight}</Text>
+                    </Box>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Box>
+                    <Text fontSize="xs" fontWeight="bold" mb={1}>Kind</Text>
+                    <HStack gap={1}>
+                      <Button size="xs"
+                        variant={(selLink.kind || 'causes') === 'causes' ? 'solid' : 'outline'}
+                        onClick={() => patchLink(selLink.id, { kind: 'causes' })}>
+                        Causes
+                      </Button>
+                      <Button size="xs"
+                        variant={(selLink.kind || 'causes') === 'mitigates' ? 'solid' : 'outline'}
+                        onClick={() => patchLink(selLink.id, { kind: 'mitigates' })}
+                        style={(selLink.kind || 'causes') === 'mitigates'
+                          ? { backgroundColor: mitigateCol, color: '#fff' } : {}}>
+                        Mitigates
+                      </Button>
+                    </HStack>
+                  </Box>
+                  <Box>
+                    <Text fontSize="xs" fontWeight="bold" mb={1}>Label</Text>
+                    <Input
+                      size="sm" value={selLink.label}
+                      onChange={e => patchLink(selLink.id, { label: e.target.value })}
+                      placeholder="Relationship…"
+                    />
+                  </Box>
+                  <Box>
+                    <Text fontSize="xs" fontWeight="bold" mb={1}>Weight</Text>
+                    <Input
+                      size="sm" type="number" min={0} step={0.1}
+                      value={selLink.weight ?? ''}
+                      onChange={e => {
+                        const v = e.target.value;
+                        patchLink(selLink.id, { weight: v === '' ? undefined : Math.max(0, parseFloat(v) || 0) });
+                      }}
+                      placeholder="(none)"
+                    />
+                    {selLink.weight != null && selLink.label && (() => {
+                      const key = `${selLink.to}::${selLink.label}`;
+                      const total = groupTotals[key];
+                      const count = links.filter(l => l.to === selLink.to && l.label === selLink.label && l.weight != null).length;
+                      return total != null && count > 1
+                        ? <Text fontSize="xs" color={sub} mt={1}>
+                            Group total: {total} ({count} "{selLink.label}" links → same target)
+                          </Text>
+                        : null;
+                    })()}
+                  </Box>
+                </>
+              )}
               <Text fontSize="xs" color={sub}>
                 {nodes.find(n => n.id === selLink.from)?.title ?? '?'} →{' '}
                 {nodes.find(n => n.id === selLink.to)?.title ?? '?'}
               </Text>
-              <Button
-                size="sm" variant="outline"
-                onClick={() => rmLink(selLink.id)}
-                style={{ color: '#E53E3E', borderColor: '#E53E3E' }}
-              >
-                <Trash2 size={14} /> Delete Link
-              </Button>
+              {!isStaticMode && (
+                <Button
+                  size="sm" variant="outline"
+                  onClick={() => rmLink(selLink.id)}
+                  style={{ color: '#E53E3E', borderColor: '#E53E3E' }}
+                >
+                  <Trash2 size={14} /> Delete Link
+                </Button>
+              )}
             </VStack>
           </Box>
         )}
@@ -1133,11 +1175,15 @@ const Brainstorm = () => {
                   <Lightbulb size={12} /> Solution
                 </Flex>
               )}
-              <Input
-                flex={1} size="lg" variant="flushed" fontWeight="600"
-                value={modalNode.title}
-                onChange={e => patchNode(modalNode.id, { title: e.target.value })}
-              />
+              {isStaticMode ? (
+                <Text flex={1} fontSize="lg" fontWeight="600">{modalNode.title}</Text>
+              ) : (
+                <Input
+                  flex={1} size="lg" variant="flushed" fontWeight="600"
+                  value={modalNode.title}
+                  onChange={e => patchNode(modalNode.id, { title: e.target.value })}
+                />
+              )}
               <IconButton
                 aria-label="Close" size="sm" variant="ghost"
                 onClick={() => { setModalNodeId(null); setMdEditing(false); }}
@@ -1150,65 +1196,88 @@ const Brainstorm = () => {
             <Flex px={6} py={2} gap={3} align="center" flexWrap="wrap"
               borderBottom="1px solid" borderColor={border} flexShrink={0}
             >
-              <HStack gap={1}>
-                <Text fontSize="xs" fontWeight="bold">Kind:</Text>
-                <Button size="xs"
-                  variant={(modalNode.kind || 'issue') === 'issue' ? 'solid' : 'outline'}
-                  onClick={() => patchNode(modalNode.id, { kind: 'issue' })}>
-                  Issue
-                </Button>
-                <Button size="xs"
-                  variant={(modalNode.kind || 'issue') === 'solution' ? 'solid' : 'outline'}
-                  onClick={() => patchNode(modalNode.id, { kind: 'solution' })}
-                  style={(modalNode.kind || 'issue') === 'solution'
-                    ? { backgroundColor: solBorder, color: '#fff' } : {}}>
-                  <Lightbulb size={12} /> Solution
-                </Button>
-              </HStack>
-              <HStack gap={1}>
-                <Text fontSize="xs" fontWeight="bold">Scope:</Text>
-                {ALL_SCOPES.map(s => (
-                  <Button
-                    key={s} size="xs"
-                    variant={modalNode.scope === s ? 'solid' : 'outline'}
-                    onClick={() => patchNode(modalNode.id, { scope: s })}
-                    style={modalNode.scope === s
-                      ? { backgroundColor: SCOPE_COLORS[s], color: '#fff' }
-                      : {}}
-                  >
-                    {SCOPE_LABELS[s]}
-                  </Button>
-                ))}
-              </HStack>
-              <HStack gap={1}>
-                <Text fontSize="xs" fontWeight="bold">Time:</Text>
-                {ALL_TIMEFRAMES.map(t => (
-                  <Button
-                    key={t} size="xs"
-                    variant={modalNode.timeframe === t ? 'solid' : 'outline'}
-                    onClick={() => patchNode(modalNode.id, { timeframe: t })}
-                  >
-                    {TIMEFRAME_LABELS[t]}
-                  </Button>
-                ))}
-              </HStack>
+              {isStaticMode ? (
+                <>
+                  <Text fontSize="xs">
+                    <Text as="span" fontWeight="bold">Kind: </Text>
+                    {(modalNode.kind || 'issue') === 'solution' ? 'Solution' : 'Issue'}
+                  </Text>
+                  <Text fontSize="xs">
+                    <Text as="span" fontWeight="bold">Scope: </Text>
+                    <Box as="span" display="inline-block" w="8px" h="8px" borderRadius="full"
+                      bg={SCOPE_COLORS[modalNode.scope]} mr={1} verticalAlign="middle" />
+                    {SCOPE_LABELS[modalNode.scope]}
+                  </Text>
+                  <Text fontSize="xs">
+                    <Text as="span" fontWeight="bold">Time: </Text>
+                    {TIMEFRAME_LABELS[modalNode.timeframe]}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <HStack gap={1}>
+                    <Text fontSize="xs" fontWeight="bold">Kind:</Text>
+                    <Button size="xs"
+                      variant={(modalNode.kind || 'issue') === 'issue' ? 'solid' : 'outline'}
+                      onClick={() => patchNode(modalNode.id, { kind: 'issue' })}>
+                      Issue
+                    </Button>
+                    <Button size="xs"
+                      variant={(modalNode.kind || 'issue') === 'solution' ? 'solid' : 'outline'}
+                      onClick={() => patchNode(modalNode.id, { kind: 'solution' })}
+                      style={(modalNode.kind || 'issue') === 'solution'
+                        ? { backgroundColor: solBorder, color: '#fff' } : {}}>
+                      <Lightbulb size={12} /> Solution
+                    </Button>
+                  </HStack>
+                  <HStack gap={1}>
+                    <Text fontSize="xs" fontWeight="bold">Scope:</Text>
+                    {ALL_SCOPES.map(s => (
+                      <Button
+                        key={s} size="xs"
+                        variant={modalNode.scope === s ? 'solid' : 'outline'}
+                        onClick={() => patchNode(modalNode.id, { scope: s })}
+                        style={modalNode.scope === s
+                          ? { backgroundColor: SCOPE_COLORS[s], color: '#fff' }
+                          : {}}
+                      >
+                        {SCOPE_LABELS[s]}
+                      </Button>
+                    ))}
+                  </HStack>
+                  <HStack gap={1}>
+                    <Text fontSize="xs" fontWeight="bold">Time:</Text>
+                    {ALL_TIMEFRAMES.map(t => (
+                      <Button
+                        key={t} size="xs"
+                        variant={modalNode.timeframe === t ? 'solid' : 'outline'}
+                        onClick={() => patchNode(modalNode.id, { timeframe: t })}
+                      >
+                        {TIMEFRAME_LABELS[t]}
+                      </Button>
+                    ))}
+                  </HStack>
+                </>
+              )}
             </Flex>
 
             {/* Description body */}
             <Box flex={1} overflowY="auto" px={6} py={4}>
               <Flex justify="space-between" align="center" mb={3}>
                 <Text fontSize="xs" fontWeight="bold" color={sub}>Description</Text>
-                <Button
-                  size="xs" variant="ghost"
-                  onClick={() => setMdEditing(!mdEditing)}
-                >
-                  {mdEditing
-                    ? <><Eye size={13} />&nbsp;Preview</>
-                    : <><Pencil size={13} />&nbsp;Edit</>}
-                </Button>
+                {!isStaticMode && (
+                  <Button
+                    size="xs" variant="ghost"
+                    onClick={() => setMdEditing(!mdEditing)}
+                  >
+                    {mdEditing
+                      ? <><Eye size={13} />&nbsp;Preview</>
+                      : <><Pencil size={13} />&nbsp;Edit</>}
+                  </Button>
+                )}
               </Flex>
 
-              {mdEditing ? (
+              {!isStaticMode && mdEditing ? (
                 <Textarea
                   w="100%" minH="250px" fontFamily="mono" fontSize="sm"
                   value={modalNode.description}
@@ -1219,7 +1288,7 @@ const Brainstorm = () => {
                 <Box minH="100px">
                   {modalNode.description
                     ? <RenderedMarkdown text={modalNode.description} />
-                    : <Text color={sub} fontSize="sm" fontStyle="italic">No description yet. Click Edit to add one.</Text>}
+                    : <Text color={sub} fontSize="sm" fontStyle="italic">No description yet.</Text>}
                 </Box>
               )}
 
@@ -1268,20 +1337,22 @@ const Brainstorm = () => {
 
             {/* Footer */}
             <Flex px={6} py={3} borderTop="1px solid" borderColor={border}
-              justify="space-between" align="center" flexShrink={0}
+              justify={isStaticMode ? 'flex-end' : 'space-between'} align="center" flexShrink={0}
             >
-              <Button
-                size="sm" variant="outline"
-                onClick={() => { rmNode(modalNode.id); setModalNodeId(null); }}
-                style={{ color: '#E53E3E', borderColor: '#E53E3E' }}
-              >
-                <Trash2 size={14} /> Delete {(modalNode.kind || 'issue') === 'solution' ? 'Solution' : 'Issue'}
-              </Button>
+              {!isStaticMode && (
+                <Button
+                  size="sm" variant="outline"
+                  onClick={() => { rmNode(modalNode.id); setModalNodeId(null); }}
+                  style={{ color: '#E53E3E', borderColor: '#E53E3E' }}
+                >
+                  <Trash2 size={14} /> Delete {(modalNode.kind || 'issue') === 'solution' ? 'Solution' : 'Issue'}
+                </Button>
+              )}
               <Button
                 size="sm" variant="solid"
                 onClick={() => { setModalNodeId(null); setMdEditing(false); }}
               >
-                Done
+                {isStaticMode ? 'Close' : 'Done'}
               </Button>
             </Flex>
           </Box>

@@ -148,6 +148,9 @@ class StaticWebsite(Command):
                     rows = self.db.session.execute(query).all()
                     for row in rows:
                         combinations.append(dict(row._mapping))
+                elif callable(query):
+                    for item in query():
+                        combinations.append(item if isinstance(item, dict) else {'id': item})
 
         # 3. No-parameter route: just fetch once
         if not combinations and not static_args and not static_kwargs:

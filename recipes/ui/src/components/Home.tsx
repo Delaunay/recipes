@@ -14,9 +14,6 @@ const Home = () => {
         <Heading size="2xl" mb={4} color="orange.500">
           Welcome to (O)KaaSan
         </Heading>
-        <Text fontSize="xl" color="gray.600">
-          Your all-in-one lifestyle management application
-        </Text>
       </Box>
 
       <Heading size="lg" mb={6} color="gray.700">
@@ -69,7 +66,6 @@ const Home = () => {
                 )}
                 {section.items.length === 0 && (
                   <Text fontSize="sm" color="gray.500" fontStyle="italic">
-                    Coming soon...
                   </Text>
                 )}
               </Card.Body>
